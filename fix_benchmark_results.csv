@@ -1,0 +1,11 @@
+file,truth,detected,stage,patches,verdict,detail,detect_ms,repair_ms,verify_ms,total_ms,est_energy_mJ
+test1.py,ZeroDivisionError,ZeroDivisionError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",4.88,1160.96,1085.61,2251.44,10581.78
+test2.py,SyntaxError,SyntaxError,runtime,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",1110.94,2145.67,1094.11,4350.73,20448.43
+test3.py,NameError,NameError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",12.03,1103.74,1084.38,2200.15,10340.69
+test4.py,IndexError,IndexError,runtime,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",1104.02,2171.7,1046.74,4322.45,20315.53
+test6.py,KeyError,KeyError,runtime,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",1071.67,2177.85,1043.86,4293.38,20178.88
+test7.py,TypeError,TypeError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",30.23,1172.14,1077.97,2280.34,10717.59
+test8.py,ModuleNotFoundError,ModuleNotFoundError,runtime,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",1252.65,2527.71,1120.47,4900.83,23033.88
+test10.py,TypeError,TypeError,static,3,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",2.02,2118.47,1045.89,3166.38,14882.0
+test11.py,NameError,NameError,static,12,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",4.89,5550.35,1079.2,6634.44,31181.87
+test_case_large.py,NameError,NameError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",20.81,1243.55,1170.72,2435.08,11444.87

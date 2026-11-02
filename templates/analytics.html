@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco Analytics - Compiler Error Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #F9FAFB;
+            --panel: #FFFFFF;
+            --border: #E5E7EB;
+            --accent: #2563EB;
+            --text: #111827;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding: 40px; margin: 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { font-size: 1.8rem; font-weight: 700; margin: 0; }
+        .back-link { color: var(--accent); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; }
+        .chart-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .chart-card h3 { font-size: 1.1rem; margin-top: 0; margin-bottom: 20px; color: #374151; font-weight: 600; border-bottom: 1px solid #F3F4F6; padding-bottom: 15px; }
+        .chart-container { position: relative; height: 350px; width: 100%; }
+        
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; background: var(--accent); color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <a href="/" class="back-link">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Studio
+            </a>
+            <h1>Eco-Metrics Dashboard <small>(Illustrative, simulated data)</small></h1>
+        </div>
+        <button class="btn" onclick="fetchAnalytics()">Refresh Data</button>
+    </div>
+
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h3>Pipeline Response Time (ms)</h3>
+            <div class="chart-container"><canvas id="chart-response"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>Carbon Emissions (µg CO2 eq)</h3>
+            <div class="chart-container"><canvas id="chart-emissions"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>RAPL Package Energy (mJ)</h3>
+            <div class="chart-container"><canvas id="chart-energy"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>Pinpoint Agent Overhead (ms)</h3>
+            <div class="chart-container"><canvas id="chart-overhead"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>Virtualization Efficiency (%)</h3>
+            <div class="chart-container"><canvas id="chart-virt"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>NLP Model Performance Score</h3>
+            <div class="chart-container"><canvas id="chart-performance"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>Static Security Risks Detected</h3>
+            <div class="chart-container"><canvas id="chart-security"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>Security Vulnerabilities Resolved (%)</h3>
+            <div class="chart-container"><canvas id="chart-healing"></canvas></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let charts = {};
+
+        async function fetchAnalytics() {
+            try {
+                const res = await fetch(`${API_BASE}/analytics`);
+                const data = await res.json();
+                renderCharts(data);
+            } catch(e) {
+                console.error("Failed to load analytics:", e);
+                alert("Error loading analytics data. Please check the server.");
+            }
+        }
+
+        function renderCharts(data) {
+            if (typeof Chart === 'undefined') {
+                console.error("Chart.js not loaded!");
+                return;
+            }
+
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#111827',
+                        padding: 12,
+                        borderRadius: 8
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: "#F3F4F6" },
+                        ticks: { font: { family: 'Inter' } }
+                    },
+                    x: { 
+                        grid: { display: false },
+                        ticks: { font: { family: 'Inter', weight: 500 } }
+                    }
+                }
+            };
+
+            const chartConfig = [
+                { id: 'chart-response', key: 'responseTime', label: 'Time (ms)', color: '#2563EB' },
+                { id: 'chart-emissions', key: 'emissions', label: 'Emissions (µg)', color: '#10B981' },
+                { id: 'chart-energy', key: 'raplEnergy', label: 'Energy (mJ)', color: '#F59E0B' },
+                { id: 'chart-overhead', key: 'pinpointOvhd', label: 'Overhead (ms)', color: '#8B5CF6' },
+                { id: 'chart-virt', key: 'energyVirt', label: 'Virtualization (%)', color: '#EC4899' },
+                { id: 'chart-performance', key: 'modelPerformance', label: 'NLP Score', color: '#6366F1' },
+                { id: 'chart-security', key: 'securityRisks', label: 'Security Risks', color: '#EF4444' },
+                { id: 'chart-healing', key: 'securityHealing', label: 'Resolved (%)', color: '#34D399' }
+            ];
+
+            chartConfig.forEach(cfg => {
+                const canvas = document.getElementById(cfg.id);
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                if (charts[cfg.id]) charts[cfg.id].destroy();
+                
+                charts[cfg.id] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: cfg.label,
+                            data: data[cfg.key],
+                            backgroundColor: cfg.color + '44',
+                            borderColor: cfg.color,
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            hoverBackgroundColor: cfg.color
+                        }]
+                    },
+                    options: commonOptions
+                });
+            });
+        }
+
+        // Initial load
+        window.onload = fetchAnalytics;
+    </script>
+</body>
+</html>

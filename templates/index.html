@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compiler Error Analysis Web Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #F3F4F6;
+            --bg-panel: #FFFFFF;
+            --border: #E5E7EB;
+            --text-main: #111827;
+            --accent: #2563EB;
+            --success: #10B981;
+            --font-code: 'Fira Code', monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar { width: 250px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; }
+        .sidebar h2 { font-size: 1.2rem; margin-bottom: 20px; }
+        .file-list { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .file-item { padding: 10px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; }
+        .file-item:hover { background: #F9FAFB; }
+        .file-item.active { background: #EFF6FF; color: var(--accent); border-color: #BFDBFE; font-weight: 600; }
+        .fixed-badge { font-size: 0.7rem; background: #D1FAE5; color: #065F46; padding: 2px 6px; border-radius: 10px; }
+
+        /* Navigation Link */
+        .nav-link { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border); }
+        .analytics-link { display: flex; align-items: center; gap: 10px; color: var(--accent); text-decoration: none; font-weight: 600; font-size: 0.9rem; padding: 10px; border-radius: 6px; transition: background 0.2s; }
+        .analytics-link:hover { background: #EEF2FF; }
+
+        /* Main Workspace Grid */
+        .workspace { flex-grow: 1; display: grid; grid-template-areas: "original diag metrics" "modified exec metrics"; grid-template-columns: 1fr 1fr 0.7fr; grid-template-rows: 1fr 1.2fr; gap: 20px; padding: 20px; overflow-y: auto; background: var(--bg-body); }
+        
+        .panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        .panel-header { background: #F9FAFB; padding: 12px 20px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .panel-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+        
+        textarea { flex-grow: 1; width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: var(--font-code); font-size: 0.85rem; resize: none; background: #FAFAFA; }
+        textarea:focus { outline: none; border-color: var(--accent); }
+        
+        /* Terminal Boxes */
+        .terminal { background: #FFFFFF; color: #111827; border: 1px solid var(--border); font-family: var(--font-code); font-size: 0.85rem; padding: 15px; border-radius: 6px; flex-grow: 1; overflow-y: auto; white-space: pre-wrap; line-height: 1.4; }
+        
+        /* Buttons */
+        .btn { padding: 10px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-primary { background: var(--accent); width: 100%; }
+        .btn-success { background: var(--success); }
+        .btn-warning { background: #F59E0B; }
+        .action-row { display: flex; gap: 10px; }
+        .action-row .btn { flex: 1; }
+
+        .loading { opacity: 0.6; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Workspace Files</h2>
+        <input type="file" id="file-input" accept=".py" style="display:none">
+        <button class="btn btn-primary" id="btn-upload" style="margin-bottom:12px">Upload .py file</button>
+        <div class="file-list" id="file-list"></div>
+        
+        <div class="nav-link">
+            <a href="/analytics" class="analytics-link">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                View Eco Analytics
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+        
+        <!-- Top Left: Original Code -->
+        <div class="panel" style="grid-area: original;">
+            <div class="panel-header">Original Selected Code <span id="lbl-file" style="font-weight:400; color:#6b7280; font-size:0.85rem"></span></div>
+            <div class="panel-body">
+                <textarea id="original-code" readonly placeholder="Select a file from the sidebar..."></textarea>
+                <button class="btn btn-primary" id="btn-analyze" disabled>Scan & Diagnose Error</button>
+            </div>
+        </div>
+
+        <!-- Top Right: Diagnostic Terminal -->
+        <div class="panel" style="grid-area: diag;">
+            <div class="panel-header">Scan Diagnostics Output</div>
+            <div class="panel-body" style="padding:0">
+                <div class="terminal" id="diagnostic-output" style="border-radius:0;">Awaiting analysis...</div>
+            </div>
+        </div>
+
+        <!-- Bottom Left: Auto-Correct Editor -->
+        <div class="panel" style="grid-area: modified;">
+            <div class="panel-header">AI Modified Code Editor</div>
+            <div class="panel-body">
+                <textarea id="modified-code" placeholder="AI corrected code will populate here..."></textarea>
+                <div class="action-row">
+                    <button class="btn btn-success" id="btn-save">Save Modification</button>
+                    <button class="btn btn-warning" id="btn-execute">Run Modified Code</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Right: Execution Output -->
+        <div class="panel" style="grid-area: exec;">
+            <div class="panel-header">Execution Result (Output)</div>
+            <div class="panel-body" style="padding:0">
+                <div class="terminal" id="execution-output" style="border-radius:0;">Terminal ready...</div>
+            </div>
+        </div>
+
+        <!-- Far Right: Eco Metrics -->
+        <div class="panel" style="grid-area: metrics;">
+            <div class="panel-header">Green IT Profiling</div>
+            <div class="panel-body" style="padding:0">
+                <div class="terminal" id="metrics-output" style="border-radius:0;">Awaiting scan...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let selectedFile = null;
+
+        const ui = {
+            fileList: document.getElementById('file-list'),
+            lblFile: document.getElementById('lbl-file'),
+            originalCode: document.getElementById('original-code'),
+            modifiedCode: document.getElementById('modified-code'),
+            diagOutput: document.getElementById('diagnostic-output'),
+            metricsOutput: document.getElementById('metrics-output'),
+            execOutput: document.getElementById('execution-output'),
+            btnAnalyze: document.getElementById('btn-analyze'),
+            btnSave: document.getElementById('btn-save'),
+            btnExecute: document.getElementById('btn-execute')
+        };
+
+        async function loadFiles() {
+            const res = await fetch(`${API_BASE}/files`);
+            const data = await res.json();
+            ui.fileList.innerHTML = '';
+            data.files.forEach(f => {
+                const div = document.createElement('div');
+                div.className = `file-item ${f.filename === selectedFile ? 'active' : ''}`;
+                div.innerHTML = `<span>${f.filename}</span> ${f.is_fixed ? '<span class="fixed-badge">Modified</span>' : ''}`;
+                div.onclick = () => selectFile(f.filename);
+                ui.fileList.appendChild(div);
+            });
+        }
+
+        async function selectFile(filename) {
+            selectedFile = filename;
+            ui.lblFile.textContent = filename;
+            ui.btnAnalyze.disabled = false;
+            ui.diagOutput.textContent = "Ready to analyze...";
+            ui.metricsOutput.textContent = "Awaiting scan...";
+            ui.execOutput.textContent = "Terminal ready...";
+            loadFiles();
+
+            try {
+                const res = await fetch(`${API_BASE}/source?filename=${encodeURIComponent(filename)}`);
+                if (!res.ok) throw new Error(`Could not load file (${res.status})`);
+                const data = await res.json();
+                const numberedCode = data.code.split('\n').map((l, i) => String(i + 1).padStart(3, ' ') + ' | ' + l).join('\n');
+                ui.originalCode.value = numberedCode;
+                ui.modifiedCode.value = "";
+                ui.diagOutput.textContent = "File loaded. Press 'Scan & Diagnose Error' to analyze it.";
+            } catch(e) {
+                ui.diagOutput.textContent = `Could not load file: ${e.message}`;
+            }
+        }
+
+        ui.btnAnalyze.onclick = async () => {
+            if(!selectedFile) return;
+            document.body.classList.add('loading');
+            ui.diagOutput.textContent = "Scanning...";
+
+            try {
+                const res = await fetch(`${API_BASE}/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: selectedFile })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `Analysis failed (${res.status})`);
+
+                if(data.status === 'error_intercepted') {
+                    ui.diagOutput.textContent = data.raw_text;
+                    ui.metricsOutput.textContent = data.metrics || "No metrics returned.";
+                    const numberedFixed = data.fixed_code.split('\n').map((l, i) => String(i + 1).padStart(3, ' ') + ' | ' + l).join('\n');
+                    ui.modifiedCode.value = numberedFixed;
+                } else if(data.status === 'success') {
+                    const alerts = (data.security_alerts && data.security_alerts.length)
+                        ? "[SECURITY SCAN] Findings (non-blocking):\n  " + data.security_alerts.join("\n  ")
+                        : "[SECURITY SCAN] Code appears safe.";
+                    ui.diagOutput.textContent = alerts + "\n----------------------------------------\n" + data.message;
+                    ui.metricsOutput.textContent = data.metrics || "No metrics returned.";
+                    const numberedOrig = data.original_code.split('\n').map((l, i) => String(i + 1).padStart(3, ' ') + ' | ' + l).join('\n');
+                    ui.modifiedCode.value = numberedOrig;
+                } else if(data.status === 'blocked') {
+                    ui.diagOutput.textContent = data.raw_text;
+                    ui.metricsOutput.textContent = data.metrics;
+                    ui.modifiedCode.value = "";
+                } else {
+                    ui.diagOutput.textContent = `[ERROR] ${data.error}`;
+                    ui.metricsOutput.textContent = "Failed scan.";
+                }
+            } catch(e) {
+                ui.diagOutput.textContent = `CRASH: ${e.message}`;
+            }
+            document.body.classList.remove('loading');
+        };
+
+        ui.btnSave.onclick = async () => {
+            const rawCode = ui.modifiedCode.value;
+            if(!rawCode || !selectedFile) return;
+            // Strip out the visual line numbers before saving
+            const code = rawCode.split('\n').map(line => line.replace(/^\s*\d+\s*\|\s?/, '')).join('\n');
+            
+            ui.btnSave.textContent = "Saving...";
+            try {
+                const res = await fetch(`${API_BASE}/save`, {
+                    method: 'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({filename: selectedFile, code})
+                });
+                const data = await res.json();
+                if(data.status === 'success') {
+                    selectFile(data.new_filename);
+                }
+            } catch(e) {
+                ui.execOutput.textContent = `CRASH: ${e.message}`;
+            }
+            ui.btnSave.textContent = "Save Modification";
+        };
+
+        ui.btnExecute.onclick = async () => {
+            const rawCode = ui.modifiedCode.value;
+            if(!rawCode) return;
+            // Strip out visual line numbers before execution
+            const code = rawCode.split('\n').map(line => line.replace(/^\s*\d+\s*\|\s?/, '')).join('\n');
+            
+            ui.execOutput.textContent = "Executing sequence...";
+            try {
+                const res = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({code})
+                });
+                const data = await res.json();
+                ui.execOutput.textContent = `> ${data.output}`;
+            } catch(e) { ui.execOutput.textContent = `CRASH: ${e.message}`; }
+        };
+
+                document.getElementById('btn-upload').onclick = () => document.getElementById('file-input').click();
+        document.getElementById('file-input').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const code = await file.text();           // read in the browser, send as JSON
+            try {
+                const res = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: file.name, code })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+                await selectFile(data.filename);       // loads it into the left panel
+            } catch (err) {
+                ui.diagOutput.textContent = `Upload failed: ${err.message}`;
+            }
+            e.target.value = '';                       // lets you re-upload the same file
+        };
+        
+        loadFiles();
+    </script>
+</body>
+</html>

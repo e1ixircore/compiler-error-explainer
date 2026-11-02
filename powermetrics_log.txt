@@ -1,0 +1,547 @@
+Machine model: MacBookAir9,1
+SMC version: Unknown
+EFI version: 2103.2.0
+OS version: 24G830
+Boot arguments: 
+Boot time: Sun Oct 25 19:06:13 2026
+
+
+
+*** Sampled system activity (Sun Oct 25 19:43:21 2026 +0530) (106.70ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 8.07W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 64.33% (772.00 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 99.20%
+Cores Active: 99.20%
+GPU Active: 99.61%
+Avg Num of Cores Active: 2.95
+
+Core 0 C-state residency: 18.68% (C3: 0.00% C6: 17.10% C7: 1.58% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 112.47/149.96] [< 32 us: 9.37/299.92] [< 64 us: 74.98/56.23] [< 128 us: 168.70/196.82] [< 256 us: 140.59/178.08] [< 512 us: 187.45/46.86] [< 1024 us: 159.33/74.98] [< 2048 us: 131.21/56.23] [< 4096 us: 74.98/18.74] [< 8192 us: 18.74/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 64.47% (773.70 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 1246.54/215.57] [< 32 us: 140.59/206.19] [< 64 us: 196.82/318.66] [< 128 us: 271.80/403.02] [< 256 us: 187.45/318.66] [< 512 us: 65.61/262.43] [< 1024 us: 46.86/243.68] [< 2048 us: 28.12/168.70] [< 4096 us: 0.00/46.86] [< 8192 us: 0.00/9.37] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 64.40% (772.76 Mhz)
+
+Core 1 C-state residency: 20.81% (C3: 0.00% C6: 1.01% C7: 19.79% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 290.55/196.82] [< 32 us: 74.98/309.29] [< 64 us: 65.61/84.35] [< 128 us: 196.82/299.92] [< 256 us: 168.70/140.59] [< 512 us: 140.59/187.45] [< 1024 us: 149.96/46.86] [< 2048 us: 131.21/56.23] [< 4096 us: 84.35/9.37] [< 8192 us: 28.12/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 64.67% (776.01 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 1134.07/140.59] [< 32 us: 28.12/131.21] [< 64 us: 187.45/290.55] [< 128 us: 178.08/253.06] [< 256 us: 187.45/309.29] [< 512 us: 103.10/346.78] [< 1024 us: 46.86/206.19] [< 2048 us: 18.74/140.59] [< 4096 us: 9.37/65.61] [< 8192 us: 0.00/9.37] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 63.51% (762.16 Mhz)
+
+Core 2 C-state residency: 21.18% (C3: 0.00% C6: 1.01% C7: 20.17% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 253.06/159.33] [< 32 us: 74.98/234.31] [< 64 us: 121.84/65.61] [< 128 us: 159.33/299.92] [< 256 us: 224.94/178.08] [< 512 us: 140.59/103.10] [< 1024 us: 56.23/121.84] [< 2048 us: 84.35/37.49] [< 4096 us: 65.61/9.37] [< 8192 us: 18.74/0.00] [< 16384 us: 9.37/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 64.53% (774.40 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 899.76/65.61] [< 32 us: 18.74/140.59] [< 64 us: 131.21/121.84] [< 128 us: 149.96/309.29] [< 256 us: 178.08/196.82] [< 512 us: 74.98/206.19] [< 1024 us: 46.86/224.94] [< 2048 us: 0.00/159.33] [< 4096 us: 18.74/74.98] [< 8192 us: 0.00/18.74] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 63.42% (760.99 Mhz)
+
+Core 3 C-state residency: 33.13% (C3: 0.00% C6: 0.00% C7: 33.13% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 440.51/112.47] [< 32 us: 18.74/281.17] [< 64 us: 140.59/93.72] [< 128 us: 215.57/309.29] [< 256 us: 168.70/178.08] [< 512 us: 121.84/121.84] [< 1024 us: 93.72/84.35] [< 2048 us: 56.23/103.10] [< 4096 us: 18.74/18.74] [< 8192 us: 28.12/9.37] [< 16384 us: 9.37/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 64.15% (769.76 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 693.56/112.47] [< 32 us: 28.12/65.61] [< 64 us: 65.61/84.35] [< 128 us: 159.33/168.70] [< 256 us: 103.10/196.82] [< 512 us: 140.59/178.08] [< 1024 us: 9.37/131.21] [< 2048 us: 46.86/178.08] [< 4096 us: 0.00/112.47] [< 8192 us: 0.00/18.74] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 63.85% (766.17 Mhz)
+
+
+*** Sampled system activity (Sun Oct 25 19:43:22 2026 +0530) (110.35ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 9.64W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 87.79% (1053.44 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 99.93%
+Cores Active: 99.93%
+GPU Active: 100.10%
+Avg Num of Cores Active: 2.64
+
+Core 0 C-state residency: 26.42% (C3: 0.00% C6: 21.49% C7: 4.93% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 960.61/570.93] [< 32 us: 190.31/308.12] [< 64 us: 217.50/190.31] [< 128 us: 326.25/915.30] [< 256 us: 244.68/145.00] [< 512 us: 208.43/81.56] [< 1024 us: 154.06/45.31] [< 2048 us: 45.31/99.69] [< 4096 us: 45.31/36.25] [< 8192 us: 9.06/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 87.95% (1055.39 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 1449.98/271.87] [< 32 us: 90.62/326.25] [< 64 us: 326.25/253.75] [< 128 us: 299.06/362.49] [< 256 us: 117.81/453.12] [< 512 us: 27.19/280.93] [< 1024 us: 18.12/145.00] [< 2048 us: 18.12/145.00] [< 4096 us: 0.00/99.69] [< 8192 us: 0.00/9.06] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 89.99% (1079.90 Mhz)
+
+Core 1 C-state residency: 16.27% (C3: 0.00% C6: 0.93% C7: 15.34% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 1060.30/407.81] [< 32 us: 163.12/199.37] [< 64 us: 208.43/217.50] [< 128 us: 271.87/1096.55] [< 256 us: 208.43/108.75] [< 512 us: 172.18/99.69] [< 1024 us: 90.62/72.50] [< 2048 us: 54.37/63.44] [< 4096 us: 27.19/9.06] [< 8192 us: 27.19/9.06] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 87.97% (1055.69 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 1477.17/208.43] [< 32 us: 163.12/235.62] [< 64 us: 208.43/407.81] [< 128 us: 154.06/425.93] [< 256 us: 163.12/262.81] [< 512 us: 72.50/335.31] [< 1024 us: 18.12/199.37] [< 2048 us: 27.19/126.87] [< 4096 us: 0.00/63.44] [< 8192 us: 0.00/18.12] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 85.10% (1021.19 Mhz)
+
+Core 2 C-state residency: 13.58% (C3: 0.00% C6: 1.71% C7: 11.87% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 1368.42/371.56] [< 32 us: 172.18/172.18] [< 64 us: 135.94/145.00] [< 128 us: 226.56/1277.79] [< 256 us: 163.12/172.18] [< 512 us: 117.81/63.44] [< 1024 us: 54.37/81.56] [< 2048 us: 54.37/63.44] [< 4096 us: 45.31/27.19] [< 8192 us: 27.19/0.00] [< 16384 us: 9.06/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 86.92% (1043.06 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 1159.98/163.12] [< 32 us: 63.44/181.25] [< 64 us: 190.31/190.31] [< 128 us: 190.31/317.18] [< 256 us: 99.69/308.12] [< 512 us: 45.31/308.12] [< 1024 us: 27.19/135.94] [< 2048 us: 18.12/108.75] [< 4096 us: 9.06/81.56] [< 8192 us: 9.06/9.06] [< 16384 us: 0.00/9.06] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 86.31% (1035.75 Mhz)
+
+Core 3 C-state residency: 18.14% (C3: 0.00% C6: 0.63% C7: 17.51% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 453.12/290.00] [< 32 us: 72.50/172.18] [< 64 us: 108.75/45.31] [< 128 us: 154.06/389.68] [< 256 us: 72.50/108.75] [< 512 us: 108.75/54.37] [< 1024 us: 54.37/54.37] [< 2048 us: 63.44/45.31] [< 4096 us: 45.31/9.06] [< 8192 us: 27.19/9.06] [< 16384 us: 18.12/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 88.90% (1066.77 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 561.87/135.94] [< 32 us: 27.19/63.44] [< 64 us: 108.75/45.31] [< 128 us: 145.00/199.37] [< 256 us: 72.50/135.94] [< 512 us: 54.37/117.81] [< 1024 us: 9.06/108.75] [< 2048 us: 27.19/126.87] [< 4096 us: 0.00/45.31] [< 8192 us: 9.06/36.25] [< 16384 us: 0.00/9.06] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 86.65% (1039.82 Mhz)
+
+
+*** Sampled system activity (Sun Oct 25 19:43:22 2026 +0530) (105.79ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 8.69W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 81.49% (977.83 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 90.55%
+Cores Active: 90.55%
+GPU Active: 100.45%
+Avg Num of Cores Active: 2.39
+
+Core 0 C-state residency: 37.13% (C3: 0.00% C6: 32.39% C7: 4.74% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 311.95/321.41] [< 32 us: 94.53/349.76] [< 64 us: 170.16/66.17] [< 128 us: 293.05/349.76] [< 256 us: 302.50/207.97] [< 512 us: 217.42/151.25] [< 1024 us: 151.25/170.16] [< 2048 us: 141.80/75.62] [< 4096 us: 18.91/28.36] [< 8192 us: 9.45/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 80.79% (969.47 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 2041.87/255.23] [< 32 us: 37.81/311.95] [< 64 us: 207.97/207.97] [< 128 us: 170.16/529.37] [< 256 us: 103.98/406.48] [< 512 us: 66.17/359.22] [< 1024 us: 0.00/311.95] [< 2048 us: 0.00/179.61] [< 4096 us: 0.00/47.27] [< 8192 us: 0.00/9.45] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 81.55% (978.57 Mhz)
+
+Core 1 C-state residency: 33.61% (C3: 0.00% C6: 0.06% C7: 33.55% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 614.45/255.23] [< 32 us: 56.72/160.70] [< 64 us: 132.34/28.36] [< 128 us: 132.34/406.48] [< 256 us: 179.61/245.78] [< 512 us: 179.61/198.52] [< 1024 us: 113.44/113.44] [< 2048 us: 85.08/94.53] [< 4096 us: 18.91/28.36] [< 8192 us: 28.36/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 82.36% (988.31 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 1313.98/122.89] [< 32 us: 66.17/207.97] [< 64 us: 66.17/283.59] [< 128 us: 217.42/311.95] [< 256 us: 103.98/207.97] [< 512 us: 56.72/198.52] [< 1024 us: 18.91/245.78] [< 2048 us: 18.91/170.16] [< 4096 us: 0.00/94.53] [< 8192 us: 0.00/18.91] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 82.65% (991.83 Mhz)
+
+Core 2 C-state residency: 39.96% (C3: 0.00% C6: 0.00% C7: 39.96% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 529.37/236.33] [< 32 us: 85.08/198.52] [< 64 us: 122.89/37.81] [< 128 us: 179.61/378.12] [< 256 us: 170.16/189.06] [< 512 us: 179.61/236.33] [< 1024 us: 170.16/141.80] [< 2048 us: 75.62/122.89] [< 4096 us: 37.81/18.91] [< 8192 us: 9.45/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 81.13% (973.59 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 1124.92/141.80] [< 32 us: 18.91/141.80] [< 64 us: 141.80/179.61] [< 128 us: 113.44/245.78] [< 256 us: 122.89/255.23] [< 512 us: 75.62/170.16] [< 1024 us: 9.45/236.33] [< 2048 us: 18.91/141.80] [< 4096 us: 0.00/85.08] [< 8192 us: 0.00/28.36] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 81.95% (983.36 Mhz)
+
+Core 3 C-state residency: 39.65% (C3: 0.00% C6: 7.01% C7: 32.64% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 482.11/207.97] [< 32 us: 66.17/160.70] [< 64 us: 85.08/28.36] [< 128 us: 113.44/293.05] [< 256 us: 151.25/179.61] [< 512 us: 170.16/141.80] [< 1024 us: 75.62/103.98] [< 2048 us: 56.72/103.98] [< 4096 us: 47.27/56.72] [< 8192 us: 28.36/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 80.80% (969.56 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 519.92/47.27] [< 32 us: 18.91/37.81] [< 64 us: 113.44/85.08] [< 128 us: 122.89/94.53] [< 256 us: 113.44/151.25] [< 512 us: 28.36/141.80] [< 1024 us: 56.72/151.25] [< 2048 us: 0.00/141.80] [< 4096 us: 18.91/132.34] [< 8192 us: 0.00/9.45] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 83.24% (998.90 Mhz)
+
+
+*** Sampled system activity (Sun Oct 25 19:43:22 2026 +0530) (106.60ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 9.32W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 82.66% (991.97 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 93.25%
+Cores Active: 93.26%
+GPU Active: 100.01%
+Avg Num of Cores Active: 2.75
+
+Core 0 C-state residency: 21.15% (C3: 0.00% C6: 20.37% C7: 0.78% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 168.86/356.48] [< 32 us: 84.43/234.52] [< 64 us: 112.57/103.19] [< 128 us: 159.48/300.19] [< 256 us: 318.95/131.33] [< 512 us: 197.00/84.43] [< 1024 us: 168.86/93.81] [< 2048 us: 93.81/84.43] [< 4096 us: 65.67/0.00] [< 8192 us: 18.76/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 82.96% (995.49 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 1660.43/187.62] [< 32 us: 93.81/309.57] [< 64 us: 178.24/309.57] [< 128 us: 337.72/525.33] [< 256 us: 140.71/394.00] [< 512 us: 65.67/262.67] [< 1024 us: 28.14/309.57] [< 2048 us: 9.38/168.86] [< 4096 us: 0.00/46.90] [< 8192 us: 0.00/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 82.08% (984.99 Mhz)
+
+Core 1 C-state residency: 29.42% (C3: 0.00% C6: 0.00% C7: 29.42% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 459.67/281.43] [< 32 us: 56.29/215.76] [< 64 us: 150.10/75.05] [< 128 us: 197.00/506.57] [< 256 us: 356.48/281.43] [< 512 us: 215.76/215.76] [< 1024 us: 140.71/93.81] [< 2048 us: 121.95/84.43] [< 4096 us: 56.29/9.38] [< 8192 us: 0.00/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 82.83% (994.00 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 1679.19/225.14] [< 32 us: 93.81/262.67] [< 64 us: 272.05/328.33] [< 128 us: 272.05/440.91] [< 256 us: 159.48/403.38] [< 512 us: 65.67/403.38] [< 1024 us: 28.14/337.72] [< 2048 us: 28.14/150.10] [< 4096 us: 0.00/46.90] [< 8192 us: 0.00/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 81.63% (979.58 Mhz)
+
+Core 2 C-state residency: 28.19% (C3: 0.00% C6: 0.12% C7: 28.07% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 506.57/290.81] [< 32 us: 56.29/187.62] [< 64 us: 140.71/56.29] [< 128 us: 140.71/450.29] [< 256 us: 281.43/318.95] [< 512 us: 328.33/215.76] [< 1024 us: 140.71/112.57] [< 2048 us: 65.67/75.05] [< 4096 us: 37.52/0.00] [< 8192 us: 0.00/0.00] [< 16384 us: 9.38/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 82.85% (994.26 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 1416.53/206.38] [< 32 us: 46.90/197.00] [< 64 us: 178.24/300.19] [< 128 us: 281.43/337.72] [< 256 us: 168.86/450.29] [< 512 us: 103.19/309.57] [< 1024 us: 37.52/243.91] [< 2048 us: 0.00/121.95] [< 4096 us: 0.00/56.29] [< 8192 us: 0.00/18.76] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 81.50% (978.01 Mhz)
+
+Core 3 C-state residency: 32.60% (C3: 0.00% C6: 0.53% C7: 32.07% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 778.62/487.81] [< 32 us: 112.57/262.67] [< 64 us: 215.76/75.05] [< 128 us: 328.33/553.48] [< 256 us: 309.57/384.62] [< 512 us: 234.52/253.29] [< 1024 us: 159.48/140.71] [< 2048 us: 56.29/56.29] [< 4096 us: 28.14/18.76] [< 8192 us: 9.38/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 82.83% (993.92 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 1163.24/197.00] [< 32 us: 84.43/150.10] [< 64 us: 159.48/197.00] [< 128 us: 243.91/375.24] [< 256 us: 150.10/290.81] [< 512 us: 75.05/281.43] [< 1024 us: 37.52/215.76] [< 2048 us: 9.38/121.95] [< 4096 us: 0.00/65.67] [< 8192 us: 0.00/28.14] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 81.95% (983.44 Mhz)
+
+
+*** Sampled system activity (Sun Oct 25 19:43:22 2026 +0530) (107.23ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 8.40W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 71.98% (863.78 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 92.52%
+Cores Active: 92.52%
+GPU Active: 100.04%
+Avg Num of Cores Active: 2.65
+
+Core 0 C-state residency: 18.65% (C3: 0.00% C6: 17.15% C7: 1.50% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 195.84/205.16] [< 32 us: 93.26/214.49] [< 64 us: 130.56/167.86] [< 128 us: 251.79/335.72] [< 256 us: 242.47/139.88] [< 512 us: 177.19/158.54] [< 1024 us: 121.23/111.91] [< 2048 us: 102.58/46.63] [< 4096 us: 46.63/9.33] [< 8192 us: 18.65/0.00] [< 16384 us: 9.33/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 72.20% (866.37 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 1482.77/167.86] [< 32 us: 55.95/242.47] [< 64 us: 130.56/251.79] [< 128 us: 261.12/447.63] [< 256 us: 111.91/438.30] [< 512 us: 93.26/289.09] [< 1024 us: 55.95/233.14] [< 2048 us: 18.65/74.61] [< 4096 us: 0.00/55.95] [< 8192 us: 0.00/9.33] [< 16384 us: 0.00/9.33] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 71.25% (855.04 Mhz)
+
+Core 1 C-state residency: 28.32% (C3: 0.00% C6: 7.44% C7: 20.87% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 326.40/177.19] [< 32 us: 18.65/149.21] [< 64 us: 102.58/93.26] [< 128 us: 177.19/354.37] [< 256 us: 261.12/121.23] [< 512 us: 177.19/214.49] [< 1024 us: 102.58/130.56] [< 2048 us: 65.28/46.63] [< 4096 us: 55.95/27.98] [< 8192 us: 27.98/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 71.59% (859.06 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 1240.31/111.91] [< 32 us: 46.63/167.86] [< 64 us: 149.21/214.49] [< 128 us: 205.16/354.37] [< 256 us: 167.86/345.05] [< 512 us: 74.61/298.42] [< 1024 us: 27.98/214.49] [< 2048 us: 18.65/149.21] [< 4096 us: 0.00/55.95] [< 8192 us: 0.00/18.65] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 72.57% (870.89 Mhz)
+
+Core 2 C-state residency: 30.39% (C3: 0.00% C6: 0.20% C7: 30.19% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 391.68/149.21] [< 32 us: 27.98/158.54] [< 64 us: 83.93/37.30] [< 128 us: 121.23/298.42] [< 256 us: 195.84/186.51] [< 512 us: 149.21/186.51] [< 1024 us: 102.58/121.23] [< 2048 us: 65.28/83.93] [< 4096 us: 65.28/9.33] [< 8192 us: 27.98/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 72.49% (869.85 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 1203.01/177.19] [< 32 us: 27.98/102.58] [< 64 us: 111.91/130.56] [< 128 us: 186.51/354.37] [< 256 us: 111.91/373.03] [< 512 us: 65.28/242.47] [< 1024 us: 37.30/158.54] [< 2048 us: 0.00/102.58] [< 4096 us: 9.33/83.93] [< 8192 us: 0.00/27.98] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 72.32% (867.81 Mhz)
+
+Core 3 C-state residency: 43.89% (C3: 0.00% C6: 3.09% C7: 40.80% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 475.61/149.21] [< 32 us: 18.65/205.16] [< 64 us: 65.28/37.30] [< 128 us: 279.77/382.35] [< 256 us: 167.86/251.79] [< 512 us: 186.51/186.51] [< 1024 us: 186.51/83.93] [< 2048 us: 83.93/158.54] [< 4096 us: 18.65/37.30] [< 8192 us: 9.33/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 71.42% (857.06 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 820.66/102.58] [< 32 us: 27.98/83.93] [< 64 us: 149.21/130.56] [< 128 us: 149.21/195.84] [< 256 us: 102.58/279.77] [< 512 us: 74.61/167.86] [< 1024 us: 18.65/177.19] [< 2048 us: 18.65/102.58] [< 4096 us: 9.33/111.91] [< 8192 us: 0.00/18.65] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 72.28% (867.30 Mhz)
+
+
+*** Sampled system activity (Sun Oct 25 19:43:22 2026 +0530) (107.35ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 8.56W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 70.64% (847.68 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 86.08%
+Cores Active: 86.08%
+GPU Active: 99.64%
+Avg Num of Cores Active: 2.73
+
+Core 0 C-state residency: 20.41% (C3: 0.00% C6: 16.54% C7: 3.87% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 65.21/167.67] [< 32 us: 27.95/167.67] [< 64 us: 46.58/83.84] [< 128 us: 121.10/65.21] [< 256 us: 176.99/121.10] [< 512 us: 74.52/37.26] [< 1024 us: 102.47/55.89] [< 2048 us: 55.89/55.89] [< 4096 us: 65.21/27.95] [< 8192 us: 37.26/0.00] [< 16384 us: 9.32/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 70.20% (842.36 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 875.63/158.36] [< 32 us: 83.84/167.67] [< 64 us: 158.36/344.66] [< 128 us: 223.56/260.83] [< 256 us: 186.30/223.56] [< 512 us: 121.10/195.62] [< 1024 us: 27.95/149.04] [< 2048 us: 37.26/121.10] [< 4096 us: 0.00/65.21] [< 8192 us: 0.00/18.63] [< 16384 us: 0.00/9.32] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 72.07% (864.86 Mhz)
+
+Core 1 C-state residency: 23.45% (C3: 0.00% C6: 11.20% C7: 12.25% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 195.62/130.41] [< 32 us: 9.32/204.93] [< 64 us: 74.52/65.21] [< 128 us: 130.41/158.36] [< 256 us: 158.36/93.15] [< 512 us: 37.26/46.58] [< 1024 us: 74.52/46.58] [< 2048 us: 46.58/55.89] [< 4096 us: 65.21/37.26] [< 8192 us: 27.95/0.00] [< 16384 us: 18.63/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 70.87% (850.48 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 866.31/102.47] [< 32 us: 46.58/223.56] [< 64 us: 102.47/260.83] [< 128 us: 149.04/260.83] [< 256 us: 214.25/251.51] [< 512 us: 102.47/176.99] [< 1024 us: 46.58/139.73] [< 2048 us: 37.26/74.52] [< 4096 us: 0.00/93.15] [< 8192 us: 18.63/9.32] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 70.75% (848.99 Mhz)
+
+Core 2 C-state residency: 36.11% (C3: 0.00% C6: 0.00% C7: 36.11% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 335.35/223.56] [< 32 us: 37.26/204.93] [< 64 us: 74.52/27.95] [< 128 us: 223.56/130.41] [< 256 us: 167.67/149.04] [< 512 us: 93.15/102.47] [< 1024 us: 46.58/130.41] [< 2048 us: 46.58/93.15] [< 4096 us: 46.58/37.26] [< 8192 us: 18.63/0.00] [< 16384 us: 9.32/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 70.62% (847.40 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 996.72/130.41] [< 32 us: 18.63/158.36] [< 64 us: 74.52/232.88] [< 128 us: 121.10/288.77] [< 256 us: 130.41/279.46] [< 512 us: 93.15/158.36] [< 1024 us: 46.58/102.47] [< 2048 us: 46.58/111.78] [< 4096 us: 9.32/55.89] [< 8192 us: 0.00/9.32] [< 16384 us: 9.32/9.32] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 70.54% (846.49 Mhz)
+
+Core 3 C-state residency: 37.26% (C3: 0.00% C6: 5.45% C7: 31.81% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 298.09/186.30] [< 32 us: 9.32/149.04] [< 64 us: 46.58/102.47] [< 128 us: 139.73/149.04] [< 256 us: 186.30/121.10] [< 512 us: 121.10/65.21] [< 1024 us: 65.21/83.84] [< 2048 us: 93.15/130.41] [< 4096 us: 46.58/37.26] [< 8192 us: 27.95/9.32] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 70.60% (847.17 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 391.24/121.10] [< 32 us: 27.95/46.58] [< 64 us: 121.10/167.67] [< 128 us: 139.73/121.10] [< 256 us: 130.41/186.30] [< 512 us: 93.15/102.47] [< 1024 us: 74.52/83.84] [< 2048 us: 18.63/130.41] [< 4096 us: 27.95/46.58] [< 8192 us: 0.00/18.63] [< 16384 us: 9.32/9.32] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 70.46% (845.48 Mhz)
+
+
+*** Sampled system activity (Sun Oct 25 19:43:22 2026 +0530) (106.13ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 8.16W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 73.72% (884.61 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 83.26%
+Cores Active: 83.26%
+GPU Active: 99.90%
+Avg Num of Cores Active: 2.13
+
+Core 0 C-state residency: 32.80% (C3: 0.00% C6: 32.61% C7: 0.18% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 226.15/216.72] [< 32 us: 56.54/207.30] [< 64 us: 103.65/75.38] [< 128 us: 226.15/226.15] [< 256 us: 188.46/197.88] [< 512 us: 169.61/75.38] [< 1024 us: 103.65/141.34] [< 2048 us: 94.23/75.38] [< 4096 us: 65.96/18.85] [< 8192 us: 9.42/9.42] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 74.28% (891.31 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 1111.89/169.61] [< 32 us: 47.11/122.50] [< 64 us: 141.34/169.61] [< 128 us: 197.88/263.84] [< 256 us: 103.65/254.41] [< 512 us: 65.96/235.57] [< 1024 us: 0.00/207.30] [< 2048 us: 0.00/169.61] [< 4096 us: 9.42/47.11] [< 8192 us: 0.00/18.85] [< 16384 us: 0.00/9.42] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 73.17% (878.08 Mhz)
+
+Core 1 C-state residency: 43.67% (C3: 0.00% C6: 0.00% C7: 43.67% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 452.29/141.34] [< 32 us: 37.69/169.61] [< 64 us: 56.54/37.69] [< 128 us: 197.88/310.95] [< 256 us: 188.46/197.88] [< 512 us: 150.76/197.88] [< 1024 us: 94.23/94.23] [< 2048 us: 47.11/103.65] [< 4096 us: 47.11/37.69] [< 8192 us: 28.27/9.42] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 74.30% (891.55 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 1017.66/75.38] [< 32 us: 56.54/103.65] [< 64 us: 131.92/226.15] [< 128 us: 207.30/282.68] [< 256 us: 122.50/216.72] [< 512 us: 47.11/263.84] [< 1024 us: 37.69/216.72] [< 2048 us: 0.00/122.50] [< 4096 us: 0.00/65.96] [< 8192 us: 0.00/37.69] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 74.25% (891.05 Mhz)
+
+Core 2 C-state residency: 49.58% (C3: 0.00% C6: 0.00% C7: 49.58% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 659.59/188.46] [< 32 us: 37.69/179.03] [< 64 us: 94.23/28.27] [< 128 us: 113.07/386.33] [< 256 us: 226.15/301.53] [< 512 us: 216.72/141.34] [< 1024 us: 75.38/141.34] [< 2048 us: 47.11/84.80] [< 4096 us: 18.85/47.11] [< 8192 us: 18.85/9.42] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 73.70% (884.45 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 998.81/122.50] [< 32 us: 28.27/75.38] [< 64 us: 103.65/188.46] [< 128 us: 141.34/263.84] [< 256 us: 103.65/235.57] [< 512 us: 37.69/131.92] [< 1024 us: 28.27/160.19] [< 2048 us: 0.00/131.92] [< 4096 us: 0.00/103.65] [< 8192 us: 0.00/18.85] [< 16384 us: 0.00/9.42] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 74.74% (896.87 Mhz)
+
+Core 3 C-state residency: 48.36% (C3: 0.00% C6: 3.51% C7: 44.86% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 480.56/179.03] [< 32 us: 84.80/150.76] [< 64 us: 94.23/18.85] [< 128 us: 150.76/254.41] [< 256 us: 113.07/254.41] [< 512 us: 150.76/84.80] [< 1024 us: 65.96/103.65] [< 2048 us: 37.69/94.23] [< 4096 us: 37.69/75.38] [< 8192 us: 18.85/9.42] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 72.31% (867.66 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 593.63/84.80] [< 32 us: 47.11/84.80] [< 64 us: 75.38/65.96] [< 128 us: 75.38/150.76] [< 256 us: 103.65/150.76] [< 512 us: 65.96/122.50] [< 1024 us: 0.00/75.38] [< 2048 us: 18.85/84.80] [< 4096 us: 0.00/94.23] [< 8192 us: 0.00/47.11] [< 16384 us: 0.00/9.42] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 72.83% (873.98 Mhz)
+
+
+*** Sampled system activity (Sun Oct 25 19:43:22 2026 +0530) (104.63ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 10.17W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 110.43% (1325.21 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 68.99%
+Cores Active: 68.99%
+GPU Active: 100.35%
+Avg Num of Cores Active: 1.48
+
+Core 0 C-state residency: 44.40% (C3: 0.00% C6: 36.48% C7: 7.91% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 802.80/334.50] [< 32 us: 133.80/200.70] [< 64 us: 248.49/124.24] [< 128 us: 372.73/821.92] [< 256 us: 324.94/315.39] [< 512 us: 181.59/162.47] [< 1024 us: 86.01/86.01] [< 2048 us: 47.79/114.69] [< 4096 us: 9.56/57.34] [< 8192 us: 9.56/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 107.75% (1293.02 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 1825.42/200.70] [< 32 us: 152.91/248.49] [< 64 us: 181.59/238.93] [< 128 us: 76.46/401.40] [< 256 us: 57.34/430.07] [< 512 us: 9.56/267.60] [< 1024 us: 0.00/248.49] [< 2048 us: 0.00/210.26] [< 4096 us: 0.00/38.23] [< 8192 us: 0.00/19.11] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 113.75% (1364.94 Mhz)
+
+Core 1 C-state residency: 57.94% (C3: 0.00% C6: 1.04% C7: 56.90% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 850.59/372.73] [< 32 us: 124.24/124.24] [< 64 us: 258.04/57.34] [< 128 us: 277.16/592.55] [< 256 us: 277.16/344.06] [< 512 us: 143.36/258.04] [< 1024 us: 86.01/114.69] [< 2048 us: 47.79/133.80] [< 4096 us: 9.56/66.90] [< 8192 us: 0.00/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 109.61% (1315.35 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 1825.42/410.96] [< 32 us: 114.69/200.70] [< 64 us: 152.91/219.82] [< 128 us: 114.69/315.39] [< 256 us: 38.23/382.29] [< 512 us: 9.56/200.70] [< 1024 us: 0.00/248.49] [< 2048 us: 0.00/181.59] [< 4096 us: 0.00/57.34] [< 8192 us: 0.00/38.23] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 112.37% (1348.43 Mhz)
+
+Core 2 C-state residency: 35.93% (C3: 0.00% C6: 1.03% C7: 34.89% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 1615.16/401.40] [< 32 us: 162.47/238.93] [< 64 us: 200.70/114.69] [< 128 us: 219.82/1079.96] [< 256 us: 248.49/344.06] [< 512 us: 114.69/191.14] [< 1024 us: 86.01/191.14] [< 2048 us: 19.11/95.57] [< 4096 us: 19.11/47.79] [< 8192 us: 19.11/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 111.65% (1339.81 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 1586.49/133.80] [< 32 us: 47.79/191.14] [< 64 us: 105.13/267.60] [< 128 us: 95.57/353.62] [< 256 us: 57.34/286.72] [< 512 us: 19.11/200.70] [< 1024 us: 0.00/219.82] [< 2048 us: 0.00/162.47] [< 4096 us: 0.00/76.46] [< 8192 us: 0.00/28.67] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 111.24% (1334.88 Mhz)
+
+Core 3 C-state residency: 49.26% (C3: 0.00% C6: 4.20% C7: 45.06% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 1013.06/258.04] [< 32 us: 47.79/124.24] [< 64 us: 124.24/19.11] [< 128 us: 258.04/707.23] [< 256 us: 172.03/200.70] [< 512 us: 124.24/152.91] [< 1024 us: 28.67/162.47] [< 2048 us: 19.11/152.91] [< 4096 us: 38.23/66.90] [< 8192 us: 9.56/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 112.20% (1346.40 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 697.67/86.01] [< 32 us: 76.46/57.34] [< 64 us: 124.24/76.46] [< 128 us: 66.90/191.14] [< 256 us: 57.34/143.36] [< 512 us: 9.56/133.80] [< 1024 us: 0.00/105.13] [< 2048 us: 0.00/86.01] [< 4096 us: 0.00/76.46] [< 8192 us: 0.00/76.46] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 112.41% (1348.98 Mhz)
+
+
+*** Sampled system activity (Sun Oct 25 19:43:22 2026 +0530) (106.11ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 9.47W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 94.29% (1131.54 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 84.71%
+Cores Active: 84.71%
+GPU Active: 100.11%
+Avg Num of Cores Active: 1.97
+
+Core 0 C-state residency: 35.13% (C3: 0.00% C6: 34.31% C7: 0.82% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 367.55/424.09] [< 32 us: 160.21/235.61] [< 64 us: 263.88/75.39] [< 128 us: 367.55/461.79] [< 256 us: 292.15/292.15] [< 512 us: 235.61/197.91] [< 1024 us: 141.36/160.21] [< 2048 us: 113.09/103.67] [< 4096 us: 18.85/9.42] [< 8192 us: 0.00/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 93.63% (1123.59 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 2045.08/179.06] [< 32 us: 75.39/226.18] [< 64 us: 113.09/282.73] [< 128 us: 188.49/452.37] [< 256 us: 37.70/471.22] [< 512 us: 0.00/311.00] [< 1024 us: 0.00/292.15] [< 2048 us: 9.42/197.91] [< 4096 us: 0.00/65.97] [< 8192 us: 0.00/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 95.67% (1147.99 Mhz)
+
+Core 1 C-state residency: 42.12% (C3: 0.00% C6: 0.36% C7: 41.76% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 669.13/301.58] [< 32 us: 28.27/65.97] [< 64 us: 188.49/28.27] [< 128 us: 263.88/461.79] [< 256 us: 216.76/367.55] [< 512 us: 122.52/273.31] [< 1024 us: 188.49/169.64] [< 2048 us: 75.39/103.67] [< 4096 us: 9.42/18.85] [< 8192 us: 18.85/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 94.93% (1139.14 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 1677.53/197.91] [< 32 us: 94.24/131.94] [< 64 us: 131.94/103.67] [< 128 us: 65.97/329.85] [< 256 us: 18.85/358.12] [< 512 us: 9.42/367.55] [< 1024 us: 28.27/263.88] [< 2048 us: 0.00/197.91] [< 4096 us: 0.00/84.82] [< 8192 us: 0.00/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 96.69% (1160.27 Mhz)
+
+Core 2 C-state residency: 43.95% (C3: 0.00% C6: 4.10% C7: 39.85% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 914.16/395.82] [< 32 us: 84.82/179.06] [< 64 us: 282.73/56.55] [< 128 us: 273.31/603.16] [< 256 us: 301.58/386.40] [< 512 us: 160.21/273.31] [< 1024 us: 56.55/169.64] [< 2048 us: 84.82/103.67] [< 4096 us: 28.27/18.85] [< 8192 us: 0.00/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 94.54% (1134.48 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 1404.22/47.12] [< 32 us: 84.82/160.21] [< 64 us: 84.82/226.18] [< 128 us: 103.67/348.70] [< 256 us: 75.39/245.03] [< 512 us: 37.70/216.76] [< 1024 us: 9.42/263.88] [< 2048 us: 9.42/197.91] [< 4096 us: 0.00/84.82] [< 8192 us: 0.00/9.42] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 92.87% (1114.40 Mhz)
+
+Core 3 C-state residency: 58.92% (C3: 0.00% C6: 3.61% C7: 55.31% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 1074.37/301.58] [< 32 us: 65.97/94.24] [< 64 us: 207.33/47.12] [< 128 us: 245.03/471.22] [< 256 us: 207.33/405.25] [< 512 us: 122.52/320.43] [< 1024 us: 65.97/197.91] [< 2048 us: 28.27/150.79] [< 4096 us: 18.85/37.70] [< 8192 us: 0.00/9.42] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 93.90% (1126.78 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 867.04/94.24] [< 32 us: 28.27/37.70] [< 64 us: 75.39/113.09] [< 128 us: 141.36/169.64] [< 256 us: 75.39/197.91] [< 512 us: 37.70/169.64] [< 1024 us: 0.00/141.36] [< 2048 us: 0.00/188.49] [< 4096 us: 0.00/94.24] [< 8192 us: 0.00/18.85] [< 16384 us: 0.00/9.42] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 93.69% (1124.32 Mhz)
+
+
+*** Sampled system activity (Sun Oct 25 19:43:22 2026 +0530) (107.80ms elapsed) ***
+
+
+**** Processor usage ****
+
+Intel energy model derived package power (CPUs+GT+SA): 8.58W
+
+LLC flushed residency: 0%
+
+System Average frequency as fraction of nominal: 74.88% (898.52 Mhz)
+Package 0 C-state residency: 0.00% (C2: 0.00% C3: 0.00% C6: 0.00% C7: 0.00% C8: 0.00% C9: 0.00% C10: 0.00% )
+
+Performance Limited Due to:
+CPU LIMIT THERMAL
+GPU LIMIT THERMAL
+GPU LIMIT INEFFICIENT_OP
+CPU/GPU Overlap: 88.49%
+Cores Active: 88.49%
+GPU Active: 99.51%
+Avg Num of Cores Active: 2.37
+
+Core 0 C-state residency: 32.59% (C3: 0.00% C6: 28.50% C7: 4.09% )
+
+CPU 0 duty cycles/s: active/idle [< 16 us: 287.56/333.94] [< 32 us: 111.31/324.67] [< 64 us: 148.42/92.76] [< 128 us: 408.15/343.22] [< 256 us: 306.12/352.50] [< 512 us: 296.84/139.14] [< 1024 us: 129.87/148.42] [< 2048 us: 129.87/92.76] [< 4096 us: 9.28/9.28] [< 8192 us: 9.28/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 73.90% (886.77 Mhz)
+
+CPU 1 duty cycles/s: active/idle [< 16 us: 1836.69/185.52] [< 32 us: 55.66/315.39] [< 64 us: 111.31/278.29] [< 128 us: 259.73/528.74] [< 256 us: 269.01/417.43] [< 512 us: 46.38/389.60] [< 1024 us: 27.83/287.56] [< 2048 us: 0.00/148.42] [< 4096 us: 9.28/46.38] [< 8192 us: 0.00/9.28] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 76.65% (919.77 Mhz)
+
+Core 1 C-state residency: 26.32% (C3: 0.00% C6: 2.20% C7: 24.11% )
+
+CPU 2 duty cycles/s: active/idle [< 16 us: 528.74/306.12] [< 32 us: 120.59/231.91] [< 64 us: 185.52/92.76] [< 128 us: 148.42/510.19] [< 256 us: 287.56/278.29] [< 512 us: 194.80/166.97] [< 1024 us: 129.87/83.49] [< 2048 us: 74.21/46.38] [< 4096 us: 18.55/18.55] [< 8192 us: 46.38/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 73.54% (882.46 Mhz)
+
+CPU 3 duty cycles/s: active/idle [< 16 us: 1335.77/102.04] [< 32 us: 0.00/157.70] [< 64 us: 120.59/241.18] [< 128 us: 194.80/296.84] [< 256 us: 139.14/371.05] [< 512 us: 92.76/306.12] [< 1024 us: 9.28/231.91] [< 2048 us: 18.55/120.59] [< 4096 us: 9.28/46.38] [< 8192 us: 0.00/37.10] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 77.56% (930.75 Mhz)
+
+Core 2 C-state residency: 38.68% (C3: 0.00% C6: 1.23% C7: 37.45% )
+
+CPU 4 duty cycles/s: active/idle [< 16 us: 482.36/250.46] [< 32 us: 74.21/176.25] [< 64 us: 92.76/64.93] [< 128 us: 278.29/315.39] [< 256 us: 176.25/315.39] [< 512 us: 148.42/120.59] [< 1024 us: 120.59/148.42] [< 2048 us: 83.49/83.49] [< 4096 us: 37.10/27.83] [< 8192 us: 9.28/9.28] [< 16384 us: 9.28/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 74.88% (898.50 Mhz)
+
+CPU 5 duty cycles/s: active/idle [< 16 us: 1270.84/129.87] [< 32 us: 27.83/139.14] [< 64 us: 102.04/166.97] [< 128 us: 120.59/296.84] [< 256 us: 102.04/315.39] [< 512 us: 83.49/287.56] [< 1024 us: 37.10/250.46] [< 2048 us: 37.10/129.87] [< 4096 us: 9.28/64.93] [< 8192 us: 0.00/18.55] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 77.70% (932.37 Mhz)
+
+Core 3 C-state residency: 44.88% (C3: 0.00% C6: 3.06% C7: 41.82% )
+
+CPU 6 duty cycles/s: active/idle [< 16 us: 640.06/250.46] [< 32 us: 92.76/176.25] [< 64 us: 157.70/92.76] [< 128 us: 176.25/463.81] [< 256 us: 222.63/222.63] [< 512 us: 213.35/241.18] [< 1024 us: 102.04/92.76] [< 2048 us: 37.10/111.31] [< 4096 us: 55.66/46.38] [< 8192 us: 0.00/0.00] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 74.32% (891.87 Mhz)
+
+CPU 7 duty cycles/s: active/idle [< 16 us: 630.78/74.21] [< 32 us: 37.10/74.21] [< 64 us: 74.21/92.76] [< 128 us: 83.49/139.14] [< 256 us: 111.31/194.80] [< 512 us: 37.10/120.59] [< 1024 us: 37.10/148.42] [< 2048 us: 27.83/74.21] [< 4096 us: 18.55/83.49] [< 8192 us: 0.00/46.38] [< 16384 us: 0.00/0.00] [< 32768 us: 0.00/0.00] 
+CPU Average frequency as fraction of nominal: 77.57% (930.88 Mhz)
