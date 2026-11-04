@@ -11,8 +11,9 @@ import os
 import statistics
 import time
 
-from app import repair_loop, verify_fix, fix_is_safe, read_source
-from error_extractor import extract_error
+# NOTE: no `from app import ...` here. app.py imports THIS module for the analytics dashboard, so the
+# pipeline functions are passed in (`api`) instead. `api` is any object exposing:
+#   read_source, extract_error, repair_loop, fix_is_safe, verify_fix   (app.py has all five)
 
 REPEATS = 3   # repeat each file; we report the MEDIAN so one slow run doesn't skew it
 
@@ -30,10 +31,11 @@ GROUND_TRUTH = {
     "test_case_large.py": "NameError",
 }
 
-# Mean package power from your powermetrics_log.txt samples (about 4.7 W).
-# Energy = power x time. This is an ESTIMATE (the log was not captured during this run);
-# say so in the report. Override with:  PKG_POWER_W=5.0 python fix_benchmark.py
-PKG_POWER_W = float(os.environ.get("PKG_POWER_W", "4.7"))
+# Mean package power taken from powermetrics_log.txt (real macOS samples). Energy = power x time.
+# This is an ESTIMATE (the log was not captured during this run); say so in the report.
+# Override with:  PKG_POWER_W=5.0 python fix_benchmark.py
+from analytics_data import load_power
+PKG_POWER_W = float(os.environ.get("PKG_POWER_W") or load_power()["mean_w"])
 
 
 def timed(fn, *args):
@@ -42,10 +44,12 @@ def timed(fn, *args):
     return out, (time.perf_counter() - t0) * 1000   # ms
 
 
-def bench_file(name):
+def bench_file(api, name, repeats=REPEATS):
+    read_source, extract_error = api.read_source, api.extract_error
+    repair_loop, fix_is_safe, verify_fix = api.repair_loop, api.fix_is_safe, api.verify_fix
     code = read_source(name)
     t_detect, t_repair, t_verify = [], [], []
-    for _ in range(REPEATS):
+    for _ in range(repeats):
         ir, d = timed(extract_error, code)                 # stage 1-3: detect
         (fixed, history), r = timed(repair_loop, code)     # agent loop: patch + re-check
         if not fix_is_safe(code, fixed):                   # same final gate as /api/analyze
@@ -58,6 +62,7 @@ def bench_file(name):
     total_ms = statistics.median(t_detect) + statistics.median(t_repair) + statistics.median(t_verify)
     return {
         "file": name,
+        "lines": len(code.split("\n")),
         "truth": GROUND_TRUTH.get(name, "?"),
         "detected": ir.get("error_type"),
         "stage": "static" if tb.startswith("(static") else "runtime",
@@ -72,8 +77,23 @@ def bench_file(name):
     }
 
 
+CSV_PATH = "fix_benchmark_results.csv"
+
+
+def run_benchmark(api, repeats=REPEATS, write_csv=True):
+    """Run every ground-truth file through the real pipeline. Returns the result rows."""
+    rows = [bench_file(api, f, repeats) for f in GROUND_TRUTH if os.path.exists(f)]
+    if rows and write_csv:
+        with open(CSV_PATH, "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
+            w.writeheader()
+            w.writerows(rows)
+    return rows
+
+
 def main():
-    rows = [bench_file(f) for f in GROUND_TRUTH if os.path.exists(f)]
+    import app as api                      # CLI only: use the real app's functions
+    rows = run_benchmark(api, REPEATS, write_csv=False)   # CSV is written once, at the end
     if not rows:
         print("No test files found. Run from the project folder.")
         return
