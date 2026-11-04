@@ -16,7 +16,7 @@ When you analyze a sample or uploaded Python file, the app:
 3. If static analysis finds no issue, runs the code in a child Python process
    with a five-second timeout and captures its output or exception.
 4. Shows an error explanation and, when a rule is available, proposes a fix.
-   The bounded repair loop makes at most five attempts. A candidate fix is
+   The bounded repair loop makes at most 25 attempts. A candidate fix is
    checked for newly introduced vulnerability types and can be verified by
    analyzing and running it again.
 
