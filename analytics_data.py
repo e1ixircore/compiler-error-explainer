@@ -50,12 +50,15 @@ def load_codecarbon(path=CODECARBON_CSV):
     with open(path, newline="", encoding="utf-8") as fh:
         for r in csv.DictReader(fh):
             try:
+                f = lambda k: float(r.get(k) or 0)
+                # older CodeCarbon files have no total column: sum the components that exist
+                kwh = f("energy_consumed") or (f("cpu_energy") + f("ram_energy") + f("gpu_energy"))
                 runs.append({
                     "timestamp": r["timestamp"],
-                    "duration_s": round(float(r["duration"]), 3),
-                    "emissions_mg": round(float(r["emissions"]) * 1e6, 3),        # kg -> mg CO2eq
-                    "energy_mwh": round(float(r["energy_consumed"]) * 1e6, 3),    # kWh -> mWh
-                    "cpu_power_w": float(r["cpu_power"]),
+                    "duration_s": round(f("duration"), 3),
+                    "emissions_mg": round(f("emissions") * 1e6, 3),
+                    "energy_mwh": round(kwh * 1e6, 3),
+                    "cpu_power_w": f("cpu_power"),      # shows 0 if the column is absent
                     "tracking_mode": r.get("tracking_mode"),
                 })
             except (KeyError, ValueError):

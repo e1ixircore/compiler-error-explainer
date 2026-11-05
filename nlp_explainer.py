@@ -17,62 +17,109 @@ import re
 class NLPExplainer:
 
     # ------------------------------------------------------------------
-    # 1. EXPLANATION (IR dict -> plain English)
+    # 1. EXPLANATION (IR dict -> plain English for a BEGINNER)
+    #    Rule of thumb for every template: no compiler jargon (no "operand", "denominator",
+    #    "scope", "AST"). If a term is needed, explain it with an everyday comparison.
     # ------------------------------------------------------------------
+    # One-line definition of each error, shown under the ORIGINAL error name in the UI.
+    # The name itself (NameError, KeyError...) is never renamed: students will meet it in real tracebacks.
+    MEANINGS = {
+        "NameError": "Python found a name (a variable or function) that it does not recognise.",
+        "TypeError": "An operation was used on a kind of data that does not support it.",
+        "ZeroDivisionError": "A number was divided by zero, which has no answer.",
+        "SyntaxError": "The code breaks Python's writing rules, so Python cannot read it.",
+        "KeyError": "A dictionary was asked for a key that is not in it.",
+        "IndexError": "A list was asked for a position that does not exist.",
+        "ValueError": "A value has the right type but its content is not acceptable.",
+        "ModuleNotFoundError": "Python could not find the library you tried to import.",
+        "TimeoutError": "The program ran too long and was stopped.",
+        "NestingError": "The code is stacked too deeply for the tool to analyse safely.",
+    }
+
+    def meaning(self, etype):
+        return self.MEANINGS.get(etype, "Python stopped because of an unexpected problem.")
+
     def explain(self, ir):
         etype = ir.get("error_type") or "UnknownError"
         msg = ir.get("error_message") or ""
         line = ir.get("line_number")
         name = self._quoted(msg)   # first 'quoted' token in the message, if any
         where = f" on line {line}" if line else ""
+        sug = ir.get("suggestion")
+
+        # TypeError: only the text + number case gets the specific wording; others stay generic.
+        if "concatenate" in msg or "can only" in msg:
+            type_rule = (
+                f"You are joining text and a number with + {where.strip()}.".replace("  ", " "),
+                "In Python, text (like 'Total: ') and numbers (like 5) are different kinds of data, "
+                "and + cannot glue them together.",
+                "Turn the number into text with str(), e.g. 'Total: ' + str(5).",
+            )
+        else:
+            type_rule = (
+                f"Two different kinds of data are being combined{where}.",
+                f"Python does not allow this operation on these data types. Python said: {msg}",
+                "Convert one of the values so both are the same kind, e.g. str(5) or int('5').",
+            )
 
         rules = {
             "NameError": (
-                f"Using the name '{name}'{where} before it is defined.",
-                "Python cannot find any variable, function or import with that name in scope.",
-                "Define it before use, or correct the spelling if it is a typo.",
+                f"The name '{name}'{where} has not been created yet.",
+                "Python only knows a variable once you give it a value. Either it was never created, "
+                "or it is spelled differently from where you created it."
+                + (f" Did you mean '{sug}'?" if sug else ""),
+                (f"Change it to '{sug}' if that was your intention, otherwise create " if sug else "Create ")
+                + "the variable before this line, e.g. " + (name or "x") + " = 0.",
             ),
-            "TypeError": (
-                f"Mixing incompatible data types{where}.",
-                f"An operation was applied to types that do not support it ({msg}).",
-                "Convert one operand so the types match, e.g. str(5) or int('5').",
-            ),
+            "TypeError": type_rule,
             "ZeroDivisionError": (
-                f"Dividing by zero{where}.",
-                "The denominator evaluates to 0, which is undefined in arithmetic.",
-                "Check that the denominator is not zero before dividing.",
+                f"The program divides a number by zero{where}.",
+                "Dividing by 0 has no answer in maths, so Python stops with an error.",
+                "Make sure the number you divide by is never 0, for example check it with an if first.",
             ),
             "SyntaxError": (
-                f"Invalid code structure{where}.",
-                f"The parser could not read the statement ({msg}). "
-                "A common cause is a missing ':' or an unclosed bracket.",
-                "Correct the syntax, e.g. end if/for/while/def lines with ':'.",
+                f"Python cannot understand line {line}." if line else "Python cannot understand one of your lines.",
+                f"It is written in a way Python's grammar does not allow (Python said: {msg}). "
+                "The most common causes are a missing ':' at the end of an if/for/while/def line, "
+                "or a bracket or quote that was opened but never closed.",
+                "Check the end of this line and the line above it for a missing ':' or a missing closing bracket.",
             ),
             "KeyError": (
-                f"Looking up a dictionary key that does not exist{where}.",
-                f"The key '{name}' is not present in the dictionary.",
-                "Use dict.get(key) or check 'key in dict' first.",
+                f"You asked a dictionary for a key it does not have{where}.",
+                f"A dictionary works like a phone book: looking up '{name}' fails if there is no entry with that name.",
+                "Check the spelling of the key, or use dict.get(key), which gives None instead of crashing.",
             ),
             "IndexError": (
-                f"Accessing a list position that does not exist{where}.",
-                "The index is larger than the last valid position (len - 1).",
-                "Check the index against len(list) before accessing it.",
+                f"You asked for a list item that does not exist{where}.",
+                "List positions start at 0, so a list with 3 items has positions 0, 1 and 2. "
+                "This position is past the end of the list.",
+                "Use a position smaller than len(your_list), or check the length first.",
             ),
             "ValueError": (
-                f"Passing a value of the right type but invalid content{where}.",
-                f"The value could not be converted or accepted ({msg}).",
-                "Validate the input, or wrap the conversion in try/except.",
+                f"The value has the right type but the wrong content{where}.",
+                f"For example, int('hello') fails because 'hello' is not a number. Python said: {msg}",
+                "Check the value before converting it, or wrap the conversion in try/except.",
             ),
             "ModuleNotFoundError": (
-                f"Importing a module '{name}' that is not installed or misspelled{where}.",
-                "Python searched its path and found no module with that name.",
-                "Install it (pip install <name>) or fix the module name.",
+                f"Python cannot find a library called '{name}'{where}.",
+                "Either the library is not installed on this computer, or its name is misspelled.",
+                f"Check the spelling, or install it with: pip install {name}",
+            ),
+            "TimeoutError": (
+                "The program ran for more than 5 seconds and was stopped.",
+                "This usually means a loop that never ends, such as while True without a way to break out.",
+                "Make sure every loop has a condition that eventually becomes false, or a break.",
+            ),
+            "NestingError": (
+                "The code is nested too deeply to be analysed safely.",
+                "Too many brackets or operations are stacked inside each other.",
+                "Split the long expression into several smaller lines.",
             ),
         }
         mistake, reason, fix = rules.get(etype, (
             f"A {etype} occurred{where}.",
-            msg or "No further detail was provided by the interpreter.",
-            "Read the traceback from the bottom up and inspect the failing line.",
+            msg or "Python gave no further detail.",
+            "Read the error message from the bottom up and look at the line it points to.",
         ))
         return f"Mistake: {mistake}\nReason: {reason}\nFix: {fix}"
 

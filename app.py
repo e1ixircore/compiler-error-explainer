@@ -118,6 +118,40 @@ def _changed_lines(before, after):
     return [(l[0], l[1:].strip()) for l in diff[2:] if not l.startswith("@@")]
 
 
+
+# ----------------------------------------------------------------------
+# LINE TRACKING
+# The repair loop patches ONE error per pass, and some patches INSERT lines (the NameError
+# fallback, the import guard). So an error found in pass 3 is reported against the PATCHED code.
+# The UI highlights the ORIGINAL code, so we carry `origin`: origin[i] = the original line number
+# of line i of the current code (None = a line the repair loop inserted).
+# ----------------------------------------------------------------------
+def _remap_origin(origin, before, after):
+    """Update `origin` after a patch, using a line diff of before -> after."""
+    a, b = before.split("\n"), after.split("\n")
+    new = []
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if tag == "equal":
+            new += origin[i1:i2]                      # untouched lines keep their original number
+        elif tag == "replace":
+            old = origin[i1:i2]                       # 1 line -> 4 lines: first keeps the number
+            new += [old[k] if k < len(old) else None for k in range(j2 - j1)]
+        elif tag == "insert":
+            new += [None] * (j2 - j1)                 # brand-new lines have no original line
+        # "delete": those lines simply disappear
+    return new
+
+
+def _orig_line(origin, ln):
+    """Patched-code line number -> original line number (nearest earlier original line if inserted)."""
+    if not ln or not origin:
+        return None
+    i = min(ln, len(origin)) - 1
+    while i >= 0 and origin[i] is None:
+        i -= 1
+    return origin[i] if i >= 0 else None
+
+
 def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECONDS, first_ir=None):
     """Agent loop: perceive (analyze) -> decide (pick rule) -> act (patch) -> observe (re-analyze).
     Runs UNTIL THE CODE IS CLEAN, one error per pass, so any number of errors can be fixed.
@@ -132,6 +166,7 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
     seen_states = {code}                 # every program version produced so far (cycle detection)
     repeats = Counter()                  # how often the same (type, message, line) came back
     t_start = time.perf_counter()
+    origin = list(range(1, len(code.split("\n")) + 1))   # line i of `current` came from original line origin[i]
     for i in range(max_iters):
         if time.perf_counter() - t_start > time_budget:
             history.append({"step": "final",
@@ -170,7 +205,8 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
         frames = frames[1:]
         entry = {"step": i + 1, "error": ir["error_type"], "line": ln, "column": ir["column"],
                  "stage": stage, "source": src, "ir": ir, "trace": frames,
-                 "explanation": explanation, "explain_ms": explain_ms, "patch": []}
+                 "explanation": explanation, "explain_ms": explain_ms, "patch": [],
+                 "orig_line": _orig_line(origin, ln)}      # where to highlight in the ORIGINAL code
 
         sig = (ir["error_type"], ir.get("error_message"), ln)
         repeats[sig] += 1
@@ -187,11 +223,75 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
         entry["patch"] = _changed_lines(current, fixed)
         entry["result"] = "patched"
         history.append(entry)
+        origin = _remap_origin(origin, current, fixed)        # keep the line map in step with the patch
         current = fixed                                       # observe on next iteration
     else:
         history.append({"step": "final",
                         "result": f"stopped: reached the {max_iters}-pass safety cap; errors may remain"})
     return current, history
+
+
+
+# ----------------------------------------------------------------------
+# STRUCTURED OUTPUT FOR THE UI (replaces parsing the raw_text blob)
+# ----------------------------------------------------------------------
+def _hides_crash(etype, patch):
+    """True when the patch only stops the crash by substituting a value (0 / None). A beginner could
+    mistake that for 'the correct answer', so the UI shows an amber warning."""
+    text = " ".join(t for _, t in patch)
+    return etype in ("ZeroDivisionError", "KeyError", "IndexError", "ModuleNotFoundError") or "= None" in text
+
+
+def build_issues(original_code, history):
+    """One dict per issue, in the order found. `line` is always an ORIGINAL-code line number."""
+    src_lines = original_code.split("\n")
+    issues = []
+    for h in history:
+        if not h.get("error"):
+            continue
+        parts = {}
+        for ln in h["explanation"].split("\n"):                 # "Mistake: ..." / "Reason: ..." / "Fix: ..."
+            k, _, v = ln.partition(": ")
+            parts[k] = v
+        line = h.get("orig_line")
+        ir = h["ir"]
+        patched = h["result"] == "patched"
+        issues.append({
+            "id": len(issues) + 1,
+            "line": line,                                         # highlight THIS line in the code panel
+            "column": h.get("column"),
+            "type": h["error"],                                   # e.g. NameError
+            "meaning": explainer.meaning(h["error"]),            # one-line definition of the error
+            "stage": h["stage"],                                  # parser | static | runtime
+            "source": src_lines[line - 1].strip() if line and line <= len(src_lines) else h.get("source"),
+            "mistake": parts.get("Mistake", ""),
+            "reason": parts.get("Reason", ""),
+            "how_to_fix": parts.get("Fix", ""),
+            "suggestion": ir.get("suggestion"),                   # "did you mean ...?"
+            "patched": patched,
+            "status": h["result"],
+            "patch": [{"sign": s_, "text": t} for s_, t in h.get("patch", [])],
+            "hides_crash": patched and _hides_crash(h["error"], h.get("patch", [])),
+        })
+    return issues
+
+
+def build_summary(issues, verdict):
+    by_type, by_stage = Counter(i["type"] for i in issues), Counter(i["stage"] for i in issues)
+    return {"total": len(issues),
+            "fixed": sum(i["patched"] for i in issues),
+            "unfixed": sum(not i["patched"] for i in issues),
+            "by_type": dict(by_type), "by_stage": dict(by_stage),
+            "verdict": verdict["verdict"], "detail": verdict["detail"]}
+
+
+def by_line(issues):
+    """{line: [issue ids]}: lets the UI show a count badge when one line has several errors."""
+    out = {}
+    for i in issues:
+        if i["line"]:
+            out.setdefault(i["line"], []).append(i["id"])
+    return out
 
 
 STAGE_LABEL = {"parser": "the parser", "static": "static analysis", "runtime": "runtime execution"}
@@ -311,21 +411,33 @@ def read_file():
 def analyze_code():
     data = request.json or {}
     filename = safe_name(data.get('filename'))
-    if not filename:
+    posted = data.get('code')
+    # The UI can now send the (possibly edited) code directly. It goes through exactly the same
+    # security scan + sandbox as /api/execute, so this opens nothing new.
+    if isinstance(posted, str):
+        code = posted
+    elif filename:
+        code = read_source(filename)
+    else:
         return jsonify({"error": "File not found"}), 404
-
-    code = read_source(filename)
     if len(code.encode("utf-8", "ignore")) > MAX_CODE_BYTES:
         return jsonify({"error": "Input too large"}), 413
 
     # ---- STAGE 0: security gate. Runs BEFORE anything executes. ----
     vulns, sec_log, blocked = scan(code)
+    sec_struct = [{"line": v["line"], "severity": v["severity"], "type": v["type"], "message": v["message"]}
+                  for v in vulns]
     if blocked:
         return jsonify({
             "status": "blocked",
             "original_code": code,
             "raw_text": "[SECURITY] Execution BLOCKED. Critical/High findings:\n  " + "\n  ".join(sec_log),
             "metrics": "Not executed (blocked by security scan).",
+            "blocked": True,
+            "security": sec_struct,          # UI: red banner + highlight these lines
+            "issues": [], "by_line": {},
+            "summary": {"total": 0, "fixed": 0, "unfixed": 0, "by_type": {}, "by_stage": {},
+                        "verdict": "BLOCKED", "detail": "Not run: security scan found critical/high risks."},
         })
 
     # ---- STAGES 1-3: static analysis, then sandboxed run (inside extract_error) ----
@@ -346,6 +458,7 @@ def analyze_code():
             repair_history.append({"step": "final", "result": "rejected by patch safety check"})
 
         verdict = verify_fix(code, fixed_code)
+        issues = build_issues(code, repair_history)
 
         log_text = format_pipeline(sec_log, ir_dict, repair_history, verdict)
         log_text += "\n" + format_diagnosis(repair_history)
@@ -362,6 +475,14 @@ def analyze_code():
             "diagnostics": [h["ir"] for h in repair_history if h.get("error")],   # full IR JSON, one per issue
             "fixed_code": fixed_code,
             "metrics": build_metrics(ir_dict),
+            # ---- structured data for the new UI ----
+            "blocked": False,
+            "security": sec_struct,
+            "issues": issues,
+            "by_line": by_line(issues),
+            "verdict": verdict,
+            "summary": build_summary(issues, verdict),
+            "notes": [h["result"] for h in repair_history if not h.get("error") and h["result"] != "clean"],
         })
 
     # No error found
@@ -376,6 +497,9 @@ def analyze_code():
         "fixed_code": code,
         "security_alerts": sec_log,
         "metrics": build_metrics(ir_dict),
+        "blocked": False, "security": sec_struct, "issues": [], "by_line": {},
+        "summary": {"total": 0, "fixed": 0, "unfixed": 0, "by_type": {}, "by_stage": {},
+                    "verdict": "CLEAN", "detail": "No errors found."},
     })
 
 

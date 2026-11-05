@@ -103,9 +103,20 @@ def extract_error(code):
     try:
         static_errors = static_check(code)
     except SyntaxError:
-        # Unparseable code: static_check can't build an AST. Fall through to
-        # run_code(), whose child process reports the SyntaxError with line number.
-        static_errors = []
+        # PANIC-MODE RECOVERY: the parser gave no AST, so recover and collect ALL syntax errors.
+        from panic_recovery import collect_syntax_errors
+        errs, _, _ = collect_syntax_errors(code)
+        if errs:
+            first = errs[0]
+            ir.update(error_type=first["error_type"], error_message=first["error_message"],
+                      line_number=first["line_number"],
+                      traceback="(parser: panic-mode recovery, code was not executed)")
+            ir["column"] = first["column"]
+            ir["all_errors"] = errs
+            ir["green_metrics"] = {"execution_time_sec": 0, "emissions_kg": 0,
+                                   "energy_consumed_kwh": 0}
+            return ir
+        static_errors = []          # recovery found nothing: fall through to the sandbox as before
     except (RecursionError, MemoryError):
         # Nesting protection: a deeply nested input must not crash the compiler itself.
         ir.update(error_type="NestingError",
@@ -123,6 +134,7 @@ def extract_error(code):
                   line_number=first["line_number"],
                   traceback="(static analysis: code was not executed)")
         ir["column"] = first["column"]
+        ir["suggestion"] = first.get("suggestion")   # symbol-table "did you mean"
         ir["all_errors"] = static_errors   # every error found, not just the first
         ir["green_metrics"] = {"execution_time_sec": 0, "emissions_kg": 0,
                                "energy_consumed_kwh": 0}
