@@ -1,284 +1,156 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compiler Error Analysis Web Studio</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-body: #F3F4F6;
-            --bg-panel: #FFFFFF;
-            --border: #E5E7EB;
-            --text-main: #111827;
-            --accent: #2563EB;
-            --success: #10B981;
-            --font-code: 'Fira Code', monospace;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
-        
-        /* Sidebar */
-        .sidebar { width: 250px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; }
-        .sidebar h2 { font-size: 1.2rem; margin-bottom: 20px; }
-        .file-list { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .file-item { padding: 10px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; }
-        .file-item:hover { background: #F9FAFB; }
-        .file-item.active { background: #EFF6FF; color: var(--accent); border-color: #BFDBFE; font-weight: 600; }
-        .fixed-badge { font-size: 0.7rem; background: #D1FAE5; color: #065F46; padding: 2px 6px; border-radius: 10px; }
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IntelliFix</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#0d1117;--panel:#151a23;--panel2:#1d2430;--line:#2b3442;--ink:#e6eaf2;--mute:#8d98aa;--accent:#4a7bf0;
+--parser:#a78bfa;--static:#f59e42;--runtime:#f26d63;--sec:#ff5c5c;--ok:#3ecf9a;--warn:#e0a84a;
+--mono:'IBM Plex Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.5 'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;overflow:hidden}
+button{font:inherit;cursor:pointer;border:0;border-radius:6px;padding:8px 14px;font-weight:500;color:#fff;background:var(--accent)}
+textarea{background:var(--panel);color:var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed} button.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+button:focus-visible,.ln:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#left{width:40%;position:relative;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column}
+#right{width:60%;display:flex;flex-direction:column;min-width:0}
+.float{position:absolute;z-index:5;box-shadow:0 2px 10px #0008}
+#menuBtn{top:12px;left:12px;width:40px;height:40px;padding:0;font-size:20px;background:#2c3646}
+#scanBtn{bottom:46px;left:50%;transform:translateX(-50%);padding:11px 22px;border-radius:999px}
+#editBtn{top:12px;right:12px}
+#menu{display:none;top:60px;left:12px;width:270px;max-height:70%;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
+#menu.open{display:block} #menu h4{font-size:12px;color:var(--mute);font-weight:500;margin:10px 4px 4px}
+.fi{padding:7px 8px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12.5px;display:flex;justify-content:space-between}
+.fi:hover,.fi.on{background:#25335a} .fi small{color:var(--ok)} #menu a{display:block;margin-top:8px;padding:9px;border-top:1px solid var(--line);color:var(--accent);font-weight:600;text-decoration:none}
+#fname{padding:18px 14px 10px 64px;font-family:var(--mono);font-size:13px;color:var(--mute);border-bottom:1px solid var(--line);min-height:64px}
+#notice{display:none;background:#3a2a14;color:#f0c27a;padding:6px 14px;font-size:13px} #notice.on{display:block}
+#code{flex:1;overflow:auto;font:13px/1.65 var(--mono);padding:6px 0 90px}
+#ta{flex:1;border:0;padding:10px 14px 90px;font:13px/1.65 var(--mono);resize:none;outline:0;display:none}
+.ln{display:flex;border-left:4px solid transparent;cursor:default} .ln .no{width:48px;text-align:right;padding-right:12px;color:#98a2b3;user-select:none;flex:none}
+.ln .tx{white-space:pre;flex:1} .ln .bd{background:var(--ink);color:#0d1117;border-radius:9px;font:600 11px/17px var(--mono);padding:0 6px;margin:2px 10px;height:17px}
+.ln.parser{background:#2a2145;border-color:var(--parser)} .ln.static{background:#3a2a14;border-color:var(--static)}
+.ln.runtime{background:#3e1d1f;border-color:var(--runtime)} .ln.sec{background:#521a1c;border-color:var(--sec)}
+.ln.parser,.ln.static,.ln.runtime,.ln.sec{cursor:pointer} .ln.active{box-shadow:inset 0 0 0 2px var(--ink)}
+#legend{position:absolute;bottom:0;left:0;right:0;display:flex;gap:14px;justify-content:center;padding:8px;font-size:12px;color:var(--mute);background:#151a23ee;border-top:1px solid var(--line)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+#tabs{display:flex;gap:6px;padding:10px 14px 0;background:var(--bg)}
+.tab{background:transparent;color:var(--mute);border-radius:8px 8px 0 0;padding:9px 16px} .tab.on{background:var(--panel);color:var(--ink);font-weight:600}
+.pane{flex:1;display:none;min-height:0;background:var(--panel);margin:0 14px;border:1px solid var(--line)} .pane.on{display:flex;flex-direction:column}
+#scroll{flex:1;overflow:auto;padding:0 18px 40px;position:relative}
+#jump{position:sticky;top:0;z-index:3;background:var(--panel);display:flex;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+h2{font-size:15px;margin:18px 0 10px}
+.empty{color:var(--mute);padding:40px 10px;text-align:center}
+.banner{background:#8f1d1d;color:#fff;border-radius:8px;padding:12px 14px;margin-top:14px} .banner b{display:block;margin-bottom:4px}
+.banner div{font:12.5px var(--mono);margin-top:3px} .banner.soft{background:#3e1d1f;color:#ffb4ab;border:1px solid #6b2a2c}
+.card{border:1px solid var(--line);border-left:5px solid var(--c,#999);border-radius:8px;padding:12px 14px;margin-bottom:12px;cursor:pointer}
+.card.active{box-shadow:0 0 0 2px var(--ink)} .card h3{font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:600;color:#0d1117;background:var(--c,#999);border-radius:5px;padding:1px 8px}
+.card .mean{color:var(--mute);font-style:italic;margin:4px 0 8px;font-size:13px} .card dl{display:grid;grid-template-columns:78px 1fr;gap:5px 10px}
+.card dt{font-weight:600;color:var(--c)} .tip{background:#1f2c4d;border-radius:6px;padding:4px 8px;margin-top:8px;display:inline-block;font-size:13px}
+.fx{border:1px solid var(--line);border-radius:8px;margin-bottom:12px;cursor:pointer;overflow:hidden} .fx.active{box-shadow:0 0 0 2px var(--ink)}
+.fx header{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:var(--panel2);font-size:13px}
+.fx pre{font:12.5px/1.6 var(--mono);padding:4px 12px;white-space:pre-wrap;word-break:break-word} .fx .m{background:#3e1d1f;color:#ffb4ab} .fx .p{background:#12301f;color:#8de0b5}
+.fx .warn{background:#3a2a14;color:#f0c27a;padding:6px 12px;font-size:12.5px} .fx button{padding:3px 10px;font-size:12px}
+#sum{flex:none;margin:0 14px 14px;background:var(--panel);border:1px solid var(--line);border-top:0;padding:12px 16px;min-height:86px;display:flex;gap:18px;align-items:center}
+.verdict{font-weight:600;color:#fff;border-radius:8px;padding:10px 16px;text-align:center;white-space:nowrap;background:var(--mute)}
+#sumTxt{flex:1;font-size:13px;color:var(--mute)} #sumTxt b{color:var(--ink)} #sumTxt .chip{margin:4px 4px 0 0;display:inline-block}
+#codePane{padding:14px;gap:10px} #fixed{flex:1;font:13px/1.6 var(--mono);border:1px solid var(--line);border-radius:6px;padding:10px;resize:none;min-height:0}
+#term{flex:1;background:#090c11;border:1px solid var(--line);color:#d6e2ff;font:12.5px/1.55 var(--mono);padding:12px;border-radius:6px;overflow:auto;white-space:pre-wrap;min-height:0}
+.row{display:flex;gap:8px} .busy{cursor:progress}
+</style></head><body>
+<section id="left">
+  <button class="float" id="menuBtn" aria-label="Open files menu">☰</button>
+  <div class="float" id="menu">
+    <button style="width:100%" id="upBtn">Upload .py file</button><input type="file" id="upIn" accept=".py" hidden>
+    <h4>Test cases</h4><div id="files"></div>
+    <a href="/analytics">Open eco dashboard</a>
+  </div>
+  <div id="fname">Pick a test case from the menu to begin.</div>
+  <div id="notice">You changed the code. Scan again to refresh the results.</div>
+  <div id="code"></div><textarea id="ta" spellcheck="false"></textarea>
+  <button class="ghost float" id="editBtn" disabled>Edit code</button>
+  <button class="float" id="scanBtn" disabled>Scan &amp; diagnose</button>
+  <div id="legend"><span><i class="dot" style="background:var(--parser)"></i>Syntax</span><span><i class="dot" style="background:var(--static)"></i>Found without running</span><span><i class="dot" style="background:var(--runtime)"></i>Found by running</span><span><i class="dot" style="background:var(--sec)"></i>Security</span></div>
+</section>
+<section id="right">
+  <div id="tabs"><button class="tab on" data-t="fix">Corrections &amp; fixes</button><button class="tab" data-t="code">Auto-fixed code</button></div>
+  <div class="pane on" id="fixPane"><div id="jump"><button class="ghost" data-j="cSec">Corrections <span id="nC"></span></button><button class="ghost" data-j="fSec">Fixes <span id="nF"></span></button></div>
+    <div id="scroll"><div id="secBox"></div><h2 id="cSec">Corrections</h2><div id="corr"><p class="empty">Scan a file and every mistake will be explained here.</p></div><h2 id="fSec">Fixes</h2><div id="fixes"><p class="empty">Suggested fixes appear here.</p></div></div></div>
+  <div class="pane" id="codePane"><textarea id="fixed" spellcheck="false" placeholder="The auto-fixed code appears here after a scan."></textarea>
+    <div class="row"><button id="runBtn">Run code</button><button id="saveBtn" class="ghost">Save code</button></div><pre id="term">Output will appear here.</pre></div>
+  <div id="sum"><div class="verdict" id="vd">No scan yet</div><div id="sumTxt">Pick a file and press Scan &amp; diagnose.</div></div>
+</section>
+<script>
+const $=s=>document.querySelector(s),A='/api',COL={parser:'var(--parser)',static:'var(--static)',runtime:'var(--runtime)'},
+STG={parser:'Syntax check',static:'Found without running',runtime:'Found by running'},
+VC={VERIFIED:'#12805c',CLEAN:'#12805c',PARTIAL:'#b7791f',REJECTED:'#d92d20',BLOCKED:'#7f1d1d','NO FIX GENERATED':'#667085'};
+let S={file:null,code:'',edit:false,issues:[],sec:[],blocked:false,lm:{}};
+function el(t,c,x){const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+async function j(u,o){const r=await fetch(A+u,o),d=await r.json();if(!r.ok)throw new Error(d.error||r.status);return d}
+const post=(u,b)=>j(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
 
-        /* Navigation Link */
-        .nav-link { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border); }
-        .analytics-link { display: flex; align-items: center; gap: 10px; color: var(--accent); text-decoration: none; font-weight: 600; font-size: 0.9rem; padding: 10px; border-radius: 6px; transition: background 0.2s; }
-        .analytics-link:hover { background: #EEF2FF; }
+async function loadFiles(){const d=await j('/files'),box=$('#files');box.innerHTML='';
+ d.files.forEach(f=>{const e=el('div','fi'+(f.filename===S.file?' on':''));e.append(el('span','',f.filename));if(f.is_fixed)e.append(el('small','','fixed'));
+  e.onclick=()=>pick(f.filename);box.append(e)})}
+async function pick(n){try{const d=await j('/source?filename='+encodeURIComponent(n));S.file=n;S.code=d.code;S.edit=false;reset();
+ $('#fname').textContent=n;$('#scanBtn').disabled=$('#editBtn').disabled=false;$('#menu').classList.remove('open');paint();loadFiles()}catch(e){$('#fname').textContent='Could not load file: '+e.message}}
+function reset(){S.issues=[];S.sec=[];S.blocked=false;S.lm={};$('#notice').classList.remove('on');$('#fixed').value='';$('#term').textContent='Output will appear here.';
+ $('#secBox').innerHTML='';$('#corr').innerHTML='<p class="empty">Scan a file and every mistake will be explained here.</p>';$('#fixes').innerHTML='<p class="empty">Suggested fixes appear here.</p>';
+ $('#nC').textContent=$('#nF').textContent='';const v=$('#vd');v.textContent='No scan yet';v.style.background='var(--mute)';$('#sumTxt').textContent='Pick a file and press Scan & diagnose.'}
 
-        /* Main Workspace Grid */
-        .workspace { flex-grow: 1; display: grid; grid-template-areas: "original diag metrics" "modified exec metrics"; grid-template-columns: 1fr 1fr 0.7fr; grid-template-rows: 1fr 1.2fr; gap: 20px; padding: 20px; overflow-y: auto; background: var(--bg-body); }
-        
-        .panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
-        .panel-header { background: #F9FAFB; padding: 12px 20px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-        .panel-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
-        
-        textarea { flex-grow: 1; width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: var(--font-code); font-size: 0.85rem; resize: none; background: #FAFAFA; }
-        textarea:focus { outline: none; border-color: var(--accent); }
-        
-        /* Terminal Boxes */
-        .terminal { background: #FFFFFF; color: #111827; border: 1px solid var(--border); font-family: var(--font-code); font-size: 0.85rem; padding: 15px; border-radius: 6px; flex-grow: 1; overflow-y: auto; white-space: pre-wrap; line-height: 1.4; }
-        
-        /* Buttons */
-        .btn { padding: 10px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: opacity 0.2s; }
-        .btn:hover { opacity: 0.9; }
-        .btn-primary { background: var(--accent); width: 100%; }
-        .btn-success { background: var(--success); }
-        .btn-warning { background: #F59E0B; }
-        .action-row { display: flex; gap: 10px; }
-        .action-row .btn { flex: 1; }
+function paint(){const box=$('#code'),ta=$('#ta');$('#editBtn').textContent=S.edit?'Done editing':'Edit code';
+ box.style.display=S.edit?'none':'block';ta.style.display=S.edit?'block':'none';if(S.edit){ta.value=S.code;return}
+ box.innerHTML='';S.lm={};S.issues.forEach(i=>{if(i.line)(S.lm[i.line]=S.lm[i.line]||[]).push(i.id)});
+ const sl={};S.sec.forEach(s=>sl[s.line]=s);
+ S.code.split('\n').forEach((t,k)=>{const n=k+1,ids=S.lm[n],r=el('div','ln');r.dataset.line=n;
+  const f=ids&&S.issues.find(i=>i.id===ids[0]);if(f)r.classList.add(f.stage);if(sl[n]){r.classList.add('sec');r.title=sl[n].severity+': '+sl[n].message}
+  r.append(el('span','no',n),el('span','tx',t||' '));if(ids&&ids.length>1){const b=el('span','bd',ids.length);b.title=ids.length+' errors on this line';r.append(b)}
+  if(ids){r.tabIndex=0;r.onclick=()=>select(ids[0],'code',ids)}box.append(r)})}
+$('#editBtn').onclick=()=>{if(S.edit)S.code=$('#ta').value;S.edit=!S.edit;paint()};
+$('#ta').oninput=e=>{S.code=e.target.value;if(S.issues.length||S.blocked){const k=S.file;reset();$('#notice').classList.add('on');S.file=k}};
 
-        .loading { opacity: 0.6; pointer-events: none; }
-    </style>
-</head>
-<body>
+$('#scanBtn').onclick=async()=>{if(S.edit){S.code=$('#ta').value;S.edit=false}document.body.classList.add('busy');$('#scanBtn').disabled=true;
+ try{const r=await post('/analyze',{filename:S.file,code:S.code});$('#notice').classList.remove('on');S.issues=r.issues||[];S.sec=r.security||[];S.blocked=!!r.blocked;
+  show(r);paint();$('#fixed').value=r.fixed_code||'';}catch(e){$('#sumTxt').textContent='Scan failed: '+e.message}
+ document.body.classList.remove('busy');$('#scanBtn').disabled=false};
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <h2>Workspace Files</h2>
-        <input type="file" id="file-input" accept=".py" style="display:none">
-        <button class="btn btn-primary" id="btn-upload" style="margin-bottom:12px">Upload .py file</button>
-        <div class="file-list" id="file-list"></div>
-        
-        <div class="nav-link">
-            <a href="/analytics" class="analytics-link">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                View Eco Analytics
-            </a>
-        </div>
-    </div>
+function show(r){const sb=$('#secBox');sb.innerHTML='';
+ if(S.blocked){const b=el('div','banner');b.append(el('b','','Security risk: this code was NOT run'));
+  b.append(el('div','','Dangerous code was found, so nothing was executed. Remove these lines and scan again.'));
+  S.sec.forEach(s=>b.append(el('div','',`line ${s.line} [${s.severity}] ${s.message}`)));sb.append(b)}
+ else if(S.sec.length){const b=el('div','banner soft');b.append(el('b','','Security notes (the code still ran)'));S.sec.forEach(s=>b.append(el('div','',`line ${s.line} [${s.severity}] ${s.message}`)));sb.append(b)}
+ const c=$('#corr'),f=$('#fixes');c.innerHTML=f.innerHTML='';$('#nC').textContent=$('#nF').textContent=S.issues.length?'('+S.issues.length+')':'';
+ if(!S.issues.length)c.innerHTML=f.innerHTML=`<p class="empty">${S.blocked?'No analysis, because the code was blocked.':'No errors found. Nice work!'}</p>`;
+ S.issues.forEach(i=>{const col=COL[i.stage],cd=el('div','card');cd.dataset.id=i.id;cd.style.setProperty('--c',col);
+  const h=el('h3');h.append(el('span','',`Line ${i.line??'?'}`),el('span','chip',i.type),el('span','',STG[i.stage]));cd.append(h,el('p','mean',i.meaning));
+  const dl=el('dl');[['Mistake',i.mistake],['Reason',i.reason],['How to fix',i.how_to_fix]].forEach(([k,v])=>dl.append(el('dt','',k),el('dd','',v)));cd.append(dl);
+  if(i.suggestion)cd.append(el('span','tip',`Did you mean "${i.suggestion}"?`));
+  cd.onclick=()=>select(i.id,'corr',(S.lm[i.line]||[i.id]));c.append(cd);
+  const fx=el('div','fx');fx.dataset.id=i.id;const hd=el('header');hd.append(el('b','',`Line ${i.line??'?'} · ${i.type}`));
+  const cp=el('button','ghost','Copy fix');cp.onclick=ev=>{ev.stopPropagation();navigator.clipboard.writeText(i.patch.filter(p=>p.sign==='+').map(p=>p.text).join('\n'));cp.textContent='Copied'};
+  hd.append(cp);fx.append(hd);
+  if(!i.patch.length)fx.append(el('pre','',i.source||''),el('div','warn','No automatic fix for this one. Use "How to fix" above.'));
+  i.patch.forEach(p=>fx.append(el('pre',p.sign==='-'?'m':'p',p.sign+' '+p.text)));
+  if(i.hides_crash)fx.append(el('div','warn','This stops the crash, but it uses a stand-in value (0 or None). Check it is the answer you really want.'));
+  fx.onclick=()=>select(i.id,'fix',(S.lm[i.line]||[i.id]));f.append(fx)});
+ const sm=r.summary||{},v=$('#vd');v.textContent=sm.verdict||'';v.style.background=VC[sm.verdict]||'var(--mute)';
+ const t=$('#sumTxt');t.innerHTML='';t.append(el('b','',`${sm.total} issue(s) found, ${sm.fixed} fixed, ${sm.unfixed} not fixed. `),document.createTextNode(sm.detail||''),el('br'));
+ Object.entries(sm.by_type||{}).forEach(([k,n])=>t.append(el('span','chip',`${k} ×${n}`)));
+ const first=S.issues[0];if(first)t.querySelectorAll('.chip').forEach((c,k)=>c.style.setProperty('--c','var(--ink)'))}
 
-    <!-- Main Workspace -->
-    <div class="workspace">
-        
-        <!-- Top Left: Original Code -->
-        <div class="panel" style="grid-area: original;">
-            <div class="panel-header">Original Selected Code <span id="lbl-file" style="font-weight:400; color:#6b7280; font-size:0.85rem"></span></div>
-            <div class="panel-body">
-                <textarea id="original-code" readonly placeholder="Select a file from the sidebar..."></textarea>
-                <button class="btn btn-primary" id="btn-analyze" disabled>Scan & Diagnose Error</button>
-            </div>
-        </div>
+function select(id,from,group){showTab('fix');group=group||[id];
+ document.querySelectorAll('.card,.fx').forEach(e=>e.classList.toggle('active',group.includes(+e.dataset.id)));
+ const iss=S.issues.find(i=>i.id===id);document.querySelectorAll('.ln').forEach(e=>e.classList.toggle('active',iss&&+e.dataset.line===iss.line));
+ if(from!=='corr')document.querySelector(`.card[data-id="${id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});
+ if(from!=='code')document.querySelector(`.ln[data-line="${iss?.line}"]`)?.scrollIntoView({behavior:'smooth',block:'center'})}
+document.querySelectorAll('[data-j]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.j).scrollIntoView({behavior:'smooth',block:'start'}));
+function showTab(t){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));$('#fixPane').classList.toggle('on',t==='fix');$('#codePane').classList.toggle('on',t==='code')}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
 
-        <!-- Top Right: Diagnostic Terminal -->
-        <div class="panel" style="grid-area: diag;">
-            <div class="panel-header">Scan Diagnostics Output</div>
-            <div class="panel-body" style="padding:0">
-                <div class="terminal" id="diagnostic-output" style="border-radius:0;">Awaiting analysis...</div>
-            </div>
-        </div>
-
-        <!-- Bottom Left: Auto-Correct Editor -->
-        <div class="panel" style="grid-area: modified;">
-            <div class="panel-header">AI Modified Code Editor</div>
-            <div class="panel-body">
-                <textarea id="modified-code" placeholder="AI corrected code will populate here..."></textarea>
-                <div class="action-row">
-                    <button class="btn btn-success" id="btn-save">Save Modification</button>
-                    <button class="btn btn-warning" id="btn-execute">Run Modified Code</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Right: Execution Output -->
-        <div class="panel" style="grid-area: exec;">
-            <div class="panel-header">Execution Result (Output)</div>
-            <div class="panel-body" style="padding:0">
-                <div class="terminal" id="execution-output" style="border-radius:0;">Terminal ready...</div>
-            </div>
-        </div>
-
-        <!-- Far Right: Eco Metrics -->
-        <div class="panel" style="grid-area: metrics;">
-            <div class="panel-header">Green IT Profiling</div>
-            <div class="panel-body" style="padding:0">
-                <div class="terminal" id="metrics-output" style="border-radius:0;">Awaiting scan...</div>
-            </div>
-        </div>
-
-    </div>
-
-    <script>
-        const API_BASE = '/api';
-        let selectedFile = null;
-
-        const ui = {
-            fileList: document.getElementById('file-list'),
-            lblFile: document.getElementById('lbl-file'),
-            originalCode: document.getElementById('original-code'),
-            modifiedCode: document.getElementById('modified-code'),
-            diagOutput: document.getElementById('diagnostic-output'),
-            metricsOutput: document.getElementById('metrics-output'),
-            execOutput: document.getElementById('execution-output'),
-            btnAnalyze: document.getElementById('btn-analyze'),
-            btnSave: document.getElementById('btn-save'),
-            btnExecute: document.getElementById('btn-execute')
-        };
-
-        async function loadFiles() {
-            const res = await fetch(`${API_BASE}/files`);
-            const data = await res.json();
-            ui.fileList.innerHTML = '';
-            data.files.forEach(f => {
-                const div = document.createElement('div');
-                div.className = `file-item ${f.filename === selectedFile ? 'active' : ''}`;
-                div.innerHTML = `<span>${f.filename}</span> ${f.is_fixed ? '<span class="fixed-badge">Modified</span>' : ''}`;
-                div.onclick = () => selectFile(f.filename);
-                ui.fileList.appendChild(div);
-            });
-        }
-
-        async function selectFile(filename) {
-            selectedFile = filename;
-            ui.lblFile.textContent = filename;
-            ui.btnAnalyze.disabled = false;
-            ui.diagOutput.textContent = "Ready to analyze...";
-            ui.metricsOutput.textContent = "Awaiting scan...";
-            ui.execOutput.textContent = "Terminal ready...";
-            loadFiles();
-
-            try {
-                const res = await fetch(`${API_BASE}/source?filename=${encodeURIComponent(filename)}`);
-                if (!res.ok) throw new Error(`Could not load file (${res.status})`);
-                const data = await res.json();
-                const numberedCode = data.code.split('\n').map((l, i) => String(i + 1).padStart(3, ' ') + ' | ' + l).join('\n');
-                ui.originalCode.value = numberedCode;
-                ui.modifiedCode.value = "";
-                ui.diagOutput.textContent = "File loaded. Press 'Scan & Diagnose Error' to analyze it.";
-            } catch(e) {
-                ui.diagOutput.textContent = `Could not load file: ${e.message}`;
-            }
-        }
-
-        ui.btnAnalyze.onclick = async () => {
-            if(!selectedFile) return;
-            document.body.classList.add('loading');
-            ui.diagOutput.textContent = "Scanning...";
-
-            try {
-                const res = await fetch(`${API_BASE}/analyze`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ filename: selectedFile })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || `Analysis failed (${res.status})`);
-
-                if(data.status === 'error_intercepted') {
-                    ui.diagOutput.textContent = data.raw_text;
-                    ui.metricsOutput.textContent = data.metrics || "No metrics returned.";
-                    const numberedFixed = data.fixed_code.split('\n').map((l, i) => String(i + 1).padStart(3, ' ') + ' | ' + l).join('\n');
-                    ui.modifiedCode.value = numberedFixed;
-                } else if(data.status === 'success') {
-                    const alerts = (data.security_alerts && data.security_alerts.length)
-                        ? "[SECURITY SCAN] Findings (non-blocking):\n  " + data.security_alerts.join("\n  ")
-                        : "[SECURITY SCAN] Code appears safe.";
-                    ui.diagOutput.textContent = alerts + "\n----------------------------------------\n" + data.message;
-                    ui.metricsOutput.textContent = data.metrics || "No metrics returned.";
-                    const numberedOrig = data.original_code.split('\n').map((l, i) => String(i + 1).padStart(3, ' ') + ' | ' + l).join('\n');
-                    ui.modifiedCode.value = numberedOrig;
-                } else if(data.status === 'blocked') {
-                    ui.diagOutput.textContent = data.raw_text;
-                    ui.metricsOutput.textContent = data.metrics;
-                    ui.modifiedCode.value = "";
-                } else {
-                    ui.diagOutput.textContent = `[ERROR] ${data.error}`;
-                    ui.metricsOutput.textContent = "Failed scan.";
-                }
-            } catch(e) {
-                ui.diagOutput.textContent = `CRASH: ${e.message}`;
-            }
-            document.body.classList.remove('loading');
-        };
-
-        ui.btnSave.onclick = async () => {
-            const rawCode = ui.modifiedCode.value;
-            if(!rawCode || !selectedFile) return;
-            // Strip out the visual line numbers before saving
-            const code = rawCode.split('\n').map(line => line.replace(/^\s*\d+\s*\|\s?/, '')).join('\n');
-            
-            ui.btnSave.textContent = "Saving...";
-            try {
-                const res = await fetch(`${API_BASE}/save`, {
-                    method: 'POST',
-                    headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({filename: selectedFile, code})
-                });
-                const data = await res.json();
-                if(data.status === 'success') {
-                    selectFile(data.new_filename);
-                }
-            } catch(e) {
-                ui.execOutput.textContent = `CRASH: ${e.message}`;
-            }
-            ui.btnSave.textContent = "Save Modification";
-        };
-
-        ui.btnExecute.onclick = async () => {
-            const rawCode = ui.modifiedCode.value;
-            if(!rawCode) return;
-            // Strip out visual line numbers before execution
-            const code = rawCode.split('\n').map(line => line.replace(/^\s*\d+\s*\|\s?/, '')).join('\n');
-            
-            ui.execOutput.textContent = "Executing sequence...";
-            try {
-                const res = await fetch(`${API_BASE}/execute`, {
-                    method: 'POST',
-                    headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({code})
-                });
-                const data = await res.json();
-                ui.execOutput.textContent = `> ${data.output}`;
-            } catch(e) { ui.execOutput.textContent = `CRASH: ${e.message}`; }
-        };
-
-                document.getElementById('btn-upload').onclick = () => document.getElementById('file-input').click();
-        document.getElementById('file-input').onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const code = await file.text();           // read in the browser, send as JSON
-            try {
-                const res = await fetch(`${API_BASE}/upload`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ filename: file.name, code })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
-                await selectFile(data.filename);       // loads it into the left panel
-            } catch (err) {
-                ui.diagOutput.textContent = `Upload failed: ${err.message}`;
-            }
-            e.target.value = '';                       // lets you re-upload the same file
-        };
-        
-        loadFiles();
-    </script>
-</body>
-</html>
+$('#runBtn').onclick=async()=>{$('#term').textContent='Running...';try{$('#term').textContent='> '+(await post('/execute',{code:$('#fixed').value})).output}catch(e){$('#term').textContent='Error: '+e.message}};
+$('#saveBtn').onclick=async()=>{if(!S.file||!$('#fixed').value)return;try{const d=await post('/save',{filename:S.file,code:$('#fixed').value});$('#term').textContent='Saved as '+d.new_filename;loadFiles()}catch(e){$('#term').textContent='Could not save: '+e.message}};
+$('#menuBtn').onclick=()=>$('#menu').classList.toggle('open');
+$('#upBtn').onclick=()=>$('#upIn').click();
+$('#upIn').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=await post('/upload',{filename:f.name,code:await f.text()});await pick(d.filename)}catch(x){$('#fname').textContent='Upload failed: '+x.message}e.target.value=''};
+loadFiles();
+</script></body></html>
