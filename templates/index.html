@@ -36,11 +36,13 @@ button:focus-visible,.ln:focus-visible{outline:2px solid var(--accent);outline-o
 #tabs{display:flex;gap:6px;padding:10px 14px 0;background:var(--bg)}
 .tab{background:transparent;color:var(--mute);border-radius:8px 8px 0 0;padding:9px 16px} .tab.on{background:var(--panel);color:var(--ink);font-weight:600}
 .pane{flex:1;display:none;min-height:0;background:var(--panel);margin:0 14px;border:1px solid var(--line)} .pane.on{display:flex;flex-direction:column}
-#scroll{flex:1;overflow:auto;padding:0 18px 40px;position:relative}
-#jump{position:sticky;top:0;z-index:3;background:var(--panel);display:flex;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
-h2{font-size:15px;margin:18px 0 10px}
+#cols{flex:1;display:flex;min-height:0}
+.col{flex:2;min-width:0;display:flex;flex-direction:column} .col.wide{flex:3} .col+.col{border-left:1px solid var(--line)}
+.list{flex:1;overflow:auto;padding:14px 16px 30px}
+#secBox{padding:0 16px}
+h2{font-size:15px;padding:12px 16px;border-bottom:1px solid var(--line);flex:none}
 .empty{color:var(--mute);padding:40px 10px;text-align:center}
-.banner{background:#8f1d1d;color:#fff;border-radius:8px;padding:12px 14px;margin-top:14px} .banner b{display:block;margin-bottom:4px}
+.banner{background:#8f1d1d;color:#fff;border-radius:8px;padding:12px 14px;margin:14px 0 0} .banner b{display:block;margin-bottom:4px}
 .banner div{font:12.5px var(--mono);margin-top:3px} .banner.soft{background:#3e1d1f;color:#ffb4ab;border:1px solid #6b2a2c}
 .card{border:1px solid var(--line);border-left:5px solid var(--c,#999);border-radius:8px;padding:12px 14px;margin-bottom:12px;cursor:pointer}
 .card.active{box-shadow:0 0 0 2px var(--ink)} .card h3{font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -74,8 +76,11 @@ h2{font-size:15px;margin:18px 0 10px}
 </section>
 <section id="right">
   <div id="tabs"><button class="tab on" data-t="fix">Corrections &amp; fixes</button><button class="tab" data-t="code">Auto-fixed code</button></div>
-  <div class="pane on" id="fixPane"><div id="jump"><button class="ghost" data-j="cSec">Corrections <span id="nC"></span></button><button class="ghost" data-j="fSec">Fixes <span id="nF"></span></button></div>
-    <div id="scroll"><div id="secBox"></div><h2 id="cSec">Corrections</h2><div id="corr"><p class="empty">Scan a file and every mistake will be explained here.</p></div><h2 id="fSec">Fixes</h2><div id="fixes"><p class="empty">Suggested fixes appear here.</p></div></div></div>
+  <div class="pane on" id="fixPane"><div id="secBox"></div>
+    <div id="cols">
+      <section class="col wide"><h2>Corrections <span id="nC"></span></h2><div class="list" id="corr"><p class="empty">Scan a file and every mistake will be explained here.</p></div></section>
+      <section class="col"><h2>Fixes <span id="nF"></span></h2><div class="list" id="fixes"><p class="empty">Suggested fixes appear here.</p></div></section>
+    </div></div>
   <div class="pane" id="codePane"><textarea id="fixed" spellcheck="false" placeholder="The auto-fixed code appears here after a scan."></textarea>
     <div class="row"><button id="runBtn">Run code</button><button id="saveBtn" class="ghost">Save code</button></div><pre id="term">Output will appear here.</pre></div>
   <div id="sum"><div class="verdict" id="vd">No scan yet</div><div id="sumTxt">Pick a file and press Scan &amp; diagnose.</div></div>
@@ -141,9 +146,8 @@ function show(r){const sb=$('#secBox');sb.innerHTML='';
 function select(id,from,group){showTab('fix');group=group||[id];
  document.querySelectorAll('.card,.fx').forEach(e=>e.classList.toggle('active',group.includes(+e.dataset.id)));
  const iss=S.issues.find(i=>i.id===id);document.querySelectorAll('.ln').forEach(e=>e.classList.toggle('active',iss&&+e.dataset.line===iss.line));
- if(from!=='corr')document.querySelector(`.card[data-id="${id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});
+ ['.card','.fx'].forEach((k,n)=>{if(from!==['corr','fix'][n])document.querySelector(`${k}[data-id="${id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'})});
  if(from!=='code')document.querySelector(`.ln[data-line="${iss?.line}"]`)?.scrollIntoView({behavior:'smooth',block:'center'})}
-document.querySelectorAll('[data-j]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.j).scrollIntoView({behavior:'smooth',block:'start'}));
 function showTab(t){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));$('#fixPane').classList.toggle('on',t==='fix');$('#codePane').classList.toggle('on',t==='code')}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
 
