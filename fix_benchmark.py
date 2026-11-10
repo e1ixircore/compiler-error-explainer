@@ -26,8 +26,13 @@ GROUND_TRUTH = {
     "test6.py": "KeyError",
     "test7.py": "TypeError",
     "test8.py": "ModuleNotFoundError",
-    "test10.py": "TypeError",          # multi-error file: first error is the TypeError
-    "test11.py": "NameError",          # 12-error stress test: first error is a NameError typo
+    "testA.py": "TimeoutError",        # Infinite loop (while True: pass)
+    "testB.py": "TypeError",           # Multi-error file: 1st error is string + int concatenation
+    "testC.py": "NameError",           # 12-error stress test: 1st error is 'scorse' typo
+    "testD.py": "NameError",           # Two errors on line: 1st error is 'scorse' typo
+    "testE.py": "SyntaxError",         # Syntax chain: 1st error is missing colon on 'def greet(name)'
+    "testF.py": "IndexError",          # Runtime-only: 1st error is list index out of range (scores[5])
+    "testG.py": "ValueError",          # Explanation only: invalid integer conversion int('seventeen')
     "test_case_large.py": "NameError",
 }
 
