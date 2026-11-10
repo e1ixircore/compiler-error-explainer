@@ -3,10 +3,17 @@
 <title>IntelliFix</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
 <style>
+/* DARK MODE
 :root{color-scheme:dark;--bg:#0d1117;--panel:#151a23;--panel2:#1d2430;--line:#2b3442;--ink:#e6eaf2;--mute:#8d98aa;--accent:#4a7bf0;
 --parser:#a78bfa;--static:#f59e42;--runtime:#f26d63;--sec:#ff5c5c;--ok:#3ecf9a;--warn:#e0a84a;
 --mono:'IBM Plex Mono',monospace}
 *{box-sizing:border-box;margin:0;padding:0}
+*/
+:root {
+  color-scheme: light;--bg: #f8fafc;--panel: #ffffff;--panel2: #f1f5f9;--line: #cbd5e1;--ink: #0f172a;--mute: #64748b;--accent: #2563eb;
+  --parser: #7c3aed;--static: #d97706;--runtime: #dc2626;--sec: #e11d48;--ok: #059669;--warn: #d97706;
+  --mono: 'IBM Plex Mono', monospace;
+}
 body{font:14px/1.5 'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;overflow:hidden}
 button{font:inherit;cursor:pointer;border:0;border-radius:6px;padding:8px 14px;font-weight:500;color:#fff;background:var(--accent)}
 textarea{background:var(--panel);color:var(--ink)}
