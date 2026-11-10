@@ -1,4 +1,4 @@
-# test11.py - STRESS TEST: 12 independent errors (3 NameError typos, 3 TypeError, 2 ZeroDivision,
+# testC.py - STRESS TEST: 12 independent errors (3 NameError typos, 3 TypeError, 2 ZeroDivision,
 # 2 IndexError, 2 KeyError). Static errors are fixed first; the runtime ones need execution each.
 def main():
     scores = [90, 80, 70]

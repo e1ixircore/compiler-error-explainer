@@ -146,7 +146,12 @@ class NLPExplainer:
         # Never hand back code that is more broken than what we received.
         try:
             ast.parse(new_code)
-        except SyntaxError:
+        except SyntaxError as e:
+            # Python reports ONE syntax error at a time. A patch to a SyntaxError is still accepted when the
+            # file does not parse yet, as long as the first error MOVED LATER (= real progress, and it can
+            # never loop). Any other patch that breaks parsing is rejected.
+            if etype == "SyntaxError" and e.lineno and e.lineno > line_no:
+                return new_code
             return code
         return new_code
 

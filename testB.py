@@ -1,4 +1,4 @@
-# test10.py - MULTI-ERROR demo: three independent errors, so the repair loop needs several passes.
+# testB.py - MULTI-ERROR demo: three independent errors, so the repair loop needs several passes.
 # Pass 1 fixes the TypeError, pass 2 the NameError typo, pass 3 the runtime KeyError.
 def main():
     prices = {'apple': 3}
