@@ -236,10 +236,9 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
 # STRUCTURED OUTPUT FOR THE UI (replaces parsing the raw_text blob)
 # ----------------------------------------------------------------------
 def _hides_crash(etype, patch):
-    """True when the patch only stops the crash by substituting a value (0 / None). A beginner could
-    mistake that for 'the correct answer', so the UI shows an amber warning."""
     text = " ".join(t for _, t in patch)
-    return etype in ("ZeroDivisionError", "KeyError", "IndexError", "ModuleNotFoundError") or "= None" in text
+    return (etype in ("ZeroDivisionError", "KeyError", "IndexError", "ModuleNotFoundError", "ValueError")
+            or "= None" in text or "TODO: define a real value" in text)
 
 
 def build_issues(original_code, history):
