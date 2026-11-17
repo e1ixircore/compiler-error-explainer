@@ -6,108 +6,141 @@
   <title>IntelliFix</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@500;600;700;800&family=Work+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
       color-scheme: light;
-      --bg: #f6f4ef;
-      --panel: #ffffff;
-      --panel2: #efece6;
-      --line: #dcd7cd;
-      --ink: #1c1917;
-      --mute: #6b665e;
-      --accent: #1d4ed8;
-      --parser: #6d28d9;
-      --static: #b45309;
-      --runtime: #b91c1c;
-      --sec: #be123c;
-      --ok: #047857;
-      --warn: #b45309;
-      --head: 'Newsreader', Georgia, serif;
-      --body: 'Epilogue', -apple-system, BlinkMacSystemFont, sans-serif;
-      --mono: 'IBM Plex Mono', monospace;
+      --bg:#f6f4ef; --panel:#ffffff; --panel2:#efece6; --line:#dcd7cd; --ink:#1c1917; --mute:#6b665e;
+      --accent:#1b4332; --accent-hover:#143326; --accent-soft:#e6f0ec;
+      --parser:#6d28d9; --static:#b45309; --runtime:#b91c1c; --sec:#be123c; --ok:#1b4332; --warn:#b45309;
+      --head:'Manrope',-apple-system,BlinkMacSystemFont,sans-serif;
+      --body:'Work Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+      --mono:'IBM Plex Mono',monospace;
     }
-    * {box-sizing: border-box;margin: 0;padding: 0;}
-    body {font: 13.5px/1.55 var(--body);background: var(--bg);color: var(--ink);height: 100vh;display: flex;overflow: hidden;}
-    h1, h2, h3, h4, .tab, .verdict, .chip, .card dt, .banner b, #legend, #met {font-family: var(--head);}
-    button {font-family: var(--head);font-size: 14px;cursor: pointer;border: 0;border-radius: 6px;padding: 8px 15px;font-weight: 600;color: #fff;background: var(--accent);letter-spacing: -0.01em;}
-    textarea {background: var(--panel);color: var(--ink);}
-    button:disabled {opacity: .45;cursor: not-allowed;}
-    button.ghost {background: var(--panel2);color: var(--ink);border: 1px solid var(--line);}
-    button:focus-visible, .ln:focus-visible {outline: 2px solid var(--accent);outline-offset: 2px;}
-    #left {width: 40%;position: relative;background: var(--panel);border-right: 1px solid var(--line);display: flex;flex-direction: column;}
-    #right {width: 60%;display: flex;flex-direction: column;min-width: 0;}
-    .float {position: absolute;z-index: 5;box-shadow: 0 4px 12px rgba(28, 25, 23, 0.08);}
-    #menuBtn {top: 12px;left: 12px;width: 40px;height: 40px;padding: 0;font-size: 19px;background: var(--panel2);color: var(--ink);border: 1px solid var(--line);}
-    #scanBtn {bottom: 46px;left: 50%;transform: translateX(-50%);padding: 11px 24px;border-radius: 999px;box-shadow: 0 4px 14px rgba(29, 78, 216, 0.25);}
-    #menu {display: none;top: 60px;left: 12px;width: 270px;max-height: 70%;overflow: auto;background: var(--panel);border: 1px solid var(--line);border-radius: 10px;padding: 10px;}
-    #menu.open {display: block;}
-    #menu h4 {font-size: 13px;color: var(--mute);font-weight: 600;margin: 10px 4px 4px;letter-spacing: 0.01em;}
-    .fi {padding: 7px 8px;border-radius: 6px;cursor: pointer;font-family: var(--mono);font-size: 12.5px;display: flex;justify-content: space-between;}
-    .fi:hover, .fi.on {background: var(--panel2);}
-    .fi small {color: var(--ok);}
-    #menu a {display: block;margin-top: 8px;padding: 9px;border-top: 1px solid var(--line);color: var(--accent);font-family: var(--head);font-size: 14px;font-weight: 600;text-decoration: none;}
-    #fname {padding: 18px 14px 10px 64px;font-family: var(--mono);font-size: 13px;color: var(--mute);border-bottom: 1px solid var(--line);min-height: 64px;background: #fcfbf9;}
-    #code {flex: 1;overflow: auto;font: 13px/1.65 var(--mono);padding: 6px 0 90px;}
-    .ln {display: flex;border-left: 4px solid transparent;cursor: default;}
-    .ln .no {width: 48px;text-align: right;padding-right: 12px;color: #a8a29e;user-select: none;flex: none;}
-    .ln .tx {white-space: pre;flex: 1;}
-    .ln .bd {background: var(--ink);color: #ffffff;border-radius: 9px;font: 600 11px/17px var(--mono);padding: 0 6px;margin: 2px 10px;height: 17px;}
-    .ln.parser {background: #f5f3ff;border-color: var(--parser);}
-    .ln.static {background: #fffbeb;border-color: var(--static);}
-    .ln.runtime {background: #fef2f2;border-color: var(--runtime);}
-    .ln.sec {background: #fff1f2;border-color: var(--sec);}
-    .ln.parser, .ln.static, .ln.runtime, .ln.sec {cursor: pointer;}
-    .ln.active {box-shadow: inset 0 0 0 2px var(--ink);}
-    #legend {position: absolute;bottom: 0;left: 0;right: 0;display: flex;gap: 16px;justify-content: center;padding: 8px;font-size: 12.5px;color: var(--mute);background: #fcfbf9;border-top: 1px solid var(--line);}
-    .dot {display: inline-block;width: 10px;height: 10px;border-radius: 3px;margin-right: 5px;}
-    #tabs {display: flex;gap: 6px;padding: 10px 14px 0;background: var(--bg);}
-    .tab {background: transparent;color: var(--mute);border-radius: 8px 8px 0 0;padding: 9px 16px;font-size: 14.5px;font-weight: 500;}
-    .tab.on {background: var(--panel);color: var(--ink);font-weight: 600;border: 1px solid var(--line);border-bottom: 0;}
-    .pane {flex: 1;display: none;min-height: 0;background: var(--panel);margin: 0 14px;border: 1px solid var(--line);}
-    .pane.on {display: flex;flex-direction: column;}
-    #cols {flex: 1;display: flex;min-height: 0;}
-    .col {flex: 2;min-width: 0;display: flex;flex-direction: column;}
-    .col.wide {flex: 3;}
-    .col + .col {border-left: 1px solid var(--line);}
-    .list {flex: 1;overflow: auto;padding: 14px 16px 30px;}
-    #secBox {padding: 0 16px;}
-    h2 {font-size: 16.5px;font-weight: 600;letter-spacing: -0.015em;padding: 12px 16px;border-bottom: 1px solid var(--line);flex: none;background: #fcfbf9;}
-    .empty {color: var(--mute);padding: 40px 10px;text-align: center;}
-    .banner {background: #b91c1c;color: #fff;border-radius: 8px;padding: 12px 14px;margin: 14px 0 0;}
-    .banner b {display: block;margin-bottom: 4px;font-size: 14.5px;}
-    .banner div {font: 12.5px var(--mono);margin-top: 3px;}
-    .banner.soft {background: #fef2f2;color: #991b1b;border: 1px solid #fecaca;}
-    .card {border: 1px solid var(--line);border-left: 5px solid var(--c, #999);border-radius: 8px;padding: 13px 15px;margin-bottom: 12px;cursor: pointer;background: var(--panel);}
-    .card:hover {background: #fcfbf9;}
-    .card.active {box-shadow: 0 0 0 2px var(--ink);}
-    .card h3 {font-size: 15.5px;font-weight: 600;letter-spacing: -0.01em;display: flex;gap: 8px;align-items: center;flex-wrap: wrap;}
-    .chip {font-size: 12px;font-weight: 600;color: #ffffff;background: var(--c, #999);border-radius: 5px;padding: 2px 8px;}
-    .card .mean {color: var(--mute);font-style: italic;margin: 5px 0 10px;font-size: 13px;}
-    .card dl {display: grid;grid-template-columns: 88px 1fr;gap: 6px 10px;align-items: baseline;}
-    .card dt {font-size: 13px;font-weight: 600;color: var(--c);}
-    .card dd {font-size: 13.5px;line-height: 1.55;}
-    .tip {background: #eff6ff;color: #1e40af;border: 1px solid #dbeafe;border-radius: 6px;padding: 5px 9px;margin-top: 9px;display: inline-block;font-size: 13px;}
-    .fx {border: 1px solid var(--line);border-radius: 8px;margin-bottom: 12px;cursor: pointer;overflow: hidden;}
-    .fx.active {box-shadow: 0 0 0 2px var(--ink);}
-    .fx header {display: flex;justify-content: space-between;align-items: center;padding: 7px 12px;background: var(--panel2);font-family: var(--head);font-size: 13.5px;}
-    .fx pre {font: 12.5px/1.6 var(--mono);padding: 4px 12px;white-space: pre-wrap;word-break: break-word;}
-    .fx .m {background: #fef2f2;color: #991b1b;}
-    .fx .p {background: #ecfdf5;color: #065f46;}
-    .fx .warn {background: #fffbeb;color: #92400e;padding: 7px 12px;font-size: 13px;}
-    .fx button {padding: 3px 10px;font-size: 12.5px;}
-    #sum {flex: none;margin: 0 14px 14px;background: #fcfbf9;border: 1px solid var(--line);border-top: 0;padding: 12px 16px;min-height: 86px;display: flex;gap: 18px;align-items: center;}
-    .verdict {font-size: 14px;font-weight: 700;letter-spacing: 0.02em;color: #fff;border-radius: 8px;padding: 10px 16px;text-align: center;white-space: nowrap;background: var(--mute);}
-    #met {display: grid;grid-template-columns: auto auto;gap: 3px 18px;font-size: 13px;color: var(--mute);border-left: 1px solid var(--line);padding-left: 18px;white-space: nowrap;}
-    #met b {color: var(--ink);font-weight: 600;}
-    #sumTxt {flex: 1;font-size: 13.5px;color: var(--mute);}
-    #sumTxt b {color: var(--ink);font-family: var(--head);font-size: 14.5px;}
-    #sumTxt .chip {margin: 4px 4px 0 0;display: inline-block;}
-    #codePane {padding: 14px;gap: 10px;}
-    #fixed {flex: 1;font: 13px/1.6 var(--mono);border: 1px solid var(--line);border-radius: 6px;padding: 10px;resize: none;min-height: 0;}
-    #term {flex: 1;background: #f8f7f4;border: 1px solid var(--line);color: var(--ink);font: 12.5px/1.55 var(--mono);padding: 12px;border-radius: 6px;overflow: auto;white-space: pre-wrap;min-height: 0;}
-    .row {display: flex;gap: 8px;}
-    .busy {cursor: progress;}
+    * {box-sizing:border-box;margin:0;padding:0;}
+    [hidden] {display:none !important;}
+    body {font:14px/1.55 var(--body);background:var(--bg);color:var(--ink);height:100vh;display:flex;overflow:hidden;}
+    h1,h2,h3,h4,.tab,.verdict,.chip,.card dt,.banner b,#legend,#met {font-family:var(--head);}
+    button {font-family:var(--head);font-size:13px;cursor:pointer;border:0;border-radius:6px;padding:7px 13px;font-weight:600;color:#fff;background:var(--accent);letter-spacing:-0.01em;transition:background-color .18s ease,color .18s ease,box-shadow .18s ease,transform .14s ease,opacity .18s ease;}
+    button:hover:not(:disabled):not(.tab) {background:var(--accent-hover);}
+    button:active:not(:disabled):not(#scanBtn) {transform:scale(0.98);}
+    button:disabled {opacity:.42;cursor:not-allowed;}
+    button.ghost {background:var(--panel2);color:var(--ink);border:1px solid var(--line);}
+    button.ghost:hover:not(:disabled) {background:#e5e1d8;}
+    button:focus-visible,.ln:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
+    textarea {background:var(--panel);color:var(--ink);}
+
+    /* ---------- left: code ---------- */
+    #left {width:42%;position:relative;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;}
+    #right {width:58%;display:flex;flex-direction:column;min-width:0;}
+    .float {position:absolute;z-index:5;box-shadow:0 4px 12px rgba(28,25,23,0.08);}
+    #menuBtn {top:12px;left:12px;width:38px;height:38px;padding:0;font-size:18px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);}
+    #menuBtn:hover {background:#e5e1d8;}
+    #scanBtn {bottom:46px;left:50%;transform:translateX(-50%);padding:11px 24px;border-radius:999px;box-shadow:0 4px 14px rgba(27,67,50,0.28);font-size:13.5px;}
+    #scanBtn:hover:not(:disabled) {transform:translateX(-50%) translateY(-1px);box-shadow:0 6px 18px rgba(27,67,50,0.34);}
+    #scanBtn:active:not(:disabled) {transform:translateX(-50%) scale(0.98);}
+    #menu {top:58px;left:12px;width:270px;max-height:70%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-6px) scale(0.98);transform-origin:top left;transition:opacity .18s ease,transform .18s cubic-bezier(0.16,1,0.3,1),visibility .18s ease;}
+    #menu.open {opacity:1;visibility:visible;pointer-events:auto;transform:none;}
+    #menu h4 {font-size:11.5px;color:var(--mute);font-weight:700;margin:12px 4px 4px;text-transform:uppercase;letter-spacing:0.04em;}
+    .fi {padding:7px 8px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12.5px;display:flex;justify-content:space-between;transition:background-color .15s ease;}
+    .fi:hover,.fi.on {background:var(--panel2);}
+    .fi small {color:var(--ok);font-weight:600;}
+    #menu a {display:block;margin-top:8px;padding:9px;border-top:1px solid var(--line);color:var(--accent);font-family:var(--head);font-size:13px;font-weight:700;text-decoration:none;}
+    #menu a:hover {text-decoration:underline;}
+    #topBar {display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 12px 60px;border-bottom:1px solid var(--line);min-height:62px;background:#fcfbf9;}
+    #fname {font-family:var(--mono);font-size:13px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    #codeBtns {display:flex;gap:6px;flex:none;}
+    #code {flex:1;overflow:auto;font:13px/1.7 var(--mono);padding:6px 0 90px;animation:panelFade .18s ease;}
+    #editor {flex:1;width:100%;border:0;outline:none;resize:none;font:13px/1.7 var(--mono);padding:10px 16px 90px 20px;background:#fdfcfa;color:var(--ink);tab-size:4;animation:panelFade .18s ease;}
+    .ln {display:flex;min-width:max-content;width:100%;border-left:3px solid transparent;cursor:default;transition:background-color .16s ease,box-shadow .16s ease;}
+    .ln .no {width:48px;text-align:right;padding-right:12px;color:#a8a29e;user-select:none;flex:none;}
+    .ln .tx {white-space:pre;flex:1;padding-right:24px;}
+    .ln .bd {background:var(--accent);color:#fff;border-radius:9px;font:600 11px/17px var(--mono);padding:0 6px;margin:3px 12px 3px 0;height:17px;}
+    .ln.parser {background:#f5f3ff;border-color:var(--parser);}
+    .ln.static {background:#fef9ec;border-color:var(--static);}
+    .ln.runtime {background:#fef2f2;border-color:var(--runtime);}
+    .ln.sec {background:#fff1f2;border-color:var(--sec);}
+    .ln.parser,.ln.static,.ln.runtime,.ln.sec {cursor:pointer;}
+    .ln.active {box-shadow:inset 0 0 0 1px rgba(27,67,50,0.35);filter:brightness(0.97);}
+    #legend {position:absolute;bottom:0;left:0;right:0;display:flex;gap:16px;justify-content:center;padding:8px;font-size:12px;font-weight:500;color:var(--mute);background:#fcfbf9;border-top:1px solid var(--line);}
+    .dot {display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;}
+
+    /* ---------- right: tabs ---------- */
+    #tabs {display:flex;gap:6px;padding:10px 14px 0;background:var(--bg);}
+    .tab {background:transparent;color:var(--mute);border-radius:8px 8px 0 0;padding:9px 16px;font-size:13.5px;font-weight:600;position:relative;}
+    .tab:hover {color:var(--ink);background:rgba(239,236,230,0.75);}
+    .tab.on,.tab.on:hover {background:var(--panel);color:var(--ink);font-weight:700;border:1px solid var(--line);border-bottom:0;margin-bottom:-1px;z-index:1;}
+    .tab .pip {display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:7px;vertical-align:middle;}
+    .pane {flex:1;display:none;min-height:0;background:var(--panel);margin:0 14px;border:1px solid var(--line);}
+    .pane.on {display:flex;flex-direction:column;animation:panelFade .18s ease;}
+    #cols {flex:1;display:flex;min-height:0;}
+    .col {flex:2;min-width:0;display:flex;flex-direction:column;}
+    .col.wide {flex:3;}
+    .col + .col {border-left:1px solid var(--line);}
+    .list {flex:1;overflow:auto;padding:14px 16px 30px;}
+    #secBox {padding:0 16px;}
+    h2 {font-size:15px;font-weight:700;letter-spacing:-0.015em;padding:12px 16px;border-bottom:1px solid var(--line);flex:none;background:#fcfbf9;}
+    .empty {color:var(--mute);padding:40px 10px;text-align:center;}
+    .banner {background:#b91c1c;color:#fff;border-radius:8px;padding:12px 14px;margin:14px 0 0;}
+    .banner b {display:block;margin-bottom:4px;font-size:13.5px;}
+    .banner div {font:12.5px var(--mono);margin-top:3px;}
+    .banner.soft {background:#fef2f2;color:#991b1b;border:1px solid #fecaca;}
+    .card {border:1px solid var(--line);border-left:4px solid var(--c,#999);border-radius:8px;padding:13px 15px;margin-bottom:12px;cursor:pointer;background:var(--panel);transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease;}
+    .card:hover {background:#fcfbf9;}
+    .card.active {border-color:var(--accent);box-shadow:0 0 0 2px rgba(27,67,50,0.16);background:#fcfbf9;}
+    .card h3 {font-size:14.5px;font-weight:700;letter-spacing:-0.01em;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    .chip {font-size:11.5px;font-weight:600;color:#fff;background:var(--c,#999);border-radius:5px;padding:2px 8px;}
+    .card .mean {color:var(--mute);font-style:italic;margin:5px 0 10px;font-size:13px;}
+    .card dl {display:grid;grid-template-columns:88px 1fr;gap:6px 10px;align-items:baseline;}
+    .card dt {font-size:12px;font-weight:700;color:var(--c);}
+    .card dd {font-size:13.5px;line-height:1.55;}
+    .tip {background:var(--accent-soft);color:var(--accent);border:1px solid #c6dfd4;border-radius:6px;padding:5px 9px;margin-top:9px;display:inline-block;font-size:13px;}
+    .fx {border:1px solid var(--line);border-radius:8px;margin-bottom:12px;cursor:pointer;overflow:hidden;transition:border-color .18s ease,box-shadow .18s ease;}
+    .fx.active {border-color:var(--accent);box-shadow:0 0 0 2px rgba(27,67,50,0.16);}
+    .fx header {display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:var(--panel2);font-family:var(--head);font-size:12.5px;font-weight:600;}
+    .fx pre {font:12.5px/1.6 var(--mono);padding:4px 12px;white-space:pre-wrap;word-break:break-word;}
+    .fx .m {background:#fef2f2;color:#991b1b;}
+    .fx .p {background:#ecfdf5;color:#065f46;}
+    .fx .warn {background:#fef9ec;color:#92400e;padding:7px 12px;font-size:13px;}
+    .fx button {padding:3px 10px;font-size:12px;}
+
+    /* output toolbar */
+    .bar {display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:#fcfbf9;font-family:var(--head);font-size:13px;font-weight:700;}
+    .bar .row {display:flex;gap:8px;}
+    #term {flex:1;overflow:auto;padding:14px 16px;white-space:pre-wrap;font:12.5px/1.6 var(--mono);color:var(--ink);background:#fdfcfa;}
+    #term.err {color:var(--runtime);}
+
+    /* ---------- summary bar ---------- */
+    #sum {flex:none;margin:0 14px 14px;background:#fcfbf9;border:1px solid var(--line);border-top:0;padding:12px 16px;min-height:86px;display:flex;gap:18px;align-items:center;}
+    .verdict {font-size:13px;font-weight:700;letter-spacing:0.03em;color:#fff;border-radius:8px;padding:10px 16px;text-align:center;white-space:nowrap;background:var(--mute);transition:background-color .25s ease;}
+    #met {display:grid;grid-template-columns:auto auto;gap:3px 18px;font-size:12px;color:var(--mute);border-left:1px solid var(--line);padding-left:18px;white-space:nowrap;}
+    #met b {color:var(--ink);font-weight:700;}
+    #sumTxt {flex:1;font-size:13.5px;color:var(--mute);}
+    #sumTxt b {color:var(--ink);font-family:var(--head);font-size:14px;font-weight:700;}
+    #sumTxt .chip {margin:4px 4px 0 0;display:inline-block;background:var(--accent);}
+    .busy {cursor:progress;}
+
+    /* ---------- motion (all disabled under prefers-reduced-motion) ---------- */
+    @keyframes cardIn {from {opacity:0;transform:translateY(8px);} to {opacity:1;transform:none;}}
+    .card,.fx {animation:cardIn .32s cubic-bezier(0.16,1,0.3,1) both;animation-delay:calc(var(--d,0) * 55ms);}
+    @keyframes pop {0% {transform:scale(.85);opacity:0;} 60% {transform:scale(1.06);} 100% {transform:scale(1);opacity:1;}}
+    .verdict.pop {animation:pop .35s ease;}
+    @keyframes lineFlash {from {background-color:#fde68a;} to {background-color:transparent;}}
+    .ln.active {animation:lineFlash .7s ease;}
+    @keyframes spin {to {transform:rotate(360deg);}}
+    .busy #scanBtn::before {content:"";display:inline-block;width:11px;height:11px;margin-right:8px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-1px;}
+    .busy #scanBtn:disabled {opacity:.85;}
+    @keyframes ring {0% {box-shadow:0 0 0 0 rgba(27,67,50,.4);} 100% {box-shadow:0 0 0 9px rgba(27,67,50,0);}}
+    #applyBtn:not(:disabled) {animation:ring 1.4s ease-out 3;border-color:var(--accent);}
+    @keyframes slideDown {from {opacity:0;transform:translateY(-8px);} to {opacity:1;transform:none;}}
+    .banner {animation:slideDown .3s ease;}
+    @keyframes blink {50% {opacity:.25;}}
+    .tab .pip {animation:blink 1.2s ease-in-out infinite;}
+    #term.fade {animation:panelFade .25s ease;}
+    @media (prefers-reduced-motion: reduce) {
+      *,*::before,*::after {animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
+    }
+    @keyframes panelFade {from {opacity:0;transform:translateY(3px);} to {opacity:1;transform:none;}}
   </style>
 </head>
 <body>
@@ -120,8 +153,20 @@
       <div id="files"></div>
       <a href="/analytics">Open eco dashboard</a>
     </div>
-    <div id="fname">Pick a test case from the menu to begin.</div>
+
+    <div id="topBar">
+      <div id="fname">Pick a test case from the menu to begin.</div>
+      <div id="codeBtns">
+        <button id="applyBtn" class="ghost" disabled title="Load the auto-fixed code into the editor">Apply fixes</button>
+        <button id="editBtn" class="ghost" disabled>Edit</button>
+        <button id="runBtn" class="ghost" disabled>Run</button>
+        <button id="saveBtn" class="ghost" disabled>Save</button>
+      </div>
+    </div>
+
     <div id="code"></div>
+    <textarea id="editor" spellcheck="false" hidden></textarea>
+
     <button class="float" id="scanBtn" disabled>Scan &amp; diagnose</button>
     <div id="legend">
       <span><i class="dot" style="background:var(--parser)"></i>Syntax</span>
@@ -134,34 +179,28 @@
   <section id="right">
     <div id="tabs">
       <button class="tab on" data-t="fix">Corrections &amp; fixes</button>
-      <button class="tab" data-t="code">Auto-fixed code</button>
+      <button class="tab" data-t="out">Output<span class="pip" id="outPip" hidden></span></button>
     </div>
 
+    <!-- tab 1 -->
     <div class="pane on" id="fixPane">
       <div id="secBox"></div>
       <div id="cols">
         <section class="col wide">
           <h2>Corrections <span id="nC"></span></h2>
-          <div class="list" id="corr">
-            <p class="empty">Scan a file and every mistake will be explained here.</p>
-          </div>
+          <div class="list" id="corr"><p class="empty">Scan a file and every mistake will be explained here.</p></div>
         </section>
         <section class="col">
           <h2>Fixes <span id="nF"></span></h2>
-          <div class="list" id="fixes">
-            <p class="empty">Suggested fixes appear here.</p>
-          </div>
+          <div class="list" id="fixes"><p class="empty">Suggested fixes appear here.</p></div>
         </section>
       </div>
     </div>
 
-    <div class="pane" id="codePane">
-      <textarea id="fixed" spellcheck="false" placeholder="The auto-fixed code appears here after a scan."></textarea>
-      <div class="row">
-        <button id="runBtn">Run code</button>
-        <button id="saveBtn" class="ghost">Save code</button>
-      </div>
-      <pre id="term">Output will appear here.</pre>
+    <!-- tab 2 -->
+    <div class="pane" id="outPane">
+      <div class="bar"><span id="outLabel">Output</span><button id="outClear" class="ghost">Clear</button></div>
+      <pre id="term">Press Run (top of the code panel) to see the program's output here.</pre>
     </div>
 
     <div id="sum">
@@ -174,42 +213,37 @@
   <script>
     const $ = s => document.querySelector(s);
     const A = '/api';
-    const COL = { parser: 'var(--parser)', static: 'var(--static)', runtime: 'var(--runtime)' };
-    const STG = { parser: 'Syntax check', static: 'Found without running', runtime: 'Found by running' };
-    const VC = {
-      VERIFIED: '#047857',
-      CLEAN: '#047857',
-      PARTIAL: '#b45309',
-      REJECTED: '#b91c1c',
-      BLOCKED: '#7f1d1d',
-      'NO FIX GENERATED': '#6b665e'
-    };
+    const COL = { parser:'var(--parser)', static:'var(--static)', runtime:'var(--runtime)' };
+    const STG = { parser:'Syntax check', static:'Found without running', runtime:'Found by running' };
+    const VC = { VERIFIED:'#1b4332', CLEAN:'#1b4332', PARTIAL:'#b45309', REJECTED:'#b91c1c', BLOCKED:'#7f1d1d', 'NO FIX GENERATED':'#6b665e' };
+    const PANES = { fix:'fixPane', out:'outPane' };
+    const EMPTY_C = '<p class="empty">Scan a file and every mistake will be explained here.</p>';
+    const EMPTY_F = '<p class="empty">Suggested fixes appear here.</p>';
+    const EMPTY_OUT = "Press Run (top of the code panel) to see the program's output here.";
 
-    let S = { file: null, code: '', issues: [], sec: [], blocked: false, lm: {} };
+    let S = { file:null, code:'', fixed:'', issues:[], sec:[], blocked:false, lm:{}, editing:false, dirty:false };
 
-    function el(t, c, x) {
-      const e = document.createElement(t);
-      if (c) e.className = c;
-      if (x != null) e.textContent = x;
-      return e;
-    }
+    function el(t, c, x) { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
 
     async function j(u, o) {
       const r = await fetch(A + u, o);
-      const d = await r.json();
+      const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || r.status);
       return d;
     }
+    const post = (u, b) => j(u, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(b) });
 
-    const post = (u, b) => j(u, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(b)
-    });
+    /* ---------- tabs ---------- */
+    function showTab(t) {
+      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+      Object.entries(PANES).forEach(([k, id]) => $('#' + id).classList.toggle('on', k === t));
+      if (t === 'out') $('#outPip').hidden = true;
+    }
+    document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.t));
 
+    /* ---------- files ---------- */
     async function loadFiles() {
-      const d = await j('/files');
-      const box = $('#files');
+      const d = await j('/files'), box = $('#files');
       box.innerHTML = '';
       d.files.forEach(f => {
         const e = el('div', 'fi' + (f.filename === S.file ? ' on' : ''));
@@ -223,96 +257,132 @@
     async function pick(n) {
       try {
         const d = await j('/source?filename=' + encodeURIComponent(n));
-        S.file = n;
-        S.code = d.code;
+        S.file = n; S.code = d.code;
         reset();
         $('#fname').textContent = n;
-        $('#scanBtn').disabled = false;
+        ['#scanBtn', '#editBtn', '#runBtn'].forEach(s => $(s).disabled = false);
         $('#menu').classList.remove('open');
-        paint();
-        loadFiles();
-      } catch (e) {
-        $('#fname').textContent = 'Could not load file: ' + e.message;
-      }
+        paint(); loadFiles();
+      } catch (e) { $('#fname').textContent = 'Could not load file: ' + e.message; }
+    }
+
+    // Re-trigger the CSS pop animation each time the verdict changes.
+    function popVerdict() { const v = $('#vd'); v.classList.remove('pop'); void v.offsetWidth; v.classList.add('pop'); }
+
+    function clearResults() {
+      $('#secBox').innerHTML = '';
+      $('#corr').innerHTML = EMPTY_C;
+      $('#fixes').innerHTML = EMPTY_F;
+      $('#nC').textContent = $('#nF').textContent = '';
+      $('#met').innerHTML = '';
     }
 
     function reset() {
-      S.issues = [];
-      S.sec = [];
-      S.blocked = false;
-      S.lm = {};
-      $('#fixed').value = '';
-      $('#term').textContent = 'Output will appear here.';
-      $('#secBox').innerHTML = '';
-      $('#corr').innerHTML = '<p class="empty">Scan a file and every mistake will be explained here.</p>';
-      $('#fixes').innerHTML = '<p class="empty">Suggested fixes appear here.</p>';
-      $('#nC').textContent = $('#nF').textContent = '';
-      $('#met').innerHTML = '';
-      const v = $('#vd');
-      v.textContent = 'No scan yet';
-      v.style.background = 'var(--mute)';
+      Object.assign(S, { issues:[], sec:[], blocked:false, lm:{}, editing:false, dirty:false, fixed:'' });
+      updateApply();
+      $('#code').hidden = false; $('#editor').hidden = true; $('#editor').value = '';
+      $('#editBtn').textContent = 'Edit'; $('#editBtn').classList.add('ghost');
+      $('#scanBtn').textContent = 'Scan & diagnose';
+      $('#saveBtn').disabled = true;
+      clearOutput();
+      clearResults();
+      showTab('fix');
+      const v = $('#vd'); v.textContent = 'No scan yet'; v.style.background = 'var(--mute)';
       $('#sumTxt').textContent = 'Pick a file and press Scan & diagnose.';
     }
 
+    /* ---------- code panel ---------- */
     function paint() {
       const box = $('#code');
-      box.innerHTML = '';
-      S.lm = {};
-      S.issues.forEach(i => {
-        if (i.line) (S.lm[i.line] = S.lm[i.line] || []).push(i.id);
-      });
+      box.innerHTML = ''; S.lm = {};
+      S.issues.forEach(i => { if (i.line) (S.lm[i.line] = S.lm[i.line] || []).push(i.id); });
       const sl = {};
       S.sec.forEach(s => sl[s.line] = s);
-
       S.code.split('\n').forEach((t, k) => {
-        const n = k + 1;
-        const ids = S.lm[n];
-        const r = el('div', 'ln');
+        const n = k + 1, ids = S.lm[n], r = el('div', 'ln');
         r.dataset.line = n;
-
         const f = ids && S.issues.find(i => i.id === ids[0]);
         if (f) r.classList.add(f.stage);
-        if (sl[n]) {
-          r.classList.add('sec');
-          r.title = sl[n].severity + ': ' + sl[n].message;
-        }
-
+        if (sl[n]) { r.classList.add('sec'); r.title = sl[n].severity + ': ' + sl[n].message; }
         r.append(el('span', 'no', n), el('span', 'tx', t || ' '));
-        if (ids && ids.length > 1) {
-          const b = el('span', 'bd', ids.length);
-          b.title = ids.length + ' errors on this line';
-          r.append(b);
-        }
-        if (ids) {
-          r.tabIndex = 0;
-          r.onclick = () => select(ids[0], 'code', ids);
-        }
+        if (ids && ids.length > 1) { const b = el('span', 'bd', ids.length); b.title = ids.length + ' errors on this line'; r.append(b); }
+        if (ids) { r.tabIndex = 0; r.onclick = () => select(ids[0], 'code', ids); }
         box.append(r);
       });
     }
 
+    // "Apply fixes" is only useful when the scan produced code that differs from what is on screen.
+    function updateApply() { $('#applyBtn').disabled = S.editing || !S.fixed || S.fixed === S.code; }
+
+    $('#applyBtn').onclick = () => {
+      const stand = S.issues.some(i => i.hides_crash);
+      setCode(S.fixed, 'Fixes applied. Click Re-scan to confirm the code is clean, or Save it.' +
+        (stand ? ' Some fixes use stand-in values (0 or None): check they are what you want.' : ''));
+      $('#saveBtn').disabled = false;
+    };
+
+    // Replace the code under inspection (after a manual edit): old results no longer apply.
+    function setCode(code, msg) {
+      S.code = code; S.dirty = true; S.issues = []; S.sec = []; S.blocked = false; S.fixed = '';
+      updateApply();
+      clearResults();
+      $('#scanBtn').textContent = 'Re-scan';
+      const v = $('#vd'); v.textContent = 'Edited'; v.style.background = 'var(--warn)'; popVerdict();
+      $('#sumTxt').textContent = msg;
+      paint();
+    }
+
+    $('#editBtn').onclick = () => {
+      if (!S.file) return;
+      if (!S.editing) {
+        S.editing = true;
+        $('#editor').value = S.code;
+        $('#code').hidden = true; $('#editor').hidden = false;
+        $('#editBtn').textContent = 'Done editing'; $('#editBtn').classList.remove('ghost');
+        $('#scanBtn').disabled = true; $('#saveBtn').disabled = true;
+        updateApply();
+        $('#editor').focus();
+      } else {
+        S.editing = false;
+        if ($('#editor').value !== S.code) setCode($('#editor').value, 'Code updated. Click Re-scan to verify your fix, or Save to store the file.');
+        $('#editor').hidden = true; $('#code').hidden = false;
+        $('#editBtn').textContent = 'Edit'; $('#editBtn').classList.add('ghost');
+        $('#scanBtn').disabled = false; $('#saveBtn').disabled = !S.dirty;
+        updateApply();
+        paint();
+      }
+    };
+
+    // Tab key inserts 4 spaces in both editors instead of leaving the textarea.
+    $('#editor').addEventListener('keydown', e => {
+      if (e.key !== 'Tab') return;
+      e.preventDefault();
+      const t = e.target, s = t.selectionStart;
+      t.value = t.value.slice(0, s) + '    ' + t.value.slice(t.selectionEnd);
+      t.selectionStart = t.selectionEnd = s + 4;
+    });
+
+    /* ---------- scan ---------- */
     $('#scanBtn').onclick = async () => {
       document.body.classList.add('busy');
-      $('#scanBtn').disabled = true;
+      $('#scanBtn').disabled = true; $('#editBtn').disabled = true;
       try {
-        const r = await post('/analyze', { filename: S.file, code: S.code });
-        S.issues = r.issues || [];
-        S.sec = r.security || [];
-        S.blocked = !!r.blocked;
-        show(r);
-        paint();
-        $('#fixed').value = r.fixed_code || '';
-      } catch (e) {
-        $('#sumTxt').textContent = 'Scan failed: ' + e.message;
-      }
+        const r = await post('/analyze', { filename:S.file, code:S.code });
+        S.issues = r.issues || []; S.sec = r.security || []; S.blocked = !!r.blocked;
+        S.fixed = S.blocked ? '' : (r.fixed_code || '');
+        updateApply();
+        show(r); paint();
+        $('#scanBtn').textContent = 'Re-scan';
+        // A clean run already produced program output: put it in the Output tab (no tab switch).
+        if (r.status === 'success') setOutput('Program output (from scan)', r.message || '');
+      } catch (e) { $('#sumTxt').textContent = 'Scan failed: ' + e.message; }
       document.body.classList.remove('busy');
-      $('#scanBtn').disabled = false;
+      $('#scanBtn').disabled = false; $('#editBtn').disabled = false;
     };
 
     function show(r) {
       const sb = $('#secBox');
       sb.innerHTML = '';
-
       if (S.blocked) {
         const b = el('div', 'banner');
         b.append(el('b', '', 'Security risk: this code was NOT run'));
@@ -326,92 +396,61 @@
         sb.append(b);
       }
 
-      const c = $('#corr');
-      const f = $('#fixes');
+      const c = $('#corr'), f = $('#fixes');
       c.innerHTML = f.innerHTML = '';
       $('#nC').textContent = $('#nF').textContent = S.issues.length ? '(' + S.issues.length + ')' : '';
+      if (!S.issues.length) c.innerHTML = f.innerHTML = `<p class="empty">${S.blocked ? 'No analysis, because the code was blocked.' : 'No errors found. Nice work!'}</p>`;
 
-      if (!S.issues.length) {
-        c.innerHTML = f.innerHTML = `<p class="empty">${S.blocked ? 'No analysis, because the code was blocked.' : 'No errors found. Nice work!'}</p>`;
-      }
-
-      S.issues.forEach(i => {
-        const col = COL[i.stage];
+      S.issues.forEach((i, n) => {
         const cd = el('div', 'card');
-        cd.dataset.id = i.id;
-        cd.style.setProperty('--c', col);
-
+        cd.dataset.id = i.id; cd.style.setProperty('--c', COL[i.stage]); cd.style.setProperty('--d', Math.min(n, 8));
         const h = el('h3');
         h.append(el('span', '', `Line ${i.line ?? '?'}`), el('span', 'chip', i.type), el('span', '', STG[i.stage]));
         cd.append(h, el('p', 'mean', i.meaning));
-
         const dl = el('dl');
-        [['Mistake', i.mistake], ['Reason', i.reason], ['How to fix', i.how_to_fix]].forEach(([k, v]) => {
-          dl.append(el('dt', '', k), el('dd', '', v));
-        });
+        [['Mistake', i.mistake], ['Reason', i.reason], ['How to fix', i.how_to_fix]].forEach(([k, v]) => dl.append(el('dt', '', k), el('dd', '', v)));
         cd.append(dl);
-
-        if (i.suggestion) {
-          cd.append(el('span', 'tip', `Did you mean "${i.suggestion}"?`));
-        }
-        cd.onclick = () => select(i.id, 'corr', (S.lm[i.line] || [i.id]));
+        if (i.suggestion) cd.append(el('span', 'tip', `Did you mean "${i.suggestion}"?`));
+        cd.onclick = () => select(i.id, 'corr', S.lm[i.line] || [i.id]);
         c.append(cd);
 
         const fx = el('div', 'fx');
-        fx.dataset.id = i.id;
+        fx.dataset.id = i.id; fx.style.setProperty('--d', Math.min(n, 8));
         const hd = el('header');
         hd.append(el('b', '', `Line ${i.line ?? '?'} · ${i.type}`));
-
         const cp = el('button', 'ghost', 'Copy fix');
         cp.onclick = ev => {
           ev.stopPropagation();
           navigator.clipboard.writeText(i.patch.filter(p => p.sign === '+').map(p => p.text).join('\n'));
           cp.textContent = 'Copied';
+          setTimeout(() => cp.textContent = 'Copy fix', 1400);
         };
-        hd.append(cp);
-        fx.append(hd);
-
-        if (!i.patch.length) {
-          fx.append(el('pre', '', i.source || ''), el('div', 'warn', 'No automatic fix for this one. Use "How to fix" above.'));
-        }
+        hd.append(cp); fx.append(hd);
+        if (!i.patch.length) fx.append(el('pre', '', i.source || ''), el('div', 'warn', 'No automatic fix for this one. Use "How to fix" above.'));
         i.patch.forEach(p => fx.append(el('pre', p.sign === '-' ? 'm' : 'p', p.sign + ' ' + p.text)));
-        if (i.hides_crash) {
-          fx.append(el('div', 'warn', 'This stops the crash, but it uses a stand-in value (0 or None). Check it is the answer you really want.'));
-        }
-        fx.onclick = () => select(i.id, 'fix', (S.lm[i.line] || [i.id]));
+        if (i.hides_crash) fx.append(el('div', 'warn', 'This stops the crash, but it uses a stand-in value (0 or None). Check it is the answer you really want.'));
+        fx.onclick = () => select(i.id, 'fix', S.lm[i.line] || [i.id]);
         f.append(fx);
       });
 
       showMetrics(r.metrics_data);
-      const sm = r.summary || {};
-      const v = $('#vd');
+      const sm = r.summary || {}, v = $('#vd');
       v.textContent = sm.verdict || '';
       v.style.background = VC[sm.verdict] || 'var(--mute)';
-
+      popVerdict();
       const t = $('#sumTxt');
       t.innerHTML = '';
       t.append(el('b', '', `${sm.total} issue(s) found, ${sm.fixed} fixed, ${sm.unfixed} not fixed. `), document.createTextNode(sm.detail || ''), el('br'));
       Object.entries(sm.by_type || {}).forEach(([k, n]) => t.append(el('span', 'chip', `${k} ×${n}`)));
-      const first = S.issues[0];
-      if (first) t.querySelectorAll('.chip').forEach((c, k) => c.style.setProperty('--c', 'var(--ink)'));
     }
 
     function showMetrics(m) {
       const b = $('#met');
       b.innerHTML = '';
       if (!m) return;
-
-      [
-        ['Scan time', m.scan_ms + ' ms'],
-        ['Code run time', m.run_ms ? m.run_ms + ' ms' : 'not run'],
-        ['Energy (estimate)', '≈ ' + m.est_energy_mj + ' mJ'],
-        ['CO₂ (CodeCarbon)', m.codecarbon ? m.emissions_mg + ' mg' : 'off']
-      ].forEach(([k, v]) => {
-        const d = el('div');
-        d.append(document.createTextNode(k + ' '), el('b', '', v));
-        b.append(d);
-      });
-
+      [['Scan time', m.scan_ms + ' ms'], ['Code run time', m.run_ms ? m.run_ms + ' ms' : 'not run'],
+       ['Energy (estimate)', '≈ ' + m.est_energy_mj + ' mJ'], ['CO₂ (CodeCarbon)', m.codecarbon ? m.emissions_mg + ' mg' : 'off']]
+        .forEach(([k, v]) => { const d = el('div'); d.append(document.createTextNode(k + ' '), el('b', '', v)); b.append(d); });
       b.title = 'Energy is an estimate: mean package power (' + m.power_w + ' W, from powermetrics) x scan time. It was not metered during this scan.';
     }
 
@@ -420,59 +459,57 @@
       group = group || [id];
       document.querySelectorAll('.card, .fx').forEach(e => e.classList.toggle('active', group.includes(+e.dataset.id)));
       const iss = S.issues.find(i => i.id === id);
-      document.querySelectorAll('.ln').forEach(e => e.classList.toggle('active', iss && +e.dataset.line === iss.line));
-
       ['.card', '.fx'].forEach((k, n) => {
-        if (from !== ['corr', 'fix'][n]) {
-          document.querySelector(`${k}[data-id="${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (from !== ['corr', 'fix'][n]) document.querySelector(`${k}[data-id="${id}"]`)?.scrollIntoView({ behavior:'smooth', block:'center' });
       });
-
-      if (from !== 'code') {
-        document.querySelector(`.ln[data-line="${iss?.line}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (!S.editing) {
+        document.querySelectorAll('.ln').forEach(e => e.classList.toggle('active', iss && +e.dataset.line === iss.line));
+        if (from !== 'code') document.querySelector(`.ln[data-line="${iss?.line}"]`)?.scrollIntoView({ behavior:'smooth', block:'center' });
       }
     }
 
-    function showTab(t) {
-      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
-      $('#fixPane').classList.toggle('on', t === 'fix');
-      $('#codePane').classList.toggle('on', t === 'code');
+    /* ---------- output tab ---------- */
+    function setOutput(label, text, isErr) {
+      $('#outLabel').textContent = label;
+      $('#term').textContent = text;
+      $('#term').classList.toggle('err', !!isErr);
+      $('#term').classList.remove('fade'); void $('#term').offsetWidth; $('#term').classList.add('fade');
+      if (!$('#outPane').classList.contains('on') && text !== EMPTY_OUT) $('#outPip').hidden = false;   // new output waiting
     }
+    function clearOutput() { setOutput('Output', EMPTY_OUT); $('#outPip').hidden = true; }
+    $('#outClear').onclick = clearOutput;
 
-    document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.t));
-
-    $('#runBtn').onclick = async () => {
-      $('#term').textContent = 'Running...';
+    // One run function for both code sources; the result always lands in the Output tab.
+    async function runCode(src, label) {
+      showTab('out');
+      setOutput(label, 'Running...');
       try {
-        $('#term').textContent = '> ' + (await post('/execute', { code: $('#fixed').value })).output;
-      } catch (e) {
-        $('#term').textContent = 'Error: ' + e.message;
-      }
-    };
-
-    $('#saveBtn').onclick = async () => {
-      if (!S.file || !$('#fixed').value) return;
+        const out = (await post('/execute', { code:src })).output;
+        setOutput(label, out, /CRASH DURING EXECUTION|BLOCKED|Sandbox failure/.test(out));
+      } catch (e) { setOutput(label, 'Error: ' + e.message, true); }
+    }
+    $('#runBtn').onclick = () => runCode(S.editing ? $('#editor').value : S.code, 'Output: ' + (S.file || 'your code'));
+    async function save(code, btn) {
+      if (!S.file || !code.trim()) return;
       try {
-        const d = await post('/save', { filename: S.file, code: $('#fixed').value });
-        $('#term').textContent = 'Saved as ' + d.new_filename;
+        const d = await post('/save', { filename:S.file, code });
+        if (code === S.code) { S.dirty = false; $('#saveBtn').disabled = true; }
+        const old = btn.textContent;
+        btn.textContent = 'Saved: ' + d.new_filename;
+        setTimeout(() => btn.textContent = old, 2200);
         loadFiles();
-      } catch (e) {
-        $('#term').textContent = 'Could not save: ' + e.message;
-      }
-    };
+      } catch (e) { $('#sumTxt').textContent = 'Could not save: ' + e.message; }
+    }
+    $('#saveBtn').onclick = () => save(S.code, $('#saveBtn'));
 
+    /* ---------- menu / upload ---------- */
     $('#menuBtn').onclick = () => $('#menu').classList.toggle('open');
     $('#upBtn').onclick = () => $('#upIn').click();
-
     $('#upIn').onchange = async e => {
       const f = e.target.files[0];
       if (!f) return;
-      try {
-        const d = await post('/upload', { filename: f.name, code: await f.text() });
-        await pick(d.filename);
-      } catch (x) {
-        $('#fname').textContent = 'Upload failed: ' + x.message;
-      }
+      try { const d = await post('/upload', { filename:f.name, code:await f.text() }); await pick(d.filename); }
+      catch (x) { $('#fname').textContent = 'Upload failed: ' + x.message; }
       e.target.value = '';
     };
 

@@ -2,8 +2,8 @@
 
 IntelliFix is a local Flask web app for diagnosing and repairing Python code.
 It combines a small set of static checks, subprocess-based execution, readable
-error explanations, and rule-based automatic fixes. It does not use an AI
-model: explanations and fixes are deterministic rules.
+error explanations, and rule-based automatic fixes. It does not use an AI model:
+explanations and fixes are deterministic rules.
 
 ## What it does
 
