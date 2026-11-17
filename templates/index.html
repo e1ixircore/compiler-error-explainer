@@ -104,6 +104,14 @@
     .fx .warn {background:#fef9ec;color:#92400e;padding:7px 12px;font-size:13px;}
     .fx button {padding:3px 10px;font-size:12px;}
 
+    .modal {position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:20px;background:rgba(28,25,23,.4);}
+    .modal-card {width:min(100%,380px);padding:22px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 12px 40px rgba(28,25,23,.2);}
+    .modal-card h2 {padding:0 0 8px;border:0;background:transparent;}
+    .modal-card p {margin-bottom:14px;color:var(--mute);}
+    .modal-card label {display:block;margin-bottom:5px;font-weight:600;}
+    .modal-card input {width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;font:14px var(--body);}
+    .modal-actions {display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+
     /* output toolbar */
     .bar {display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:#fcfbf9;font-family:var(--head);font-size:13px;font-weight:700;}
     .bar .row {display:flex;gap:8px;}
@@ -157,6 +165,7 @@
     <div id="topBar">
       <div id="fname">Pick a test case from the menu to begin.</div>
       <div id="codeBtns">
+        <button id="newBtn" class="ghost">New</button>
         <button id="applyBtn" class="ghost" disabled title="Load the auto-fixed code into the editor">Apply fixes</button>
         <button id="editBtn" class="ghost" disabled>Edit</button>
         <button id="runBtn" class="ghost" disabled>Run</button>
@@ -209,6 +218,18 @@
       <div id="met"></div>
     </div>
   </section>
+  <div class="modal" id="saveDialog" hidden>
+    <form class="modal-card" id="saveForm" role="dialog" aria-modal="true" aria-labelledby="saveTitle">
+      <h2 id="saveTitle">Save new file</h2>
+      <p>The file will be saved in the project and added to the files menu.</p>
+      <label for="saveName">Filename</label>
+      <input id="saveName" maxlength="64" value="my_program" autocomplete="off" required>
+      <div class="modal-actions">
+        <button type="button" class="ghost" id="saveCancel">Cancel</button>
+        <button type="submit" id="saveConfirm">Save file</button>
+      </div>
+    </form>
+  </div>
 
   <script>
     const $ = s => document.querySelector(s);
@@ -221,7 +242,7 @@
     const EMPTY_F = '<p class="empty">Suggested fixes appear here.</p>';
     const EMPTY_OUT = "Press Run (top of the code panel) to see the program's output here.";
 
-    let S = { file:null, code:'', fixed:'', issues:[], sec:[], blocked:false, lm:{}, editing:false, dirty:false };
+    let S = { file:null, newFile:false, code:'', fixed:'', issues:[], sec:[], blocked:false, lm:{}, editing:false, dirty:false };
 
     function el(t, c, x) { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
 
@@ -257,13 +278,33 @@
     async function pick(n) {
       try {
         const d = await j('/source?filename=' + encodeURIComponent(n));
-        S.file = n; S.code = d.code;
+        S.file = n; S.newFile = false; S.code = d.code;
         reset();
         $('#fname').textContent = n;
+        $('#editBtn').hidden = false;
         ['#scanBtn', '#editBtn', '#runBtn'].forEach(s => $(s).disabled = false);
         $('#menu').classList.remove('open');
         paint(); loadFiles();
       } catch (e) { $('#fname').textContent = 'Could not load file: ' + e.message; }
+    }
+
+    function startNew() {
+      S.file = null;
+      S.newFile = true;
+      S.code = '';
+      reset();
+      S.editing = true;
+      $('#fname').textContent = 'Untitled (unsaved)';
+      $('#code').hidden = true;
+      $('#editor').hidden = false;
+      $('#editor').value = '';
+      $('#editBtn').hidden = true;
+      $('#scanBtn').disabled = false;
+      $('#runBtn').disabled = false;
+      $('#saveBtn').disabled = false;
+      $('#menu').classList.remove('open');
+      $('#sumTxt').textContent = 'Type code here, then scan, run, or save your file.';
+      $('#editor').focus();
     }
 
     // Re-trigger the CSS pop animation each time the verdict changes.
@@ -326,7 +367,10 @@
       S.code = code; S.dirty = true; S.issues = []; S.sec = []; S.blocked = false; S.fixed = '';
       updateApply();
       clearResults();
+      clearOutput();
       $('#scanBtn').textContent = 'Re-scan';
+      $('#scanBtn').disabled = false;
+      $('#saveBtn').disabled = false;
       const v = $('#vd'); v.textContent = 'Edited'; v.style.background = 'var(--warn)'; popVerdict();
       $('#sumTxt').textContent = msg;
       paint();
@@ -360,6 +404,9 @@
       const t = e.target, s = t.selectionStart;
       t.value = t.value.slice(0, s) + '    ' + t.value.slice(t.selectionEnd);
       t.selectionStart = t.selectionEnd = s + 4;
+    });
+    $('#editor').addEventListener('input', () => {
+      if (S.newFile) setCode($('#editor').value, 'Code updated. Scan or run it, or save it as a new file.');
     });
 
     /* ---------- scan ---------- */
@@ -490,17 +537,46 @@
     }
     $('#runBtn').onclick = () => runCode(S.editing ? $('#editor').value : S.code, 'Output: ' + (S.file || 'your code'));
     async function save(code, btn) {
-      if (!S.file || !code.trim()) return;
+      if (!S.file && !S.newFile) return;
+      if (S.newFile) {
+        $('#saveDialog').hidden = false;
+        $('#saveName').focus();
+        $('#saveName').select();
+        return;
+      }
       try {
         const d = await post('/save', { filename:S.file, code });
         if (code === S.code) { S.dirty = false; $('#saveBtn').disabled = true; }
         const old = btn.textContent;
         btn.textContent = 'Saved: ' + d.new_filename;
         setTimeout(() => btn.textContent = old, 2200);
-        loadFiles();
+        await loadFiles();
       } catch (e) { $('#sumTxt').textContent = 'Could not save: ' + e.message; }
     }
     $('#saveBtn').onclick = () => save(S.code, $('#saveBtn'));
+    $('#saveCancel').onclick = () => { $('#saveDialog').hidden = true; };
+    $('#saveForm').onsubmit = async e => {
+      e.preventDefault();
+      try {
+        const d = await post('/save', { filename:$('#saveName').value, code:S.code, create:true });
+        S.file = d.new_filename;
+        S.newFile = false;
+        S.editing = false;
+        S.dirty = false;
+        $('#fname').textContent = S.file;
+        $('#editor').hidden = true;
+        $('#code').hidden = false;
+        $('#editBtn').hidden = false;
+        $('#editBtn').disabled = false;
+        $('#editBtn').textContent = 'Edit';
+        $('#editBtn').classList.add('ghost');
+        $('#saveBtn').disabled = true;
+        $('#saveDialog').hidden = true;
+        paint();
+        await loadFiles();
+      } catch (e) { $('#sumTxt').textContent = 'Could not save: ' + e.message; }
+    };
+    $('#newBtn').onclick = startNew;
 
     /* ---------- menu / upload ---------- */
     $('#menuBtn').onclick = () => $('#menu').classList.toggle('open');
@@ -513,7 +589,8 @@
       e.target.value = '';
     };
 
-    loadFiles();
+    startNew();
+    loadFiles().catch(e => { $('#sumTxt').textContent = 'Could not load saved files: ' + e.message; });
   </script>
 </body>
 </html>

@@ -529,16 +529,35 @@ def execute_code():
 @app.route('/api/save', methods=['POST'])
 def save_file():
     data = request.json or {}
-    original_filename = safe_name(data.get('filename'))   # must be an existing whitelisted file
     code = data.get('code')
-
-    if not original_filename or not code:
-        return jsonify({"error": "Missing or invalid filename/code"}), 400
+    if not isinstance(code, str):
+        return jsonify({"error": "Code must be text"}), 400
     if len(code.encode("utf-8", "ignore")) > MAX_CODE_BYTES:
         return jsonify({"error": "Input too large"}), 413
     # Never persist code with critical findings.
     if scan(code)[2]:
         return jsonify({"error": "Refusing to save code with critical security findings"}), 400
+
+    if data.get('create') is True:
+        requested_name = data.get('filename')
+        if not isinstance(requested_name, str):
+            return jsonify({"error": "Enter a valid filename"}), 400
+        stem = requested_name.strip()
+        if stem.endswith(".py"):
+            stem = stem[:-3]
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,60}", stem):
+            return jsonify({"error": "Use 1-60 letters, numbers, underscores, or hyphens for the filename"}), 400
+        new_filename = f"test_user_{stem}.py"
+        try:
+            with open(new_filename, "x", encoding="utf-8") as f:
+                f.write(code)
+        except FileExistsError:
+            return jsonify({"error": f"{new_filename} already exists"}), 409
+        return jsonify({"status": "success", "new_filename": new_filename})
+
+    original_filename = safe_name(data.get('filename'))   # must be an existing whitelisted file
+    if not original_filename:
+        return jsonify({"error": "Missing or invalid filename/code"}), 400
 
     # Always write to <name>_fixed.py so the original test file is never overwritten.
     new_filename = (original_filename if original_filename.endswith("_fixed.py")

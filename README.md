@@ -43,6 +43,9 @@ To stop the server, press `Ctrl+C` in the terminal.
 
 ## Using the web app
 
+- The studio opens with a blank, unsaved file. Type code, then scan or run it; use
+  **Save** to name and save it as a new file without replacing a sample.
+- Choose **New** at any time to start another blank file.
 - Select a listed sample file, or upload a `.py` file.
 - Choose **Scan & Diagnose Error** to analyze it and view the diagnostic,
   suggested code, and measured execution metrics.
@@ -80,7 +83,7 @@ The Flask app also exposes these routes:
 | `POST /api/file` | Read an allowed file (used by the web UI) |
 | `POST /api/analyze` | Security scan, diagnose, explain, and suggest a fix |
 | `POST /api/execute` | Security scan and execute submitted code |
-| `POST /api/save` | Save code as a separate fixed file |
+| `POST /api/save` | Save code as a separate fixed file, or create a named new file |
 | `POST /api/upload` | Save an uploaded Python file without running it |
 | `GET /api/analytics` | Return illustrative analytics data |
 
