@@ -11,6 +11,8 @@ import os
 import statistics
 import time
 
+from error_extractor import classify_stage   # does not import app, so no circular import
+
 # NOTE: no `from app import ...` here. app.py imports THIS module for the analytics dashboard, so the
 # pipeline functions are passed in (`api`) instead. `api` is any object exposing:
 #   read_source, extract_error, repair_loop, fix_is_safe, verify_fix   (app.py has all five)
@@ -62,7 +64,6 @@ def bench_file(api, name, repeats=REPEATS):
         verdict, v = timed(verify_fix, code, fixed)        # closed-loop verification
         t_detect.append(d); t_repair.append(r); t_verify.append(v)
 
-    tb = ir.get("traceback") or ""
     patches = sum(1 for h in history if h.get("result") == "patched")
     total_ms = statistics.median(t_detect) + statistics.median(t_repair) + statistics.median(t_verify)
     return {
@@ -70,7 +71,7 @@ def bench_file(api, name, repeats=REPEATS):
         "lines": len(code.split("\n")),
         "truth": GROUND_TRUTH.get(name, "?"),
         "detected": ir.get("error_type"),
-        "stage": "static" if tb.startswith("(static") else "runtime",
+        "stage": classify_stage(ir),     # parser | static | runtime
         "patches": patches,
         "verdict": verdict["verdict"],
         "detail": verdict["detail"],
@@ -126,7 +127,7 @@ def main():
           f"(~{statistics.median(r['est_energy_mJ'] for r in rows):.0f} mJ estimated at {PKG_POWER_W} W)")
 
     # Green IT insight: static detection never launches a subprocess, runtime detection does.
-    for stage in ("static", "runtime"):
+    for stage in ("parser", "static", "runtime"):
         d = [r["detect_ms"] for r in rows if r["stage"] == stage]
         if d:
             print(f"Detection latency, {stage:<7}: median {statistics.median(d):.2f} ms over {len(d)} file(s)")
