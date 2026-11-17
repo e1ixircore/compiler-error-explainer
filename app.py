@@ -10,7 +10,7 @@ import re
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
-from error_extractor import extract_error, run_code   # run_code = your sandbox
+from error_extractor import extract_error, run_code, classify_stage   # run_code = your sandbox
 from nlp_explainer import NLPExplainer
 from ir_generator import IRGenerator
 from security_analyzer import SecurityAnalyzer
@@ -177,9 +177,7 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
             history.append({"step": i + 1, "result": "clean"})
             break
         tb = ir_dict.get("traceback") or ""
-        stage = "static" if tb.startswith("(static") else "runtime"
-        if ir_dict["error_type"] == "SyntaxError":
-            stage = "parser"             # rejected before any AST existed
+        stage = classify_stage(ir_dict)  # parser | static | runtime (IndentationError is parser too)
         err = CompilerError(ir_dict["error_type"], ir_dict.get("error_message"),
                             ir_dict.get("line_number"), stage, tb)
         ir = json.loads(IRGenerator(current, err).generate_ir())   # the IR: one JSON payload PER error
@@ -449,7 +447,7 @@ def analyze_code():
         error_type = ir_dict["error_type"]
         tb = ir_dict.get("traceback") or ""
         # Category = which compiler stage found it. Useful field for your IR diagram.
-        category = "static" if tb.startswith("(static") else "runtime"
+        category = classify_stage(ir_dict)
 
         fixed_code, repair_history = repair_loop(code, first_ir=ir_dict)   # agent: explain + patch each issue
         if not fix_is_safe(code, fixed_code):

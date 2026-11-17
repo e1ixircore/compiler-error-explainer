@@ -50,6 +50,20 @@ sys.stdout.write(json.dumps(result))
 """
 
 
+def classify_stage(ir):
+    """Which compiler stage FOUND this error: 'parser' | 'static' | 'runtime'.
+    One definition used by app.py, fix_benchmark.py and the dashboard, so they cannot disagree.
+    The traceback prefix is written by extract_error itself:
+        '(parser: ...'  panic-mode recovery after ast.parse failed (no AST existed)
+        '(static ...'   StaticChecker, or the nesting abort (code was not executed)
+        anything else   a real traceback from the sandbox (code was executed)
+    Syntax/Indentation errors are always parser-stage, whatever the prefix."""
+    tb = (ir or {}).get("traceback") or ""
+    if tb.startswith("(parser") or (ir or {}).get("error_type") in ("SyntaxError", "IndentationError"):
+        return "parser"
+    return "static" if tb.startswith("(static") else "runtime"
+
+
 def run_code(code, timeout=5):
     """Run code in a child process with a hard time limit."""
     try:

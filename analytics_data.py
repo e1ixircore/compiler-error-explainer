@@ -117,7 +117,7 @@ def build_payload(rows=None):
     label = lambda r: f"{r['file']} ({r['lines']} lines)"
 
     stage = {}
-    for st in ("static", "runtime"):
+    for st in ("parser", "static", "runtime"):
         d = [r["detect_ms"] for r in rows if r["stage"] == st]
         stage[st] = {"median_ms": round(statistics.median(d), 3) if d else None, "n": len(d)}
 

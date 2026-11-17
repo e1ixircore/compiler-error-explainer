@@ -4,39 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eco Analytics - Compiler Error Analysis</title>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { 
-            color-scheme: light; 
-            --bg: #f6f8fa; 
-            --panel: #ffffff; 
-            --panel2: #f0f3f6; 
-            --border: #d0d7de; 
-            --accent: #2563eb; 
-            --text: #1f2328; 
-            --muted: #59636e; 
-        }
-        body { font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(--text); padding:40px; margin:0; }
-        .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; gap:20px; }
-        .header h1 { font-size:1.8rem; font-weight:700; margin:6px 0 0; }
-        .back-link { color:var(--accent); text-decoration:none; font-weight:600; display:flex; align-items:center; gap:8px; }
-        .meta { color:var(--muted); font-size:0.88rem; margin-bottom:26px; line-height:1.5; }
-        .btn { padding:10px 20px; border-radius:8px; border:none; font-weight:600; cursor:pointer; background:#2563eb; color:#fff; white-space:nowrap; }
-        .btn:disabled { opacity:.6; cursor:wait; }
-        .chart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(450px,1fr)); gap:25px; }
-        .chart-card { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:25px; box-shadow:0 4px 14px rgba(31, 35, 40, .06); }
-        .chart-card h3 { font-size:1.05rem; margin:0 0 6px; color:var(--text); font-weight:600; display:flex; justify-content:space-between; gap:10px; align-items:center; }
-        .src { font-size:.78rem; color:var(--muted); margin:0 0 14px; padding-bottom:12px; border-bottom:1px solid var(--border); line-height:1.4; }
-        .chart-container { position:relative; height:300px; width:100%; }
-        .badge { font-size:.68rem; font-weight:600; padding:2px 8px; border-radius:999px; background:#fef3c7; color:#92400e; white-space:nowrap; }
-        .badge.real { background:#dcfce7; color:#166534; }
-        .note { font-size:.82rem; color:var(--muted); margin-top:12px; line-height:1.5; }
-        table { width:100%; border-collapse:collapse; font-size:.85rem; }
-        th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); }
-        th { color:var(--muted); font-weight:600; }
-        .empty { background:var(--panel); border:1px dashed var(--border); border-radius:12px; padding:30px; color:var(--muted); }
-        .nm { background:var(--panel2); border-radius:10px; padding:14px 16px; font-size:.88rem; }
+        :root { color-scheme: light; --bg: #f8fafc; --panel: #ffffff; --panel2: #f1f5f9; --border: #cbd5e1; --text: #0f172a; --muted: #64748b; --accent: #2563eb; --accent-hover: #1d4ed8; --head: 'Epilogue', -apple-system, BlinkMacSystemFont, sans-serif; --body: 'Newsreader', Georgia, serif; --mono: 'IBM Plex Mono', monospace; }
+        body { font-family: var(--body); font-size: 15px; line-height: 1.55; background: var(--bg); color: var(--text); padding: 40px; margin: 0; }
+        h1, h2, h3, h4, .back-link, .btn, .badge, th { font-family: var(--head); }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 20px; }
+        .header h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 0; }
+        .back-link { color: var(--accent); text-decoration: none; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 26px; line-height: 1.55; }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; font-size: 0.88rem; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; white-space: nowrap; }
+        .btn:hover:not(:disabled) { background: var(--accent-hover); }
+        .btn:disabled { opacity: .6; cursor: wait; }
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; }
+        .chart-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 25px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); }
+        .chart-card h3 { font-size: 1.02rem; letter-spacing: -0.01em; margin: 0 0 6px; color: var(--text); font-weight: 600; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+        .src { font-size: 0.85rem; color: var(--muted); margin: 0 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); line-height: 1.45; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .badge { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.03em; padding: 3px 9px; border-radius: 999px; background: #fef3c7; color: #92400e; white-space: nowrap; }
+        .badge.real { background: #dcfce7; color: #166534; }
+        .note { font-size: 0.88rem; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+        th { color: var(--muted); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+        td { font-family: var(--mono); font-size: 0.8rem; }
+        .empty { background: var(--panel); border: 1px dashed var(--border); border-radius: 12px; padding: 30px; color: var(--muted); }
+        .nm { background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 0.92rem; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -56,25 +52,37 @@
     <div id="content"></div>
 
     <script>
-        Chart.defaults.color = '#8d98aa';
-        Chart.defaults.borderColor = '#2b3442';
-        Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.borderColor = '#e2e8f0';
+        Chart.defaults.font.family = "'Epilogue', -apple-system, BlinkMacSystemFont, sans-serif";
         const charts = {};
-        const COLORS = { detect:'#2563EB', repair:'#10B981', verify:'#F59E0B',
-                         CRITICAL:'#B91C1C', HIGH:'#EF4444', MEDIUM:'#F59E0B', LOW:'#93C5FD' };
-        const VERDICT_COLORS = { 'VERIFIED':'#10B981', 'PARTIAL':'#F59E0B', 'REJECTED':'#EF4444', 'NO FIX GENERATED':'#9CA3AF' };
+        const COLORS = {
+            detect: '#2563EB', repair: '#10B981', verify: '#F59E0B',
+            CRITICAL: '#B91C1C', HIGH: '#EF4444', MEDIUM: '#F59E0B', LOW: '#93C5FD'
+        };
+        const VERDICT_COLORS = {
+            'VERIFIED': '#10B981',
+            'PARTIAL': '#F59E0B',
+            'REJECTED': '#EF4444',
+            'NO FIX GENERATED': '#9CA3AF'
+        };
 
         function el(tag, props = {}, children = []) {
             const n = document.createElement(tag);
-            Object.entries(props).forEach(([k, v]) => { if (k === 'text') n.textContent = v; else n.setAttribute(k, v); });
+            Object.entries(props).forEach(([k, v]) => {
+                if (k === 'text') n.textContent = v;
+                else n.setAttribute(k, v);
+            });
             children.forEach(c => n.appendChild(c));
             return n;
         }
 
         // A card = title (+ badge), a "Source:" line stating where the numbers come from, and a body.
         function card(id, title, source, estimate, extraBody) {
-            const h3 = el('h3', {}, [el('span', { text: title }),
-                el('span', { class: estimate ? 'badge' : 'badge real', text: estimate ? 'ESTIMATE' : 'MEASURED' })]);
+            const h3 = el('h3', {}, [
+                el('span', { text: title }),
+                el('span', { class: estimate ? 'badge' : 'badge real', text: estimate ? 'ESTIMATE' : 'MEASURED' })
+            ]);
             const body = extraBody || el('div', { class: 'chart-container' }, [el('canvas', { id })]);
             return el('div', { class: 'chart-card' }, [h3, el('p', { class: 'src', text: 'Source: ' + source }), body]);
         }
@@ -85,10 +93,38 @@
         }
 
         const baseOpts = (yTitle, stacked) => ({
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: stacked }, tooltip: { backgroundColor: '#0d1117', borderColor: '#2b3442', borderWidth: 1, padding: 12, borderRadius: 8 } },
-            scales: { y: { beginAtZero: true, stacked: !!stacked, title: { display: !!yTitle, text: yTitle }, grid: { color: '#2b3442' } },
-                      x: { stacked: !!stacked, grid: { display: false }, ticks: { maxRotation: 60, minRotation: 30, autoSkip: false, font: { size: 10 } } } }
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: stacked },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#f1f5f9',
+                    borderColor: '#cbd5e1',
+                    borderWidth: 1,
+                    padding: 12,
+                    borderRadius: 8
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    stacked: !!stacked,
+                    title: { display: !!yTitle, text: yTitle },
+                    grid: { color: '#e2e8f0' }
+                },
+                x: {
+                    stacked: !!stacked,
+                    grid: { display: false },
+                    ticks: {
+                        maxRotation: 60,
+                        minRotation: 30,
+                        autoSkip: false,
+                        font: { family: "'IBM Plex Mono', monospace", size: 10 }
+                    }
+                }
+            }
         });
 
         function render(d) {
@@ -137,10 +173,13 @@
                 .map(t => el('th', { text: t }))));
             d.codecarbon.forEach(r => tbl.appendChild(el('tr', {}, [r.timestamp, r.duration_s, r.emissions_mg, r.energy_mwh, r.cpu_power_w]
                 .map(t => el('td', { text: String(t) })))));
-            const ccBody = el('div', {}, d.codecarbon.length ? [tbl, el('p', { class: 'note',
-                text: 'CodeCarbon ran in "' + d.codecarbon[0].tracking_mode + '" mode: its CPU power is a constant model value, ' +
-                      'not a reading, so it does not match the powermetrics samples. Durations of about 5 s match the sandbox timeout, ' +
-                      'so these rows look like runs of test9.py (an infinite loop).' })]
+            const ccBody = el('div', {}, d.codecarbon.length
+                ? [tbl, el('p', {
+                    class: 'note',
+                    text: 'CodeCarbon ran in "' + d.codecarbon[0].tracking_mode + '" mode: its CPU power is a constant model value, ' +
+                          'not a reading, so it does not match the powermetrics samples. Durations of about 5 s match the sandbox timeout, ' +
+                          'so these rows look like runs of test9.py (an infinite loop).'
+                })]
                 : [el('p', { class: 'note', text: 'No emissions.csv found. Run the app with USE_CODECARBON=1 to create it.' })]);
             grid.appendChild(card('c-cc', 'CodeCarbon runs', 'emissions.csv, rows written by CodeCarbon itself.', false, ccBody));
             // 8. security
@@ -156,41 +195,105 @@
                 el('div', { class: 'nm' }, d.not_measured.map(t => el('div', { text: t })))));
 
             // ---- draw charts ----
-            chart('c-time', { type: 'bar', data: { labels: d.latency.labels, datasets: [
-                { label: 'Detect', data: d.latency.detect, backgroundColor: COLORS.detect },
-                { label: 'Repair loop', data: d.latency.repair, backgroundColor: COLORS.repair },
-                { label: 'Verify', data: d.latency.verify, backgroundColor: COLORS.verify } ] },
-                options: baseOpts('ms', true) });
+            chart('c-time', {
+                type: 'bar',
+                data: {
+                    labels: d.latency.labels,
+                    datasets: [
+                        { label: 'Detect', data: d.latency.detect, backgroundColor: COLORS.detect },
+                        { label: 'Repair loop', data: d.latency.repair, backgroundColor: COLORS.repair },
+                        { label: 'Verify', data: d.latency.verify, backgroundColor: COLORS.verify }
+                    ]
+                },
+                options: baseOpts('ms', true)
+            });
 
-            chart('c-stage', { type: 'bar', data: { labels: ['Parser (' + d.stage.parser.n + ' files)', 'Static (' + d.stage.static.n + ' files)', 'Runtime (' + d.stage.runtime.n + ' files)'],
-                datasets: [{ data: [d.stage.parser.median_ms, d.stage.static.median_ms, d.stage.runtime.median_ms],
-                             backgroundColor: ['#7c3aed66', '#10B98166', '#2563EB66'], borderColor: ['#7c3aed', '#10B981', '#2563EB'], borderWidth: 2, borderRadius: 8 }] },
-                options: baseOpts('ms (median)', false) });
+            chart('c-stage', {
+                type: 'bar',
+                data: {
+                    labels: ['Parser (' + d.stage.parser.n + ' files)', 'Static (' + d.stage.static.n + ' files)', 'Runtime (' + d.stage.runtime.n + ' files)'],
+                    datasets: [{
+                        data: [d.stage.parser.median_ms, d.stage.static.median_ms, d.stage.runtime.median_ms],
+                        backgroundColor: ['#7c3aed66', '#10B98166', '#2563EB66'],
+                        borderColor: ['#7c3aed', '#10B981', '#2563EB'],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: baseOpts('ms (median)', false)
+            });
 
             const vk = Object.keys(d.outcomes.verdicts);
-            chart('c-outcome', { type: 'doughnut', data: { labels: vk.map(k => k + ' (' + d.outcomes.verdicts[k] + ')'),
-                datasets: [{ data: vk.map(k => d.outcomes.verdicts[k]), backgroundColor: vk.map(k => VERDICT_COLORS[k] || '#6B7280') }] },
-                options: { responsive: true, maintainAspectRatio: false,
-                           plugins: { title: { display: true, text: 'Correct error detected: ' + d.outcomes.detected_ok + ' / ' + d.outcomes.total } } } });
+            chart('c-outcome', {
+                type: 'doughnut',
+                data: {
+                    labels: vk.map(k => k + ' (' + d.outcomes.verdicts[k] + ')'),
+                    datasets: [{
+                        data: vk.map(k => d.outcomes.verdicts[k]),
+                        backgroundColor: vk.map(k => VERDICT_COLORS[k] || '#6B7280')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Correct error detected: ' + d.outcomes.detected_ok + ' / ' + d.outcomes.total }
+                    }
+                }
+            });
 
-            chart('c-patches', { type: 'bar', data: { labels: d.patches.labels, datasets: [{ data: d.patches.values,
-                backgroundColor: '#8B5CF644', borderColor: '#8B5CF6', borderWidth: 2, borderRadius: 8 }] },
-                options: baseOpts('patches', false) });
+            chart('c-patches', {
+                type: 'bar',
+                data: {
+                    labels: d.patches.labels,
+                    datasets: [{
+                        data: d.patches.values,
+                        backgroundColor: '#8B5CF644',
+                        borderColor: '#8B5CF6',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: baseOpts('patches', false)
+            });
 
-            chart('c-energy', { type: 'bar', data: { labels: d.energy.labels, datasets: [{ data: d.energy.mJ,
-                backgroundColor: '#F59E0B44', borderColor: '#F59E0B', borderWidth: 2, borderRadius: 8 }] },
-                options: baseOpts('mJ (estimate)', false) });
+            chart('c-energy', {
+                type: 'bar',
+                data: {
+                    labels: d.energy.labels,
+                    datasets: [{
+                        data: d.energy.mJ,
+                        backgroundColor: '#F59E0B44',
+                        borderColor: '#F59E0B',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: baseOpts('mJ (estimate)', false)
+            });
 
             if (d.power.watts.length) {
-                chart('c-power', { type: 'line', data: { labels: d.power.labels, datasets: [
-                    { label: 'Package power', data: d.power.watts, borderColor: '#EC4899', backgroundColor: '#EC489922', fill: true, tension: .25 },
-                    { label: 'Mean (' + d.power.mean_w + ' W)', data: d.power.watts.map(() => d.power.mean_w), borderColor: '#6B7280', borderDash: [6, 4], pointRadius: 0 } ] },
-                    options: { ...baseOpts('W', false), plugins: { legend: { display: true } } } });
+                chart('c-power', {
+                    type: 'line',
+                    data: {
+                        labels: d.power.labels,
+                        datasets: [
+                            { label: 'Package power', data: d.power.watts, borderColor: '#EC4899', backgroundColor: '#EC489922', fill: true, tension: .25 },
+                            { label: 'Mean (' + d.power.mean_w + ' W)', data: d.power.watts.map(() => d.power.mean_w), borderColor: '#6B7280', borderDash: [6, 4], pointRadius: 0 }
+                        ]
+                    },
+                    options: { ...baseOpts('W', false), plugins: { legend: { display: true } } }
+                });
             }
 
-            chart('c-sec', { type: 'bar', data: { labels: d.security.labels,
-                datasets: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(s => ({ label: s, data: d.security[s], backgroundColor: COLORS[s] })) },
-                options: baseOpts('findings', true) });
+            chart('c-sec', {
+                type: 'bar',
+                data: {
+                    labels: d.security.labels,
+                    datasets: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(s => ({ label: s, data: d.security[s], backgroundColor: COLORS[s] }))
+                },
+                options: baseOpts('findings', true)
+            });
         }
 
         async function load(url, opts) {
@@ -201,13 +304,21 @@
         }
 
         document.getElementById('btn-refresh').onclick = async (e) => {
-            const b = e.target; b.disabled = true; b.textContent = 'Running benchmark...';
-            try { await load('/api/analytics/refresh', { method: 'POST' }); }
-            catch (err) { document.getElementById('meta').textContent = 'Benchmark failed: ' + err.message; }
-            b.disabled = false; b.textContent = 'Re-run benchmark';
+            const b = e.target;
+            b.disabled = true;
+            b.textContent = 'Running benchmark...';
+            try {
+                await load('/api/analytics/refresh', { method: 'POST' });
+            } catch (err) {
+                document.getElementById('meta').textContent = 'Benchmark failed: ' + err.message;
+            }
+            b.disabled = false;
+            b.textContent = 'Re-run benchmark';
         };
 
-        load('/api/analytics').catch(err => { document.getElementById('meta').textContent = 'Could not load analytics: ' + err.message; });
+        load('/api/analytics').catch(err => {
+            document.getElementById('meta').textContent = 'Could not load analytics: ' + err.message;
+        });
     </script>
 </body>
 </html>
