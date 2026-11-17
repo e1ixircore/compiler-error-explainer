@@ -7,21 +7,30 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { color-scheme:light; --bg:#f8fafc; --panel:#ffffff; --panel2:#f1f5f9; --border:#0f172a; --accent:#5b8cff; --text:#000000; --muted:#64748b; }
+        :root { 
+            color-scheme: light; 
+            --bg: #f6f8fa; 
+            --panel: #ffffff; 
+            --panel2: #f0f3f6; 
+            --border: #d0d7de; 
+            --accent: #2563eb; 
+            --text: #1f2328; 
+            --muted: #59636e; 
+        }
         body { font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(--text); padding:40px; margin:0; }
         .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; gap:20px; }
         .header h1 { font-size:1.8rem; font-weight:700; margin:6px 0 0; }
         .back-link { color:var(--accent); text-decoration:none; font-weight:600; display:flex; align-items:center; gap:8px; }
         .meta { color:var(--muted); font-size:0.88rem; margin-bottom:26px; line-height:1.5; }
-        .btn { padding:10px 20px; border-radius:8px; border:none; font-weight:600; cursor:pointer; background:#4a7bf0; color:#fff; white-space:nowrap; }
+        .btn { padding:10px 20px; border-radius:8px; border:none; font-weight:600; cursor:pointer; background:#2563eb; color:#fff; white-space:nowrap; }
         .btn:disabled { opacity:.6; cursor:wait; }
         .chart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(450px,1fr)); gap:25px; }
-        .chart-card { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:25px; box-shadow:0 4px 14px rgba(0,0,0,.45); }
+        .chart-card { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:25px; box-shadow:0 4px 14px rgba(31, 35, 40, .06); }
         .chart-card h3 { font-size:1.05rem; margin:0 0 6px; color:var(--text); font-weight:600; display:flex; justify-content:space-between; gap:10px; align-items:center; }
         .src { font-size:.78rem; color:var(--muted); margin:0 0 14px; padding-bottom:12px; border-bottom:1px solid var(--border); line-height:1.4; }
         .chart-container { position:relative; height:300px; width:100%; }
-        .badge { font-size:.68rem; font-weight:600; padding:2px 8px; border-radius:999px; background:#e3cdae; color:#e6a030; white-space:nowrap; }
-        .badge.real { background:#baf9d6; color:#42de76; }
+        .badge { font-size:.68rem; font-weight:600; padding:2px 8px; border-radius:999px; background:#fef3c7; color:#92400e; white-space:nowrap; }
+        .badge.real { background:#dcfce7; color:#166534; }
         .note { font-size:.82rem; color:var(--muted); margin-top:12px; line-height:1.5; }
         table { width:100%; border-collapse:collapse; font-size:.85rem; }
         th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); }
@@ -106,8 +115,8 @@
             grid.appendChild(card('c-time', 'Pipeline time per file (ms)',
                 'fix_benchmark.py, perf_counter around detect / repair loop / verify. Files ordered by size.', false));
             // 2. static vs runtime detection
-            grid.appendChild(card('c-stage', 'Detection latency: static vs runtime (ms)',
-                'Median detection time. Static analysis never starts a subprocess; runtime detection does.', false));
+            grid.appendChild(card('c-stage', 'Detection latency: parser vs static vs runtime (ms)',
+                'Median detection time. Parser and static stages never start a subprocess; runtime detection does.', false));
             // 3. outcomes
             grid.appendChild(card('c-outcome', 'Auto-fix outcome (verify_fix verdicts)',
                 'Each patch is re-analysed, security-scanned and re-run in the sandbox.', false));
@@ -153,9 +162,9 @@
                 { label: 'Verify', data: d.latency.verify, backgroundColor: COLORS.verify } ] },
                 options: baseOpts('ms', true) });
 
-            chart('c-stage', { type: 'bar', data: { labels: ['Static (' + d.stage.static.n + ' files)', 'Runtime (' + d.stage.runtime.n + ' files)'],
-                datasets: [{ data: [d.stage.static.median_ms, d.stage.runtime.median_ms],
-                             backgroundColor: ['#10B98166', '#2563EB66'], borderColor: ['#10B981', '#2563EB'], borderWidth: 2, borderRadius: 8 }] },
+            chart('c-stage', { type: 'bar', data: { labels: ['Parser (' + d.stage.parser.n + ' files)', 'Static (' + d.stage.static.n + ' files)', 'Runtime (' + d.stage.runtime.n + ' files)'],
+                datasets: [{ data: [d.stage.parser.median_ms, d.stage.static.median_ms, d.stage.runtime.median_ms],
+                             backgroundColor: ['#7c3aed66', '#10B98166', '#2563EB66'], borderColor: ['#7c3aed', '#10B981', '#2563EB'], borderWidth: 2, borderRadius: 8 }] },
                 options: baseOpts('ms (median)', false) });
 
             const vk = Object.keys(d.outcomes.verdicts);
