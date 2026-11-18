@@ -155,7 +155,8 @@ def extract_error(code):
         return ir
 
     tracker = None
-    if CODECARBON_AVAILABLE and os.environ.get("USE_CODECARBON") == "1":
+    if (CODECARBON_AVAILABLE and os.environ.get("USE_CODECARBON") == "1"
+            and os.environ.get("CODECARBON_SERVER_LIFETIME") != "1"):
         try:
             # Using log_level error to avoid noisy console outputs
             tracker = EmissionsTracker(save_to_file=True, log_level='error')

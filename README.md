@@ -59,15 +59,19 @@ prefix. Uploaded code is not executed until you explicitly analyze or run it.
 
 ## Metrics
 
-The analysis view reports the measured subprocess execution time. Emissions and
-energy are zero unless CodeCarbon is installed and tracking is enabled:
+The analysis view reports the measured subprocess execution time. To measure
+CodeCarbon emissions for the lifetime of the web server, install CodeCarbon
+in the active Python environment and start the GUI with:
 
 ```bash
 USE_CODECARBON=1 python gui.py
 ```
 
-CodeCarbon measurements depend on the host environment and may not be available
-for every run. The `/analytics` dashboard uses generated illustrative data; its
+The server prints its total measured emissions in mg CO2-eq when it exits
+(including when stopped with `Ctrl+C`). During this mode, CodeCarbon does not
+start a second overlapping tracker for each analysis. CodeCarbon measurements
+depend on the host environment and may be zero or unavailable for short runs.
+The `/analytics` dashboard reads CodeCarbon's output file; its other illustrative
 charts are not benchmark results or measurements of the current analysis.
 
 ## API routes

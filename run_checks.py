@@ -7,7 +7,9 @@ from error_extractor import extract_error
 
 cases = [(f, open(f, encoding="utf-8").read()) for f in
          ["test1.py", "test2.py", "test3.py", "test4.py", "test5.py", "test6.py", "test7.py",
-          "test8.py", "test_case_large.py", "test_security.py", "test9.py"]]
+          "test8.py", "test_case_large.py", "test_security.py", "testA.py", "testB.py", "testC.py",
+          "testD.py", "testE.py", "testF.py", "testG.py", "test_sec_alias.py", "test_sec_del.py", 
+          "test_sec_escape.py", "test_sec_notes.py", "test_sec_order.py"]]
 cases.append(("nested(20k)", "x = " + "+".join(["1"] * 20000)))            # nesting stress
 cases.append(("from-os-import", "from os import system\nsystem('echo hi')"))  # bypass check
 
