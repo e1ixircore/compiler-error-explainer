@@ -19,7 +19,7 @@ WHAT CHANGED (same 8 error types, many more variants of each):
   IndexError     : lst[10] | lst[i] | lst[i + 1] | negative positions
   ModuleNotFound : typo of a standard library (maths -> math) | import a as b | from a import b, c
                    | only the missing name in 'import os, missing'
-  ValueError     : int('3.5') | int('abc') | float('x') | int(input(...))
+  ValueError     : int('3.5') | int('abc') | int('seventeen') | float('x') | int(input(...))
 
 DESIGN RULES (kept from the original):
   * every patch edits ONLY the failing line (or inserts a declaration / import line)
@@ -35,6 +35,7 @@ import re
 import sys
 
 from static_analyzer import bound_names
+from word2number import w2n
 
 OPEN, CLOSE = "([{", ")]}"
 PAIR = dict(zip(OPEN, CLOSE))
@@ -897,6 +898,15 @@ class NLPExplainer:
                     (int if fn == "int" else float)(a.value); continue   # converts fine: not the culprit
                 except ValueError:
                     pass
+                if fn == "int":
+                    try:
+                        number = w2n.word_to_num(a.value)
+                    except ValueError:
+                        pass
+                    else:
+                        s, e = _span(line, n)
+                        edits.append((s, e, f"int({number})"))
+                        continue
             s, e = _span(line, n)
             arg = line[_span(line, a)[0]:_span(line, a)[1]]
             if fn == "int" and floaty:

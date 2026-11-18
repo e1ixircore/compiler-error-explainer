@@ -6,33 +6,40 @@
     <title>Eco Analytics - Compiler Error Analysis</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@500;600;700;800&family=Work+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { color-scheme: light; --bg: #f8fafc; --panel: #ffffff; --panel2: #f1f5f9; --border: #cbd5e1; --text: #0f172a; --muted: #64748b; --accent: #2563eb; --accent-hover: #1d4ed8; --head: 'Epilogue', -apple-system, BlinkMacSystemFont, sans-serif; --body: 'Newsreader', Georgia, serif; --mono: 'IBM Plex Mono', monospace; }
-        body { font-family: var(--body); font-size: 15px; line-height: 1.55; background: var(--bg); color: var(--text); padding: 40px; margin: 0; }
+        :root { color-scheme: light; --bg:#f6f4ef; --panel:#ffffff; --panel2:#efece6; --border:#dcd7cd; --text:#1c1917; --muted:#6b665e; --accent:#1b4332; --accent-hover:#143326; --accent-soft:#e6f0ec; --warn:#b45309; --head:'Manrope',-apple-system,BlinkMacSystemFont,sans-serif; --body:'Work Sans',-apple-system,BlinkMacSystemFont,sans-serif; --mono:'IBM Plex Mono',monospace; }
+        * { box-sizing: border-box; }
+        body { font: 14px/1.55 var(--body); background: var(--bg); color: var(--text); padding: 32px 40px 48px; margin: 0; }
         h1, h2, h3, h4, .back-link, .btn, .badge, th { font-family: var(--head); }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 20px; }
-        .header h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 0; }
-        .back-link { color: var(--accent); text-decoration: none; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .meta { color: var(--muted); font-size: 0.95rem; margin-bottom: 26px; line-height: 1.55; }
-        .btn { padding: 10px 20px; border-radius: 8px; border: none; font-size: 0.88rem; font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; white-space: nowrap; }
+        .header h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; margin: 6px 0 0; }
+        .back-link { color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; }
+        .back-link:hover { text-decoration: underline; }
+        .meta { color: var(--muted); font-size: 13.5px; margin-bottom: 24px; line-height: 1.55; }
+        .btn { padding: 9px 18px; border-radius: 6px; border: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.01em; cursor: pointer; background: var(--accent); color: #fff; white-space: nowrap; transition: background-color .18s ease, transform .14s ease, opacity .18s ease; }
         .btn:hover:not(:disabled) { background: var(--accent-hover); }
-        .btn:disabled { opacity: .6; cursor: wait; }
-        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; }
-        .chart-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 25px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06); }
-        .chart-card h3 { font-size: 1.02rem; letter-spacing: -0.01em; margin: 0 0 6px; color: var(--text); font-weight: 600; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-        .src { font-size: 0.85rem; color: var(--muted); margin: 0 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); line-height: 1.45; }
+        .btn:active:not(:disabled) { transform: scale(0.98); }
+        .btn:focus-visible, .back-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .btn:disabled { opacity: .5; cursor: wait; }
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; }
+        .chart-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; box-shadow: 0 4px 12px rgba(28, 25, 23, 0.06); animation: cardIn .32s cubic-bezier(0.16,1,0.3,1) both; }
+        .chart-card h3 { font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 6px; color: var(--text); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+        .src { font-size: 12.5px; color: var(--muted); margin: 0 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); line-height: 1.45; }
         .chart-container { position: relative; height: 300px; width: 100%; }
-        .badge { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.03em; padding: 3px 9px; border-radius: 999px; background: #fef3c7; color: #92400e; white-space: nowrap; }
-        .badge.real { background: #dcfce7; color: #166534; }
-        .note { font-size: 0.88rem; color: var(--muted); margin-top: 12px; line-height: 1.5; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .badge { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; padding: 3px 9px; border-radius: 5px; background: #fef9ec; color: #92400e; border: 1px solid #f3dfb0; white-space: nowrap; }
+        .badge.real { background: var(--accent-soft); color: var(--accent); border-color: #c6dfd4; }
+        .note { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+        table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
         th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-        th { color: var(--muted); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
-        td { font-family: var(--mono); font-size: 0.8rem; }
-        .empty { background: var(--panel); border: 1px dashed var(--border); border-radius: 12px; padding: 30px; color: var(--muted); }
-        .nm { background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 0.92rem; line-height: 1.6; }
+        th { color: var(--muted); font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; background: #fcfbf9; }
+        td { font-family: var(--mono); font-size: 12px; }
+        .empty { background: var(--panel); border: 1px dashed var(--border); border-radius: 10px; padding: 30px; color: var(--muted); text-align: center; }
+        .nm { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-size: 13.5px; line-height: 1.6; }
+        @keyframes cardIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+        @media (max-width: 560px) { body { padding: 20px 14px; } .chart-grid { grid-template-columns: 1fr; } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
     </style>
 </head>
 <body>
@@ -52,19 +59,19 @@
     <div id="content"></div>
 
     <script>
-        Chart.defaults.color = '#64748b';
-        Chart.defaults.borderColor = '#e2e8f0';
-        Chart.defaults.font.family = "'Epilogue', -apple-system, BlinkMacSystemFont, sans-serif";
+        Chart.defaults.color = '#6b665e';
+        Chart.defaults.borderColor = '#e6e1d7';
+        Chart.defaults.font.family = "'Work Sans', -apple-system, BlinkMacSystemFont, sans-serif";
         const charts = {};
         const COLORS = {
-            detect: '#2563EB', repair: '#10B981', verify: '#F59E0B',
-            CRITICAL: '#B91C1C', HIGH: '#EF4444', MEDIUM: '#F59E0B', LOW: '#93C5FD'
+            detect: '#1b4332', repair: '#b45309', verify: '#6d28d9',
+            CRITICAL: '#7f1d1d', HIGH: '#b91c1c', MEDIUM: '#b45309', LOW: '#d9c7a3'
         };
         const VERDICT_COLORS = {
-            'VERIFIED': '#10B981',
-            'PARTIAL': '#F59E0B',
-            'REJECTED': '#EF4444',
-            'NO FIX GENERATED': '#9CA3AF'
+            'VERIFIED': '#1b4332',
+            'PARTIAL': '#b45309',
+            'REJECTED': '#b91c1c',
+            'NO FIX GENERATED': '#6b665e'
         };
 
         function el(tag, props = {}, children = []) {
@@ -98,10 +105,10 @@
             plugins: {
                 legend: { display: stacked },
                 tooltip: {
-                    backgroundColor: '#0f172a',
-                    titleColor: '#f8fafc',
-                    bodyColor: '#f1f5f9',
-                    borderColor: '#cbd5e1',
+                    backgroundColor: '#1c1917',
+                    titleColor: '#f6f4ef',
+                    bodyColor: '#efece6',
+                    borderColor: '#dcd7cd',
                     borderWidth: 1,
                     padding: 12,
                     borderRadius: 8
@@ -112,7 +119,7 @@
                     beginAtZero: true,
                     stacked: !!stacked,
                     title: { display: !!yTitle, text: yTitle },
-                    grid: { color: '#e2e8f0' }
+                    grid: { color: '#ebe7de' }
                 },
                 x: {
                     stacked: !!stacked,
@@ -214,8 +221,8 @@
                     labels: ['Parser (' + d.stage.parser.n + ' files)', 'Static (' + d.stage.static.n + ' files)', 'Runtime (' + d.stage.runtime.n + ' files)'],
                     datasets: [{
                         data: [d.stage.parser.median_ms, d.stage.static.median_ms, d.stage.runtime.median_ms],
-                        backgroundColor: ['#7c3aed66', '#10B98166', '#2563EB66'],
-                        borderColor: ['#7c3aed', '#10B981', '#2563EB'],
+                        backgroundColor: ['#6d28d966', '#b4530966', '#b91c1c66'],
+                        borderColor: ['#6d28d9', '#b45309', '#b91c1c'],
                         borderWidth: 2,
                         borderRadius: 8
                     }]
@@ -230,7 +237,7 @@
                     labels: vk.map(k => k + ' (' + d.outcomes.verdicts[k] + ')'),
                     datasets: [{
                         data: vk.map(k => d.outcomes.verdicts[k]),
-                        backgroundColor: vk.map(k => VERDICT_COLORS[k] || '#6B7280')
+                        backgroundColor: vk.map(k => VERDICT_COLORS[k] || '#6b665e')
                     }]
                 },
                 options: {
@@ -248,8 +255,8 @@
                     labels: d.patches.labels,
                     datasets: [{
                         data: d.patches.values,
-                        backgroundColor: '#8B5CF644',
-                        borderColor: '#8B5CF6',
+                        backgroundColor: '#1b433244',
+                        borderColor: '#1b4332',
                         borderWidth: 2,
                         borderRadius: 8
                     }]
@@ -263,8 +270,8 @@
                     labels: d.energy.labels,
                     datasets: [{
                         data: d.energy.mJ,
-                        backgroundColor: '#F59E0B44',
-                        borderColor: '#F59E0B',
+                        backgroundColor: '#b4530944',
+                        borderColor: '#b45309',
                         borderWidth: 2,
                         borderRadius: 8
                     }]
@@ -278,8 +285,8 @@
                     data: {
                         labels: d.power.labels,
                         datasets: [
-                            { label: 'Package power', data: d.power.watts, borderColor: '#EC4899', backgroundColor: '#EC489922', fill: true, tension: .25 },
-                            { label: 'Mean (' + d.power.mean_w + ' W)', data: d.power.watts.map(() => d.power.mean_w), borderColor: '#6B7280', borderDash: [6, 4], pointRadius: 0 }
+                            { label: 'Package power', data: d.power.watts, borderColor: '#1b4332', backgroundColor: '#1b433322', fill: true, tension: .25 },
+                            { label: 'Mean (' + d.power.mean_w + ' W)', data: d.power.watts.map(() => d.power.mean_w), borderColor: '#6b665e', borderDash: [6, 4], pointRadius: 0 }
                         ]
                     },
                     options: { ...baseOpts('W', false), plugins: { legend: { display: true } } }

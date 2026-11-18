@@ -102,6 +102,7 @@ the bundled web UI.
 - `templates/` — web studio and analytics pages
 - `test*.py` — sample Python files shown in the studio
 - `run_checks.py` — batch diagnostic/repair checks for selected samples
+- `check_word2number.py` — checks number-word `ValueError` fixes such as `int('seventeen')`
 
 There is no `main.py` command-line application or `evaluation.py` module in the
 current project. Start the app with `python gui.py` or `python app.py`.
