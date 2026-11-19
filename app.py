@@ -949,13 +949,27 @@ def analytics():
 
 
 if __name__ == '__main__':
-    import threading
-    import webbrowser
+    import socket
 
-    def open_browser():
-        time.sleep(1.5)
-        webbrowser.open("http://127.0.0.1:5001")
+    def find_available_port(default_port=5001):
+        if "PORT" in os.environ:
+            return int(os.environ["PORT"])
+        for p in [default_port, 5003, 5004, 5005]:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('127.0.0.1', p))
+                    return p
+            except OSError:
+                continue
+        return default_port
 
-    threading.Thread(target=open_browser).start()
+    port = find_available_port(5001)
+    print("\n" + "="*60)
+    print(f"[TOACD Studio Initiated]")
+    print(f"Server is running at: http://127.0.0.1:{port}")
+    if port != 5001:
+        print(f"(Note: Port 5001 is in use by another process; using port {port})")
+    print("="*60 + "\n")
+
     # debug=False: Flask's debugger lets anyone who reaches the page run code on your machine.
-    app.run(debug=False, port=5001, use_reloader=False)
+    app.run(host='127.0.0.1', debug=False, port=port, use_reloader=False)

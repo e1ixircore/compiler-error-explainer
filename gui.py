@@ -13,6 +13,21 @@ print("  http://127.0.0.1:5001")
 print("="*60 + "\n")
 
 if __name__ == '__main__':
+    import socket
+
+    def find_available_port(default_port=5001):
+        if "PORT" in os.environ:
+            return int(os.environ["PORT"])
+        for p in [default_port, 5003, 5004, 5005]:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('127.0.0.1', p))
+                    return p
+            except OSError:
+                continue
+        return default_port
+
+    port = find_available_port(5001)
     tracker = None
     if os.environ.get("USE_CODECARBON") == "1":
         try:
@@ -27,7 +42,8 @@ if __name__ == '__main__':
         os.environ["CODECARBON_SERVER_LIFETIME"] = "1"
 
     try:
-        app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
+        print(f"Server is running at: http://127.0.0.1:{port}")
+        app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False)
     except Exception as e:
         print(f"Failed to start Website Server: {e}")
     finally:
