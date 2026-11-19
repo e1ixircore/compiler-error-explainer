@@ -393,7 +393,7 @@ def apply_fix(code, diagnostic):
             lines[line_index] = replacement
             return "\n".join(lines)
 
-    # 4. UndeclaredIdentifier (typo rename, or declare missing variable/function stub)
+    # 4. UndeclaredIdentifier (typo rename or known std symbol; truly undeclared names are explain-only)
     if error_type == "UndeclaredIdentifier" and name:
         if suggestion:
             replacement = _replace_identifier(line, name, suggestion, count=0)
@@ -409,26 +409,7 @@ def apply_fix(code, diagnostic):
             if replacement is not None:
                 lines[line_index] = replacement
                 return "\n".join(lines)
-        # Truly undeclared identifier
-        masked_line = _mask_cpp(line)
-        is_call = bool(re.search(rf"(?<![\w.:>]){re.escape(name)}\s*\(", masked_line))
-        ind = _indent(line)
-        if not is_call and re.fullmatch(r"[A-Za-z_]\w*", name) and name != "std":
-            # Only insert inside a function block (indentation > 0 or preceded by '{')
-            lines.insert(line_index, f"{ind}int {name} = 0;  // TODO: define a real value")
-            return "\n".join(lines)
-        if is_call and re.search(rf"(?<![\w.:>]){re.escape(name)}\s*\(\s*\)", masked_line):
-            # Zero-arg undefined function: insert a top-level stub above the enclosing function
-            insert_at = 0
-            for j in range(line_index, -1, -1):
-                if lines[j] and not lines[j][0].isspace() and "{" in _mask_cpp(lines[j]):
-                    insert_at = j
-                    break
-                if re.match(r"^\s*#\s*include\b", lines[j]):
-                    insert_at = j + 1
-                    break
-            lines.insert(insert_at, f"int {name}() {{ return 0; }}  // TODO: implement")
-            return "\n".join(lines)
+        return code
 
     # 5. MissingSemicolon (handles current line OR previous line when reported `before ...`, preserves comments)
     if error_type == "MissingSemicolon":
@@ -507,46 +488,10 @@ def apply_fix(code, diagnostic):
                 return "\n".join(lines)
         return code
 
-    # 11. DivisionByZero (replace literal `/ 0` or `% 0` with guarded 0 to satisfy compiler & prevent SIGFPE)
-    if error_type == "DivisionByZero":
-        code_part, comment_part = _split_cpp_comment(line)
-        new_code = _sub_masked(
-            code_part,
-            r"([A-Za-z_]\w*|\d+(?:\.\d+)?)\s*(/|%)\s*0(?![.\d])",
-            lambda m, g: f"0 /* [auto-fix] guarded division by zero (was {g(1)} {g(2)} 0) */",
-            count=1,
-        )
-        if new_code != code_part:
-            lines[line_index] = new_code + comment_part
-            return "\n".join(lines)
+    # 11-13. DivisionByZero, ArrayOutOfBounds, MissingReturn:
+    # Intent-ambiguous logic defects — explain-only (do not substitute fake 0s or clamped indices).
+    if error_type in ("DivisionByZero", "ArrayOutOfBounds", "MissingReturn"):
         return code
-
-    # 12. ArrayOutOfBounds (clamp out-of-bounds constant array index to valid range 0..N-1)
-    if error_type == "ArrayOutOfBounds":
-        m = re.search(r"array index (-?\d+) is past the end of the array \(that has type '[^'\[]+\[(\d+)\]'\)", message)
-        if m:
-            bad_idx, size = int(m.group(1)), int(m.group(2))
-            if size > 0:
-                clamped = max(0, min(bad_idx, size - 1))
-                code_part, comment_part = _split_cpp_comment(line)
-                new_code = _sub_masked(
-                    code_part,
-                    rf"\[\s*{re.escape(str(bad_idx))}\s*\]",
-                    lambda mm, g: f"[{clamped}] /* [auto-fix] clamped index {bad_idx} to 0..{size - 1} */",
-                    count=1,
-                )
-                if new_code != code_part:
-                    lines[line_index] = new_code + comment_part
-                    return "\n".join(lines)
-        return code
-
-    # 13. MissingReturn (insert a default return before the closing '}' of a non-void function)
-    if error_type == "MissingReturn":
-        ret_type = _find_enclosing_func_return_type(lines, line_index)
-        default_val = _cpp_default_for_type(ret_type)
-        ind = _indent(lines[line_index]) + "    "
-        lines.insert(line_index, f"{ind}return {default_val};  // [auto-fix] added missing return value")
-        return "\n".join(lines)
 
     # 14. AssignmentInCondition (if (x = 5) -> if (x == 5))
     if error_type == "AssignmentInCondition":
@@ -569,44 +514,45 @@ def apply_fix(code, diagnostic):
                 return "\n".join(lines)
         return code
 
-    # 16. TypeMismatch (return "wrong" in int fn, int x = "42" / "many", string s = 42)
+    # 16. TypeMismatch: only lossless/unambiguous conversions (`int n = "42";`, `std::string s = 42;`).
+    # Non-numeric mismatches like `return "wrong";` or `int count = "many";` are explain-only.
     if error_type == "TypeMismatch":
         code_part, comment_part = _split_cpp_comment(line)
-        # Case A: returning string literal from numeric/bool function
+        # Case A: returning a numeric string literal from a numeric function (`return "42";` -> `return 42;`)
         m_ret = re.search(r"cannot initialize return object of type '([^']+)' with .*'const char\[\d+\]'", message)
         if m_ret:
             target_t = m_ret.group(1).strip()
             str_m = re.search(r'\breturn\s+"([^"]*)"\s*;', code_part)
             if str_m:
                 lit = str_m.group(1).strip()
+                repl = None
                 if target_t in ("int", "long", "short") and re.fullmatch(r"-?\d+", lit):
                     repl = lit
                 elif target_t in ("double", "float") and re.fullmatch(r"-?\d+(\.\d+)?", lit):
                     repl = lit
-                else:
-                    repl = _cpp_default_for_type(target_t)
-                new_code = re.sub(r'(\breturn\s+)"[^"]*"(\s*;)', rf"\g<1>{repl}\g<2>  // [auto-fix] matched return type {target_t}", code_part, count=1)
-                if new_code != code_part:
-                    lines[line_index] = new_code + ((" " + comment_part.lstrip()) if comment_part else "")
-                    return "\n".join(lines)
+                if repl is not None:
+                    new_code = re.sub(r'(\breturn\s+)"[^"]*"(\s*;)', rf"\g<1>{repl}\g<2>", code_part, count=1)
+                    if new_code != code_part:
+                        lines[line_index] = new_code + (("  " + comment_part.lstrip()) if comment_part else "")
+                        return "\n".join(lines)
 
-        # Case B: initializing numeric variable with a string literal (`int count = "many";` or `int n = "42";`)
+        # Case B: initializing numeric variable with a numeric string literal (`int n = "42";` -> `int n = 42;`)
         m_var = re.search(r"cannot initialize a variable of type '([^']+)' with .*'const char\[\d+\]'", message)
         if m_var:
             target_t = m_var.group(1).strip()
             str_m = re.search(r'=\s*"([^"]*)"\s*;', code_part)
             if str_m:
                 lit = str_m.group(1).strip()
+                repl = None
                 if target_t in ("int", "long", "short") and re.fullmatch(r"-?\d+", lit):
-                    new_code = re.sub(r'(=\s*)"[^"]*"(\s*;)', rf"\g<1>{lit}\g<2>", code_part, count=1)
+                    repl = lit
                 elif target_t in ("double", "float") and re.fullmatch(r"-?\d+(\.\d+)?", lit):
-                    new_code = re.sub(r'(=\s*)"[^"]*"(\s*;)', rf"\g<1>{lit}\g<2>", code_part, count=1)
-                else:
-                    repl = _cpp_default_for_type(target_t)
-                    new_code = re.sub(r'(=\s*)"[^"]*"(\s*;)', rf"\g<1>{repl}\g<2>  // [auto-fix] matched type {target_t}", code_part, count=1)
-                if new_code != code_part:
-                    lines[line_index] = new_code + ((" " + comment_part.lstrip()) if comment_part else "")
-                    return "\n".join(lines)
+                    repl = lit
+                if repl is not None:
+                    new_code = re.sub(r'(=\s*)"[^"]*"(\s*;)', rf"\g<1>{repl}\g<2>", code_part, count=1)
+                    if new_code != code_part:
+                        lines[line_index] = new_code + (("  " + comment_part.lstrip()) if comment_part else "")
+                        return "\n".join(lines)
 
         # Case C: initializing std::string with a number (`std::string s = 42;`)
         if re.search(r"no viable conversion from '(int|double|float|long)' to '.*string'", message):

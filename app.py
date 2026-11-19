@@ -301,7 +301,7 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
             )
         )
         if fixed == current or not fix_is_safe(current, fixed):
-            entry["result"] = "stuck (no safe fix)"
+            entry["result"] = "explanation only (manual fix needed)"
             history.append(entry)
             if has_more_static:
                 skipped_static.add(static_key)
@@ -388,7 +388,7 @@ def cpp_repair_loop(code, max_iters=30, time_budget=45, first_ir=None):
             "notes": diagnostic.get("notes", []),
         })
         if fixed == current or not fix_is_safe(current, fixed, language="cpp"):
-            entry["result"] = "no safe automatic fix"
+            entry["result"] = "explanation only (manual fix needed)"
             history.append(entry)
             skipped.add(key)
             continue

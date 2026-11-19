@@ -500,15 +500,20 @@
         fx.dataset.id = i.id; fx.style.setProperty('--d', Math.min(n, 8));
         const hd = el('header');
         hd.append(el('b', '', `Line ${i.line ?? '?'} · ${i.type}`));
-        const cp = el('button', 'ghost', 'Copy fix');
-        cp.onclick = ev => {
-          ev.stopPropagation();
-          navigator.clipboard.writeText(i.patch.filter(p => p.sign === '+').map(p => p.text).join('\n'));
-          cp.textContent = 'Copied';
-          setTimeout(() => cp.textContent = 'Copy fix', 1400);
-        };
-        hd.append(cp); fx.append(hd);
-        if (!i.patch.length) fx.append(el('pre', '', i.source || ''), el('div', 'warn', 'No automatic fix for this one. Use "How to fix" above.'));
+        if (i.patch.length) {
+          const cp = el('button', 'ghost', 'Copy fix');
+          cp.onclick = ev => {
+            ev.stopPropagation();
+            navigator.clipboard.writeText(i.patch.filter(p => p.sign === '+').map(p => p.text).join('\n'));
+            cp.textContent = 'Copied';
+            setTimeout(() => cp.textContent = 'Copy fix', 1400);
+          };
+          hd.append(cp);
+        } else {
+          hd.append(el('span', 'chip', 'Manual fix'));
+        }
+        fx.append(hd);
+        if (!i.patch.length) fx.append(el('pre', '', i.source || ''), el('div', 'warn', 'Requires manual fix (no workaround applied). Follow "How to fix" in Corrections.'));
         i.patch.forEach(p => fx.append(el('pre', p.sign === '-' ? 'm' : 'p', p.sign + ' ' + p.text)));
         if (i.hides_crash) fx.append(el('div', 'warn', 'This stops the crash, but it uses a stand-in value (0 or None). Check it is the answer you really want.'));
         fx.onclick = () => select(i.id, 'fix', S.lm[i.line] || [i.id]);

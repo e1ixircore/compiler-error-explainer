@@ -754,16 +754,8 @@ class NLPExplainer:
         near = ir.get("suggestion") or (_closest(bad, tree, ln, code) if tree else None)
         if near and near != bad and self._rename(lines, i, bad, near):
             return
-        # 4. really undefined: declare it, but do NOT invent data
-        if tree is None or code.strip().startswith(("elif", "else", "except", "finally")):
-            return
-        slot, ind = _decl_slot(tree, ln, lines)
-        is_call = bool(re.search(rf"(?<![\w.]){re.escape(bad)}\s*\(", _mask(code)[0]))
-        if is_call:
-            ret_def = _return_default_for_line(tree, ln) or "None"
-            lines.insert(slot, f"{ind}def {bad}(*args, **kwargs): return {ret_def}  # TODO: implement")
-            return
-        lines.insert(slot, f"{ind}{bad} = {_infer_init(bad, code, tree, ln)}  # TODO: define a real value")
+        # 4. Truly undefined variable/function with no typo match: explain-only (do not invent stubs).
+        return
 
     # ---- TypeError -------------------------------------------------------
     def _fix_TypeError(self, ir, lines, i):
@@ -831,6 +823,8 @@ class NLPExplainer:
                     s, e = _span(line, arg)
                     edits.append((s, e, f"str({line[s:e]})"))
         elif "return type mismatch" in msg:
+            # Only auto-fix lossless conversions (e.g. -> str, or numeric string "42" -> 42).
+            # Non-numeric mismatches like `return "wrong type"` for `-> int` are explain-only.
             rm = re.search(r"expected '([^']+)', got '([^']+)'", msg)
             exp = rm.group(1).split(" | ")[0].strip() if rm else None
             for n in here:
@@ -844,8 +838,6 @@ class NLPExplainer:
                             and exp in ("int", "float") and re.fullmatch(r"\s*-?\d+(\.\d+)?\s*", val.value):
                         num = str(int(float(val.value))) if exp == "int" else str(float(val.value))
                         edits.append((s, e, num))
-                    elif exp in _TYPE_DEFAULTS:
-                        edits.append((s, e, _TYPE_DEFAULTS[exp]))
         elif "incompatible type in assignment" in msg:
             rm = re.search(r"assignment to '([^']+)': expected '([^']+)', got '([^']+)'", msg)
             if rm:
@@ -875,8 +867,6 @@ class NLPExplainer:
                                     and exp in ("int", "float") and re.fullmatch(r"\s*-?\d+(\.\d+)?\s*", val.value):
                                 num = str(int(float(val.value))) if exp == "int" else str(float(val.value))
                                 edits.append((s, e, num))
-                            elif exp in _TYPE_DEFAULTS:
-                                edits.append((s, e, _TYPE_DEFAULTS[exp]))
         new = _apply(line, edits)
         if new != line:
             lines[i] = new
@@ -895,71 +885,17 @@ class NLPExplainer:
                 if n.attr in _STR_METHODS:
                     s, e = _span(line, n.value)
                     edits.append((s, e, f"str({line[s:e]})"))
-                elif _pure(n.value):
-                    obj = _wrap(_seg(line, n.value), n.value)
-                    s, e = _span(line, n)
-                    edits.append((s, e, f"(getattr({obj}, {n.attr!r}, None))"))
         new = _apply(line, edits)
         if new != line:
             lines[i] = new
 
-    # ---- ZeroDivisionError ---------------------------------------------
+    # ---- ZeroDivisionError (explain-only: no fake `if 0 != 0 else 0` workarounds) ----
     def _fix_ZeroDivisionError(self, ir, lines, i):
-        tree = _parse(lines)
-        if tree is None:
-            return
-        line, here = lines[i], _on_line(tree, i + 1)
-        note = "  # [auto-fix] guarded division, yields 0 if the divisor is 0"
-        DIV = (ast.Div, ast.FloorDiv, ast.Mod)
-        # x /= y   ->   if y != 0: x /= y      (x stays unchanged instead of becoming a fake 0)
-        for n in here:
-            if isinstance(n, ast.AugAssign) and isinstance(n.op, DIV) and _pure(n.value):
-                s, e = _span(line, n)
-                if line[:s].strip() == "":
-                    r = line[_span(line, n.value)[0]:_span(line, n.value)[1]]
-                    tail = line[e:]
-                    lines[i] = f"{line[:s]}if {r} != 0: {line[s:e]}" + (tail if tail.strip() else "  # [auto-fix] skipped when the divisor is 0")
-                    return
-        edits = []
-        for n in here:
-            if isinstance(n, ast.BinOp) and isinstance(n.op, DIV) and _pure(n.right):
-                if isinstance(n.right, ast.Constant) and isinstance(n.right.value, (int, float)) and n.right.value != 0:
-                    continue                          # dividing by a non-zero literal can never be the culprit
-                l, r = _wrap(_seg(line, n.left), n.left), _wrap(_seg(line, n.right), n.right)
-                s, e = _span(line, n)
-                edits.append((s, e, f"({l} {SYM[type(n.op)]} {r} if {r} != 0 else 0)"))
-        new = _apply(line, edits)
-        if new != line:
-            code, comment = _split_comment(new)
-            lines[i] = code.rstrip() + note + (" " + comment if comment else "")
+        return
 
-    # ---- IndexError ----------------------------------------------------
+    # ---- IndexError (explain-only: no silent out-of-bounds fallback workarounds) -------
     def _fix_IndexError(self, ir, lines, i):
-        tree = _parse(lines)
-        if tree is None:
-            return
-        line, cands = lines[i], []
-        for n in _on_line(tree, i + 1):
-            if isinstance(n, ast.Subscript) and isinstance(n.ctx, ast.Load):
-                ix = _idx(n)
-                if isinstance(ix, ast.Slice) or (isinstance(ix, ast.Constant) and not isinstance(ix.value, int)):
-                    continue                          # slices never raise IndexError; 'key' means dict
-                if _pure(n.value) and _pure(ix):
-                    cands.append((n, ix))
-        # One candidate -> it must be the culprit. Several -> only guard obvious int positions
-        # (lst[10]); guarding a dict lookup such as d[key] with len() would change working code.
-        pick = cands if len(cands) == 1 else [(n, ix) for n, ix in cands if _is_int_const(ix)]
-        ret_def = _return_default_for_line(tree, i + 1) or "None"
-        edits = []
-        for n, ix in pick:
-            v, k = _wrap(_seg(line, n.value), n.value), _wrap(_seg(line, ix), ix)
-            nonneg = isinstance(ix, ast.Constant) and ix.value >= 0
-            cond = f"len({v}) > {k}" if nonneg else f"-len({v}) <= {k} < len({v})"   # also covers negatives
-            s, e = _span(line, n)
-            edits.append((s, e, f"({v}[{k}] if {cond} else {ret_def})"))
-        new = _apply(line, edits)
-        if new != line:
-            lines[i] = new
+        return
 
     # ---- KeyError ------------------------------------------------------
     def _fix_KeyError(self, ir, lines, i):
@@ -967,7 +903,8 @@ class NLPExplainer:
         if tree is None:
             return
         line, here = lines[i], _on_line(tree, i + 1)
-        # counts[w] += 1   ->   counts[w] = counts.get(w, 0) + 1     (the classic word-count crash)
+        # Only auto-fix the idiomatic counter pattern: counts[w] += 1 -> counts[w] = counts.get(w, 0) + 1.
+        # Plain missing-key lookups like record["absent"] are explain-only (do not hide with silent defaults).
         for n in here:
             if isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Subscript):
                 ix, op = _idx(n.target), {ast.Add: "+", ast.Sub: "-", ast.Mult: "*"}.get(type(n.op))
@@ -979,80 +916,48 @@ class NLPExplainer:
                     t, k = _seg(line, n.target.value), _seg(line, ix)
                     lines[i] = line[:s] + f"{t}[{k}] = {t}.get({k}, {default}) {op} {_wrap(_seg(line, v), v)}" + line[e:]
                     return
-        # Subscripts that are being ASSIGNED TO can't be replaced by .get(): leave them alone.
-        stores = set()
-        for st in ast.walk(tree):
-            if isinstance(st, (ast.Assign, ast.AugAssign, ast.AnnAssign, ast.Delete, ast.For)) and getattr(st, "lineno", 0) == i + 1:
-                tg = st.targets if isinstance(st, (ast.Assign, ast.Delete)) else [st.target]
-                stores |= {id(x) for t in tg for x in ast.walk(t)}
-        subs = [n for n in here if isinstance(n, ast.Subscript) and isinstance(n.ctx, ast.Load)
-                and id(n) not in stores and not isinstance(_idx(n), ast.Slice)]
-        strkey = [n for n in subs if isinstance(_idx(n), ast.Constant) and isinstance(_idx(n).value, str)]
-        chosen = strkey or (subs if len(subs) == 1 else [])     # d['k'] is surely a dict; otherwise only if unambiguous
-        cset = set(map(id, chosen))
-
-        ret_def = _return_default_for_line(tree, i + 1)
-
-        def conv(n, outer):
-            """d['a']['b'] -> d.get('a', {}).get('b'): inner levels default to {} so the chain survives."""
-            inner = n.value
-            base = conv(inner, False) if id(inner) in cset else _wrap(_seg(line, inner), inner)
-            k = _seg(line, _idx(n))
-            if outer:
-                return f"{base}.get({k}, {ret_def})" if ret_def is not None else f"{base}.get({k})"
-            return f"{base}.get({k}, {{}})"
-        edits = [(*_span(line, n), conv(n, True)) for n in chosen]
-        new = _apply(line, edits)
-        if new != line:
-            lines[i] = new
 
     # ---- ModuleNotFoundError -------------------------------------------
     def _fix_ModuleNotFoundError(self, ir, lines, i):
+        # Only auto-fix clear standard-library typos (e.g. `import maths` -> `import math as maths`).
+        # Missing third-party libraries are explain-only (suggest `pip install`, do not stub to None).
         ind = _indent(lines[i])
         code, comment = _split_comment(lines[i])
         mod = self._quoted(ir.get("error_message"))
         top = mod.split(".")[0]
+        near = _stdlib_near(top) if top else None
+        if not near:
+            return
         try:
             st = ast.parse(code.strip()).body[0]
         except (SyntaxError, IndexError):
-            st = None
-
-        def guarded(stmt_text, bound):
-            names = " = ".join(bound) if bound else "pass"
-            return [f"{ind}try:", f"{ind}    {stmt_text}", f"{ind}except ImportError:",
-                    f"{ind}    {names + ' = None  # module unavailable' if bound else 'pass'}"]
-
-        near = _stdlib_near(top) if top else None
+            return
         if isinstance(st, ast.Import):
             out = []
             for a in st.names:
                 bound = a.asname or a.name.split(".")[0]
                 text = f"import {a.name}" + (f" as {a.asname}" if a.asname else "")
-                if a.name.split(".")[0] != top:
-                    out.append(f"{ind}{text}")                       # a module that is fine stays as it is
-                elif near and "." not in a.name:
-                    out.append(f"{ind}import {near} as {bound}")     # import maths -> import math as maths
+                if a.name.split(".")[0] == top and "." not in a.name:
+                    out.append(f"{ind}import {near} as {bound}")
                 else:
-                    out += guarded(text, [bound])
+                    out.append(f"{ind}{text}")
             lines[i:i + 1] = out
-        elif isinstance(st, ast.ImportFrom):
+        elif isinstance(st, ast.ImportFrom) and st.level == 0:
             names = ", ".join(a.name + (f" as {a.asname}" if a.asname else "") for a in st.names)
-            if near and st.level == 0:
-                lines[i] = f"{ind}from {near} import {names}" + (("  " + comment) if comment else "")
-            else:
-                bound = [] if names == "*" else [a.asname or a.name for a in st.names]
-                lines[i:i + 1] = guarded(code.strip(), bound)
-        else:                                                         # unusual shape: old behaviour
-            lines[i:i + 1] = guarded(code.strip(), [top] if top else [])
+            lines[i] = f"{ind}from {near} import {names}" + (("  " + comment) if comment else "")
 
     # ---- ValueError ----------------------------------------------------
     def _fix_ValueError(self, ir, lines, i):
+        # Only auto-fix unambiguous numeric-text conversions:
+        #   - English number words: int('seventeen') -> int(17)
+        #   - Decimal strings passed to int(): int('3.5') -> int(float('3.5'))
+        # Non-numeric strings like int('not-a-number') are explain-only.
         msg = ir.get("error_message") or ""
         tree = _parse(lines)
         if tree is None:
             return
         line, edits = lines[i], []
-        floaty = re.search(r"'[-+]?\d+\.\d+'", msg)           # int('3.5'): the text is a decimal number
+        floaty = re.search(r"'[-+]?\d+\.\d+'", msg)
         for n in _on_line(tree, i + 1):
             if not (isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in ("int", "float")
                     and len(n.args) == 1 and not n.keywords):
@@ -1060,9 +965,10 @@ class NLPExplainer:
             a, fn = n.args[0], n.func.id
             if isinstance(a, ast.Constant):
                 if not isinstance(a.value, str):
-                    continue                                  # int(5) / int(3.5) can never raise ValueError
+                    continue
                 try:
-                    (int if fn == "int" else float)(a.value); continue   # converts fine: not the culprit
+                    (int if fn == "int" else float)(a.value)
+                    continue
                 except ValueError:
                     pass
                 if fn == "int":
@@ -1074,19 +980,10 @@ class NLPExplainer:
                         s, e = _span(line, n)
                         edits.append((s, e, f"int({number})"))
                         continue
-            s, e = _span(line, n)
-            arg = line[_span(line, a)[0]:_span(line, a)[1]]
             if fn == "int" and floaty:
-                edits.append((s, e, f"int(float({arg}))"))    # int('3.5') -> int(float('3.5')) = 3
-                continue
-            ok = "{v}.strip().lstrip('+-').isdigit()" if fn == "int" else \
-                 "{v}.strip().replace('.', '', 1).lstrip('+-').isdigit()"
-            if _pure(a):
-                v, first = arg, arg
-            else:                                             # int(input(..)): evaluate ONCE with :=
-                v, first = "_v", f"_v := {arg}"
-            # non-text values pass straight through, so working int(3.7) calls are not changed
-            edits.append((s, e, f"({fn}({v}) if not isinstance({first}, str) or {ok.format(v=v)} else 0)"))
+                s, e = _span(line, n)
+                arg = line[_span(line, a)[0]:_span(line, a)[1]]
+                edits.append((s, e, f"int(float({arg}))"))
         new = _apply(line, edits)
         if new != line:
             lines[i] = new
