@@ -107,6 +107,73 @@
     .fx .p {background:#ecfdf5;color:#065f46;}
     .fx .warn {background:#fef9ec;color:#92400e;padding:7px 12px;font-size:13px;}
     .fx button {padding:3px 10px;font-size:12px;}
+    .count-chip {background:#475569;color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600;}
+    .line-pill {display:inline-block;padding:1px 6px;border-radius:4px;background:var(--panel2);border:1px solid var(--line);font-family:var(--mono);font-size:11.5px;font-weight:700;cursor:pointer;color:var(--ink);transition:all .15s ease;}
+    .line-pill:hover {background:var(--accent);color:#fff;border-color:var(--accent);}
+    .occ-list {margin:6px 0 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;}
+    .occ-item {display:flex;align-items:baseline;gap:8px;font-size:12.5px;background:var(--panel2);padding:4px 8px;border-radius:5px;}
+    .occ-item code {font-family:var(--mono);font-size:12px;color:#0f172a;}
+    .grouped-sources {border-bottom:1px solid var(--line);}
+    .grouped-src-row {display:flex;align-items:flex-start;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);background:#faf8f5;}
+    .grouped-src-row:last-child {border-bottom:0;}
+    .grouped-src-row .line-pill {margin-top:2px;flex:none;}
+    .grouped-src-row .src-snip {padding:0;margin:0;background:transparent;flex:1;}
+    .grouped-patch-row {padding:6px 12px;border-bottom:1px solid var(--line);}
+    .grouped-patch-row:last-child {border-bottom:0;}
+    .grouped-patch-row .patch-header {font-size:12px;font-weight:700;margin-bottom:3px;color:var(--mute);}
+    .occ-pills-row {display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;}
+    .occ-pills-label {font-family:var(--head);font-weight:600;color:var(--mute);margin-right:2px;}
+    .fx pre.p.copyable-fix {
+      cursor:pointer;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      transition:background-color .15s ease,box-shadow .15s ease;
+      user-select:all;
+    }
+    .fx pre.p.copyable-fix:hover {
+      background:#d1fae5;
+      box-shadow:inset 3px 0 0 #059669;
+    }
+    .fx pre.p.copyable-fix .patch-text {
+      flex:1;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .copy-hint {
+      font-size:11px;
+      font-family:var(--head);
+      font-weight:700;
+      color:#065f46;
+      background:#a7f3d0;
+      border:1px solid #6ee7b7;
+      padding:1px 7px;
+      border-radius:4px;
+      opacity:0.85;
+      transition:all .15s ease;
+      flex:none;
+      margin-left:12px;
+      cursor:pointer;
+    }
+    .fx pre.p.copyable-fix:hover .copy-hint {
+      opacity:1;
+      background:#6ee7b7;
+    }
+    .copy-hint.flash {
+      background:#059669;
+      color:#fff;
+      border-color:#047857;
+      opacity:1;
+    }
+    details.occ-details {margin-top:10px;padding:6px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:12px;}
+    details.occ-details summary {font-weight:600;cursor:pointer;color:var(--mute);outline:none;user-select:none;}
+    details.occ-details summary:hover {color:var(--ink);}
+    details.occ-details[open] summary {margin-bottom:8px;}
+    .fx.manual header {background:#faf8f5;padding:6px 12px;}
+    .fx.manual .fx-note {padding:6px 12px;font-size:12.5px;color:#92400e;background:#fefcf5;border-top:1px solid #f3dfb0;}
+    .fx.manual details.fx-occ {border-top:1px solid var(--line);font-size:12px;}
+    .fx.manual details.fx-occ summary {padding:5px 12px;cursor:pointer;color:var(--mute);font-weight:600;user-select:none;background:#fcfbf9;outline:none;}
+    .fx.manual details.fx-occ summary:hover {color:var(--ink);}
 
     .modal {position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:20px;background:rgba(28,25,23,.4);}
     .modal-card {width:min(100%,380px);padding:22px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 12px 40px rgba(28,25,23,.2);}
@@ -176,7 +243,6 @@
         </select>
         <button id="newBtn" class="ghost">New</button>
         <button id="applyBtn" class="ghost" disabled title="Load the auto-fixed code into the editor">Apply fixes</button>
-        <button id="editBtn" class="ghost" disabled>Edit</button>
         <button id="runBtn" class="ghost" disabled>Run</button>
         <button id="saveBtn" class="ghost" disabled>Save</button>
       </div>
@@ -302,8 +368,7 @@
         $('#langSel').value = S.lang;
         reset();
         $('#fname').textContent = n;
-        $('#editBtn').hidden = false;
-        ['#scanBtn', '#editBtn', '#runBtn'].forEach(s => $(s).disabled = false);
+        ['#scanBtn', '#runBtn'].forEach(s => $(s).disabled = false);
         $('#menu').classList.remove('open');
         paint(); loadFiles();
       } catch (e) { $('#fname').textContent = 'Could not load file: ' + e.message; }
@@ -321,7 +386,6 @@
       $('#code').hidden = true;
       $('#editor').hidden = false;
       $('#editor').value = '';
-      $('#editBtn').hidden = true;
       $('#scanBtn').disabled = false;
       $('#runBtn').disabled = false;
       $('#saveBtn').disabled = false;
@@ -345,7 +409,6 @@
       Object.assign(S, { issues:[], sec:[], blocked:false, lm:{}, editing:false, dirty:false, fixed:'' });
       updateApply();
       $('#code').hidden = false; $('#editor').hidden = true; $('#editor').value = '';
-      $('#editBtn').textContent = 'Edit'; $('#editBtn').classList.add('ghost');
       $('#scanBtn').textContent = 'Scan & diagnose';
       $('#saveBtn').disabled = true;
       clearOutput();
@@ -359,7 +422,7 @@
     function paint() {
       const box = $('#code');
       box.innerHTML = ''; S.lm = {};
-      S.issues.forEach(i => { if (i.line) (S.lm[i.line] = S.lm[i.line] || []).push(i.id); });
+      S.issues.forEach(i => { if (i.line && !i._applied) (S.lm[i.line] = S.lm[i.line] || []).push(i.id); });
       const sl = {};
       S.sec.forEach(s => sl[s.line] = s);
       S.code.split('\n').forEach((t, k) => {
@@ -370,7 +433,10 @@
         if (sl[n]) { r.classList.add('sec'); r.title = sl[n].severity + ': ' + sl[n].message; }
         r.append(el('span', 'no', n), el('span', 'tx', t || ' '));
         if (ids && ids.length > 1) { const b = el('span', 'bd', ids.length); b.title = ids.length + ' errors on this line'; r.append(b); }
-        if (ids) { r.tabIndex = 0; r.onclick = () => select(ids[0], 'code', ids); }
+        if (ids) {
+          r.tabIndex = 0;
+          r.onclick = () => select(ids[0], 'code', ids);
+        }
         box.append(r);
       });
     }
@@ -401,28 +467,7 @@
       paint();
     }
 
-    $('#editBtn').onclick = () => {
-      if (!S.file) return;
-      if (!S.editing) {
-        S.editing = true;
-        $('#editor').value = S.code;
-        $('#code').hidden = true; $('#editor').hidden = false;
-        $('#editBtn').textContent = 'Done editing'; $('#editBtn').classList.remove('ghost');
-        $('#scanBtn').disabled = true; $('#saveBtn').disabled = true;
-        updateApply();
-        $('#editor').focus();
-      } else {
-        S.editing = false;
-        if ($('#editor').value !== S.code) setCode($('#editor').value, 'Code updated. Click Re-scan to verify your fix, or Save to store the file.');
-        $('#editor').hidden = true; $('#code').hidden = false;
-        $('#editBtn').textContent = 'Edit'; $('#editBtn').classList.add('ghost');
-        $('#scanBtn').disabled = false; $('#saveBtn').disabled = !S.dirty;
-        updateApply();
-        paint();
-      }
-    };
-
-    // Tab key inserts 4 spaces in both editors instead of leaving the textarea.
+    // Tab key inserts 4 spaces in the new-file editor instead of leaving the textarea.
     $('#editor').addEventListener('keydown', e => {
       if (e.key !== 'Tab') return;
       e.preventDefault();
@@ -437,7 +482,7 @@
     /* ---------- scan ---------- */
     $('#scanBtn').onclick = async () => {
       document.body.classList.add('busy');
-      $('#scanBtn').disabled = true; $('#editBtn').disabled = true;
+      $('#scanBtn').disabled = true;
       try {
         const src = (S.newFile || S.editing) ? $('#editor').value : S.code;
         S.code = src;
@@ -452,7 +497,7 @@
         if (r.status === 'success') setOutput('Program output (from scan)', r.message || '');
       } catch (e) { $('#sumTxt').textContent = 'Scan failed: ' + e.message; }
       document.body.classList.remove('busy');
-      $('#scanBtn').disabled = false; $('#editBtn').disabled = false;
+      $('#scanBtn').disabled = false;
     };
 
     function show(r) {
@@ -480,45 +525,237 @@
 
       const c = $('#corr'), f = $('#fixes');
       c.innerHTML = f.innerHTML = '';
-      $('#nC').textContent = $('#nF').textContent = S.issues.length ? '(' + S.issues.length + ')' : '';
+
+      function groupIssues(issues) {
+        const groups = [];
+        const map = new Map();
+        issues.forEach(i => {
+          // Group similar kind of errors under the same card (especially unpatched / manual-fix issues)
+          const key = `${i.type}__${i.patched ? 'patched' : 'unpatched'}`;
+          if (!map.has(key)) {
+            const g = {
+              key: key,
+              type: i.type,
+              stage: i.stage,
+              meaning: i.meaning,
+              reason: i.reason,
+              how_to_fix: i.how_to_fix,
+              suggestion: i.suggestion,
+              patched: i.patched,
+              status: i.status,
+              hides_crash: i.hides_crash,
+              issues: []
+            };
+            map.set(key, g);
+            groups.push(g);
+          }
+          map.get(key).issues.push(i);
+        });
+        return groups;
+      }
+
+      const groups = groupIssues(S.issues);
+      S.groups = groups;
+      const nTotal = S.issues.length;
+      const nCards = groups.length;
+      const cardLabel = nTotal ? (nCards < nTotal ? `(${nCards} cards · ${nTotal} issues)` : `(${nTotal})`) : '';
+      $('#nC').textContent = $('#nF').textContent = cardLabel;
       if (!S.issues.length) c.innerHTML = f.innerHTML = `<p class="empty">${S.blocked ? 'No analysis, because the code was blocked.' : 'No errors found. Nice work!'}</p>`;
 
-      S.issues.forEach((i, n) => {
+      groups.forEach((g, n) => {
+        const ids = g.issues.map(i => i.id);
+        const lines = [...new Set(g.issues.map(i => i.line).filter(x => x != null))];
+        const isMulti = g.issues.length > 1;
+
         const cd = el('div', 'card');
-        cd.dataset.id = i.id; cd.style.setProperty('--c', COL[i.stage]); cd.style.setProperty('--d', Math.min(n, 8));
+        cd.dataset.id = ids[0];
+        cd.dataset.ids = ids.join(',');
+        cd.style.setProperty('--c', COL[g.stage]);
+        cd.style.setProperty('--d', Math.min(n, 8));
+
         const h = el('h3');
-        h.append(el('span', '', `Line ${i.line ?? '?'}`), el('span', 'chip', i.type), el('span', '', STG[i.stage]));
-        cd.append(h, el('p', 'mean', i.meaning));
+        if (isMulti) {
+          h.append(
+            el('span', '', `Lines ${lines.join(', ')}`),
+            el('span', 'chip', g.type),
+            el('span', 'count-chip', `${g.issues.length} occurrences`),
+            el('span', '', STG[g.stage])
+          );
+        } else {
+          h.append(
+            el('span', '', `Line ${lines[0] ?? '?'}`),
+            el('span', 'chip', g.type),
+            el('span', '', STG[g.stage])
+          );
+        }
+        cd.append(h, el('p', 'mean', g.meaning));
+
         const dl = el('dl');
-        [['Mistake', i.mistake], ['Reason', i.reason], ['How to fix', i.how_to_fix]].forEach(([k, v]) => dl.append(el('dt', '', k), el('dd', '', v)));
+        const primary = g.issues[0];
+        [['Mistake', primary.mistake || g.meaning],
+         ['Reason', g.reason || primary.reason],
+         ['How to fix', g.how_to_fix || primary.how_to_fix]].forEach(([k, v]) => {
+          dl.append(el('dt', '', k), el('dd', '', v));
+        });
         cd.append(dl);
-        if (i.suggestion) cd.append(el('span', 'tip', `Did you mean "${i.suggestion}"?`));
-        cd.onclick = () => select(i.id, 'corr', S.lm[i.line] || [i.id]);
+
+        // Compact Jump to Line row placed AFTER Mistake / Reason / Fix
+        if (isMulti) {
+          const foot = el('div', 'occ-pills-row');
+          foot.append(el('span', 'occ-pills-label', 'Jump to line:'));
+          lines.forEach(ln => {
+            const matchedIssue = g.issues.find(x => x.line === ln);
+            const pill = el('span', 'line-pill', `Line ${ln}`);
+            pill.title = 'Click to jump to this line in editor and show its fix';
+            pill.onclick = ev => {
+              ev.stopPropagation();
+              if (matchedIssue) {
+                select(matchedIssue.id, 'corr', [matchedIssue.id]);
+              } else {
+                jumpToLine(ln);
+              }
+            };
+            foot.append(pill);
+          });
+          cd.append(foot);
+        }
+        cd.onclick = () => select(ids[0], 'corr', ids);
         c.append(cd);
 
-        const fx = el('div', 'fx');
-        fx.dataset.id = i.id; fx.style.setProperty('--d', Math.min(n, 8));
-        const hd = el('header');
-        hd.append(el('b', '', `Line ${i.line ?? '?'} · ${i.type}`));
-        if (i.patch.length) {
-          const cp = el('button', 'ghost', 'Copy fix');
-          cp.onclick = ev => {
-            ev.stopPropagation();
-            navigator.clipboard.writeText(i.patch.filter(p => p.sign === '+').map(p => p.text).join('\n'));
-            cp.textContent = 'Copied';
-            setTimeout(() => cp.textContent = 'Copy fix', 1400);
-          };
-          hd.append(cp);
-        } else {
-          hd.append(el('span', 'chip', 'Manual fix'));
+        function applySingleFix(iss, p, btn) {
+          if (btn.dataset.applied === '1') return;
+          const codeLines = S.code.split('\n');
+          const hasMinus = (iss.patch || []).some(x => x.sign === '-');
+          let targetLine = iss.line || 1;
+
+          if (hasMinus) {
+            const idx = targetLine - 1;
+            if (idx < 0 || idx >= codeLines.length) return;
+            const indent = (codeLines[idx].match(/^\s*/) || [''])[0];
+            codeLines[idx] = indent + p.text;
+          } else {
+            // Pure insertion (e.g. missing import or #include)
+            let insertIdx = Math.max(0, targetLine - 1);
+            if (/^(#include\b|import\s+|from\s+)/.test(p.text)) {
+              insertIdx = (codeLines[0] && codeLines[0].startsWith('#!')) ? 1 : 0;
+            }
+            codeLines.splice(insertIdx, 0, p.text);
+            targetLine = insertIdx + 1;
+            S.issues.forEach(other => {
+              if (other !== iss && other.line && other.line >= targetLine) other.line += 1;
+            });
+          }
+
+          S.code = codeLines.join('\n');
+          S.dirty = true;
+          iss._applied = true;
+          if (S.newFile) $('#editor').value = S.code;
+          $('#saveBtn').disabled = false;
+          $('#scanBtn').textContent = 'Re-scan';
+          $('#scanBtn').disabled = false;
+          updateApply();
+
+          btn.dataset.applied = '1';
+          btn.textContent = 'Applied ✓';
+          btn.classList.add('flash');
+          btn.closest('.copyable-fix')?.classList.add('applied');
+
+          paint();
+          jumpToLine(targetLine);
+          $('#sumTxt').textContent = `Applied fix on line ${targetLine}. Apply more fixes, Re-scan to verify, or Save.`;
         }
-        fx.append(hd);
-        if (!i.patch.length) fx.append(el('pre', '', i.source || ''), el('div', 'warn', 'Requires manual fix (no workaround applied). Follow "How to fix" in Corrections.'));
-        i.patch.forEach(p => fx.append(el('pre', p.sign === '-' ? 'm' : 'p', p.sign + ' ' + p.text)));
-        if (i.hides_crash) fx.append(el('div', 'warn', 'This stops the crash, but it uses a stand-in value (0 or None). Check it is the answer you really want.'));
-        fx.onclick = () => select(i.id, 'fix', S.lm[i.line] || [i.id]);
-        f.append(fx);
+
+        function renderPatchLine(p, iss) {
+          const isPlus = p.sign === '+';
+          const pre = el('pre', isPlus ? 'p copyable-fix' : 'm');
+          const txtSpan = el('span', 'patch-text', (p.sign ? p.sign + ' ' : '') + p.text);
+          pre.append(txtSpan);
+          if (isPlus) {
+            pre.title = `Click to apply this fix on line ${iss.line ?? '?'}`;
+            const applyBtn = el('span', 'copy-hint', iss._applied ? 'Applied ✓' : 'Apply');
+            applyBtn.setAttribute('role', 'button');
+            applyBtn.tabIndex = 0;
+            if (iss._applied) {
+              applyBtn.dataset.applied = '1';
+              applyBtn.classList.add('flash');
+              pre.classList.add('applied');
+            }
+            const doApply = ev => {
+              ev.stopPropagation();
+              applySingleFix(iss, p, applyBtn);
+            };
+            applyBtn.onclick = doApply;
+            pre.onclick = doApply;
+            pre.append(applyBtn);
+          }
+          return pre;
+        }
+
+        // Fixes panel: separate card per patched fix so clicking any line scrolls directly to its fix;
+        // keep manual-fix (unpatched) issues grouped to avoid redundant empty cards.
+        if (g.patched) {
+          g.issues.forEach((iss, k) => {
+            const fx = el('div', 'fx');
+            fx.dataset.id = iss.id;
+            fx.dataset.ids = String(iss.id);
+            fx.style.setProperty('--d', Math.min(n + k, 8));
+
+            const hd = el('header');
+            hd.append(el('b', '', `Line ${iss.line ?? '?'} · ${iss.type}`));
+            fx.append(hd);
+
+            iss.patch.forEach(p => fx.append(renderPatchLine(p, iss)));
+            if (iss.hides_crash) {
+              fx.append(el('div', 'warn', 'This stops the crash, but it uses a stand-in value (0 or None). Check it is the answer you really want.'));
+            }
+            fx.onclick = () => select(iss.id, 'fix', [iss.id]);
+            f.append(fx);
+          });
+        } else {
+          const fx = el('div', 'fx manual');
+          fx.dataset.id = ids[0];
+          fx.dataset.ids = ids.join(',');
+          fx.style.setProperty('--d', Math.min(n, 8));
+
+          const hd = el('header');
+          if (isMulti) {
+            hd.append(el('b', '', g.type));
+            hd.append(el('span', 'count-chip', `×${g.issues.length}`));
+          } else {
+            hd.append(el('b', '', `Line ${lines[0] ?? '?'} · ${g.type}`));
+          }
+          fx.append(hd);
+
+          if (!isMulti) {
+            fx.append(el('pre', '', g.issues[0].source || ''));
+          }
+          fx.append(el('div', 'fx-note', 'No auto-patch — follow "How to fix" in Corrections.'));
+
+          if (isMulti) {
+            const det = el('details', 'fx-occ');
+            det.append(el('summary', '', `Show ${g.issues.length} affected lines`));
+            g.issues.forEach(iss => {
+              const row = el('div', 'grouped-src-row');
+              const pill = el('span', 'line-pill', `Line ${iss.line ?? '?'}`);
+              pill.onclick = ev => {
+                ev.stopPropagation();
+                select(iss.id, 'fix', [iss.id]);
+              };
+              const pre = el('pre', 'src-snip', iss.source || '');
+              row.append(pill, pre);
+              det.append(row);
+            });
+            fx.append(det);
+          }
+          fx.onclick = () => select(ids[0], 'fix', ids);
+          f.append(fx);
+        }
       });
+
+      if (S.issues.length) {
+        const nFixCards = f.children.length;
+        $('#nF').textContent = `(${nFixCards})`;
+      }
 
       showMetrics(r.metrics_data);
       const sm = r.summary || {}, v = $('#vd');
@@ -541,17 +778,49 @@
       b.title = 'Energy is an estimate: mean package power (' + m.power_w + ' W, from powermetrics) x scan time. It was not metered during this scan.';
     }
 
+    function jumpToLine(line) {
+      if (!line || S.editing) return;
+      const elLine = document.querySelector(`.ln[data-line="${line}"]`);
+      if (elLine) {
+        elLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        elLine.classList.remove('active');
+        void elLine.offsetWidth;
+        elLine.classList.add('active');
+      }
+    }
+
     function select(id, from, group) {
       showTab('fix');
       group = group || [id];
-      document.querySelectorAll('.card, .fx').forEach(e => e.classList.toggle('active', group.includes(+e.dataset.id)));
+      document.querySelectorAll('.card, .fx').forEach(e => {
+        const itemIds = (e.dataset.ids ? e.dataset.ids.split(',').map(Number) : [+e.dataset.id]);
+        const isActive = itemIds.some(i => group.includes(i));
+        e.classList.toggle('active', isActive);
+      });
       const iss = S.issues.find(i => i.id === id);
+      const groupIssues = S.issues.filter(i => group.includes(i.id));
+      const groupLines = groupIssues.map(i => i.line).filter(x => x != null);
+
       ['.card', '.fx'].forEach((k, n) => {
-        if (from !== ['corr', 'fix'][n]) document.querySelector(`${k}[data-id="${id}"]`)?.scrollIntoView({ behavior:'smooth', block:'center' });
+        if (from !== ['corr', 'fix'][n]) {
+          const all = Array.from(document.querySelectorAll(k));
+          const matchCard = all.find(el => {
+            const elIds = (el.dataset.ids || String(el.dataset.id)).split(',').map(Number);
+            return elIds.includes(id);
+          }) || all.find(el => {
+            const elIds = (el.dataset.ids || String(el.dataset.id)).split(',').map(Number);
+            return elIds.some(i => group.includes(i));
+          });
+          matchCard?.scrollIntoView({ behavior:'smooth', block:'center' });
+        }
       });
       if (!S.editing) {
-        document.querySelectorAll('.ln').forEach(e => e.classList.toggle('active', iss && +e.dataset.line === iss.line));
-        if (from !== 'code') document.querySelector(`.ln[data-line="${iss?.line}"]`)?.scrollIntoView({ behavior:'smooth', block:'center' });
+        document.querySelectorAll('.ln').forEach(e => {
+          e.classList.toggle('active', groupLines.includes(+e.dataset.line));
+        });
+        if (from !== 'code' && iss && iss.line) {
+          document.querySelector(`.ln[data-line="${iss.line}"]`)?.scrollIntoView({ behavior:'smooth', block:'center' });
+        }
       }
     }
 
@@ -612,10 +881,6 @@
         $('#fname').textContent = S.file;
         $('#editor').hidden = true;
         $('#code').hidden = false;
-        $('#editBtn').hidden = false;
-        $('#editBtn').disabled = false;
-        $('#editBtn').textContent = 'Edit';
-        $('#editBtn').classList.add('ghost');
         $('#saveBtn').disabled = true;
         $('#saveDialog').hidden = true;
         paint();

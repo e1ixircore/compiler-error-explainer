@@ -1,5 +1,5 @@
 # static_analyzer.py
-import ast, builtins, difflib
+import ast, builtins, difflib, sys, importlib.util
 
 _BUILTIN_TYPE_MAP = {
     "int": int,
@@ -184,6 +184,10 @@ class StaticChecker(ast.NodeVisitor):
         self.except_stack = []
         # Type environments per lexical scope (name -> normalized type spec).
         self.type_envs = [{}]
+        # Literal sequence length environments (name -> int length).
+        self.seq_len_envs = [{}]
+        # Literal dict key environments (name -> set of string keys).
+        self.dict_key_envs = [{}]
         # Function return annotations stack.
         self.return_stack = []
         # Set of parameter names in the current function explicitly annotated as dict.
@@ -209,6 +213,18 @@ class StaticChecker(ast.NodeVisitor):
 
     def _lookup_type(self, name):
         for env in reversed(self.type_envs):
+            if name in env:
+                return env[name]
+        return None
+
+    def _lookup_seq_len(self, name):
+        for env in reversed(self.seq_len_envs):
+            if name in env:
+                return env[name]
+        return None
+
+    def _lookup_dict_keys(self, name):
+        for env in reversed(self.dict_key_envs):
             if name in env:
                 return env[name]
         return None
@@ -328,12 +344,16 @@ class StaticChecker(ast.NodeVisitor):
                 if t == "dict":
                     param_dicts.add(arg.arg)
         self.type_envs.append(env)
+        self.seq_len_envs.append({})
+        self.dict_key_envs.append({})
         self.param_dict_stack.append(param_dicts)
         self.return_stack.append(_annotation_type(node.returns))
         for s in node.body:
             self.visit(s)
         self.return_stack.pop()
         self.param_dict_stack.pop()
+        self.dict_key_envs.pop()
+        self.seq_len_envs.pop()
         self.type_envs.pop()
         self.scopes.pop()
     visit_FunctionDef = visit_AsyncFunctionDef = _function
@@ -343,19 +363,27 @@ class StaticChecker(ast.NodeVisitor):
         params = {x.arg for x in a.posonlyargs + a.args + a.kwonlyargs}
         self.scopes.append(params)
         self.type_envs.append({})
+        self.seq_len_envs.append({})
+        self.dict_key_envs.append({})
         self.param_dict_stack.append(set())
         self.visit(node.body)
         self.param_dict_stack.pop()
+        self.dict_key_envs.pop()
+        self.seq_len_envs.pop()
         self.type_envs.pop()
         self.scopes.pop()
 
     def visit_ClassDef(self, node):
         self.scopes.append(bound_names(node.body))
         self.type_envs.append({})
+        self.seq_len_envs.append({})
+        self.dict_key_envs.append({})
         self.param_dict_stack.append(set())
         for s in node.body:
             self.visit(s)
         self.param_dict_stack.pop()
+        self.dict_key_envs.pop()
+        self.seq_len_envs.pop()
         self.type_envs.pop()
         self.scopes.pop()
 
@@ -464,10 +492,14 @@ class StaticChecker(ast.NodeVisitor):
         val_t = self._infer_type(node.value)
         for target in node.targets:
             self.visit(target)
-            if isinstance(target, ast.Name) and val_t is not None:
-                # Only infer local variable type if not already explicitly annotated.
-                if target.id not in self.type_envs[-1]:
+            if isinstance(target, ast.Name):
+                if val_t is not None and target.id not in self.type_envs[-1]:
                     self.type_envs[-1][target.id] = val_t
+                if isinstance(node.value, (ast.List, ast.Tuple)):
+                    self.seq_len_envs[-1][target.id] = len(node.value.elts)
+                elif isinstance(node.value, ast.Dict):
+                    keys = {k.value for k in node.value.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+                    self.dict_key_envs[-1][target.id] = keys
 
     def visit_AnnAssign(self, node):
         # Intentionally do not visit node.annotation as a Load (avoids forward-ref NameError).
@@ -475,6 +507,12 @@ class StaticChecker(ast.NodeVisitor):
         if node.value is not None:
             self.visit(node.value)
             actual = self._infer_type(node.value)
+            if isinstance(node.target, ast.Name):
+                if isinstance(node.value, (ast.List, ast.Tuple)):
+                    self.seq_len_envs[-1][node.target.id] = len(node.value.elts)
+                elif isinstance(node.value, ast.Dict):
+                    keys = {k.value for k in node.value.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+                    self.dict_key_envs[-1][node.target.id] = keys
             if expected is not None and actual is not None and not _is_compatible(actual, expected):
                 tname = node.target.id if isinstance(node.target, ast.Name) else "variable"
                 self._err(
@@ -542,6 +580,7 @@ class StaticChecker(ast.NodeVisitor):
         if isinstance(node.ctx, ast.Load):
             idx = _sub_index(node)
             val_dump = ast.dump(node.value)
+            k = _eval_int_const(idx)
             # 1. Guaranteed out-of-bounds index: seq[len(seq)] or seq[len(seq) + k] (k >= 0),
             #    or literal sequence indexed past its length.
             if not self._catches("IndexError") and val_dump not in self.index_guarded:
@@ -554,24 +593,55 @@ class StaticChecker(ast.NodeVisitor):
                         and isinstance(idx.left, ast.Call) and isinstance(idx.left.func, ast.Name)
                         and idx.left.func.id == "len" and len(idx.left.args) == 1
                         and ast.dump(idx.left.args[0]) == val_dump):
-                    k = _eval_int_const(idx.right)
-                    if k is not None and k >= 0:
+                    k_off = _eval_int_const(idx.right)
+                    if k_off is not None and k_off >= 0:
                         oob = True
                 elif isinstance(node.value, (ast.List, ast.Tuple)):
-                    k = _eval_int_const(idx)
                     n = len(node.value.elts)
                     if k is not None and (k >= n or k < -n):
+                        oob = True
+                elif isinstance(node.value, ast.Name):
+                    n = self._lookup_seq_len(node.value.id)
+                    if n is not None and k is not None and (k >= n or k < -n):
                         oob = True
                 if oob:
                     self._err("IndexError", "list index out of range", node)
 
-            # 2. Unguarded literal-key lookup on a dict-typed parameter (potential KeyError).
-            if (not self._catches("KeyError")
-                    and isinstance(node.value, ast.Name)
-                    and node.value.id in self.param_dict_stack[-1]
-                    and isinstance(idx, ast.Constant) and isinstance(idx.value, str)
-                    and (val_dump, ast.dump(idx)) not in self.key_guarded):
-                self._err("KeyError", repr(idx.value), node)
+            # 2. Key lookup on literal dict or dict-typed parameter
+            if not self._catches("KeyError"):
+                if isinstance(node.value, ast.Name) and isinstance(idx, ast.Constant) and isinstance(idx.value, str):
+                    if (val_dump, ast.dump(idx)) not in self.key_guarded:
+                        keys = self._lookup_dict_keys(node.value.id)
+                        if keys is not None and idx.value not in keys:
+                            self._err("KeyError", repr(idx.value), node)
+                        elif node.value.id in self.param_dict_stack[-1]:
+                            self._err("KeyError", repr(idx.value), node)
+        self.generic_visit(node)
+
+    def visit_Import(self, node):
+        if not self._catches("ModuleNotFoundError"):
+            for alias in node.names:
+                mod_name = alias.name.split('.')[0]
+                if mod_name not in sys.builtin_module_names and mod_name not in sys.modules:
+                    try:
+                        spec = importlib.util.find_spec(mod_name)
+                    except (ImportError, ValueError, AttributeError):
+                        spec = None
+                    if spec is None:
+                        self._err("ModuleNotFoundError", f"No module named '{alias.name}'", node)
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node):
+        if not self._catches("ModuleNotFoundError"):
+            if node.module:
+                mod_name = node.module.split('.')[0]
+                if mod_name not in sys.builtin_module_names and mod_name not in sys.modules:
+                    try:
+                        spec = importlib.util.find_spec(mod_name)
+                    except (ImportError, ValueError, AttributeError):
+                        spec = None
+                    if spec is None:
+                        self._err("ModuleNotFoundError", f"No module named '{node.module}'", node)
         self.generic_visit(node)
 
     def visit_Attribute(self, node):
