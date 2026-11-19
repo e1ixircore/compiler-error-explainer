@@ -293,7 +293,65 @@ def _decl_slot(tree, ln, lines):
     return target.lineno - 1, _indent(lines[target.lineno - 1])
 
 
-def _infer_init(bad, code):
+_TYPE_DEFAULTS = {
+    "int": "0",
+    "float": "0.0",
+    "str": "''",
+    "bool": "False",
+    "list": "[]",
+    "dict": "{}",
+    "set": "set()",
+    "tuple": "()",
+    "None": "None",
+    "NoneType": "None",
+}
+
+_STR_METHODS = {
+    "upper", "lower", "strip", "lstrip", "rstrip", "split", "rsplit", "splitlines",
+    "startswith", "endswith", "replace", "title", "capitalize", "casefold",
+    "isdigit", "isalpha", "isalnum", "isnumeric", "isspace", "isupper", "islower",
+    "swapcase", "zfill", "center", "ljust", "rjust",
+}
+
+
+def _enclosing_func(tree, ln):
+    best = None
+    for n in ast.walk(tree):
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.lineno <= ln <= (n.end_lineno or n.lineno):
+            if best is None or n.lineno >= best.lineno:
+                best = n
+    return best
+
+
+def _ann_base_name(ann):
+    if ann is None:
+        return None
+    if isinstance(ann, ast.Name):
+        return ann.id
+    if isinstance(ann, ast.Constant):
+        if ann.value is None:
+            return "None"
+        if isinstance(ann.value, str):
+            return ann.value.strip()
+    if isinstance(ann, ast.Subscript):
+        return _ann_base_name(ann.value)
+    return None
+
+
+def _return_default_for_line(tree, ln):
+    """If line `ln` is a return statement inside a function with a concrete return annotation,
+    return a matching default literal string (e.g. '0' for -> int), else None."""
+    fn = _enclosing_func(tree, ln)
+    if not fn or not fn.returns:
+        return None
+    is_ret = any(isinstance(n, ast.Return) and getattr(n, "lineno", None) == ln for n in ast.walk(fn))
+    if not is_ret:
+        return None
+    base = _ann_base_name(fn.returns)
+    return _TYPE_DEFAULTS.get(base)
+
+
+def _infer_init(bad, code, tree=None, ln=None):
     """Pick a starting value from HOW the name is used on the failing line (never invent data)."""
     n = re.escape(bad)
     m = _mask(code)[0]
@@ -309,6 +367,10 @@ def _infer_init(bad, code):
         return "{}"
     if re.search(rf"(?<![\w.]){n}\.add\(", m):
         return "set()"
+    if tree is not None and ln is not None:
+        ret_def = _return_default_for_line(tree, ln)
+        if ret_def is not None:
+            return ret_def
     return "None"
 
 
@@ -466,6 +528,7 @@ class NLPExplainer:
         "KeyError": "A dictionary was asked for a key that is not in it.",
         "IndexError": "A list was asked for a position that does not exist.",
         "ValueError": "A value has the right type but its content is not acceptable.",
+        "AttributeError": "An object was asked for a property or action (method) that it does not have.",
         "ModuleNotFoundError": "Python could not find the library you tried to import.",
         "TimeoutError": "The program ran too long and was stopped.",
         "NestingError": "The code is stacked too deeply for the tool to analyse safely.",
@@ -507,6 +570,21 @@ class NLPExplainer:
                 "Positions in a list and the counts in range(...) must be whole numbers, but / always "
                 "gives a decimal (6 / 2 is 3.0, not 3).",
                 "Use // for whole-number division, e.g. items[n // 2].")
+        elif "return type mismatch" in msg:
+            type_rule = (
+                f"The function returns a value whose type does not match its return annotation{where}.",
+                f"The function promises one kind of data in its return type hint, but a different kind is returned ({msg}).",
+                "Return a value of the declared type, or update the function's return type annotation.")
+        elif "incompatible type in assignment" in msg:
+            type_rule = (
+                f"A variable is assigned a value that does not match its type annotation{where}.",
+                f"The variable was annotated with one type, but given a different type of value ({msg}).",
+                "Assign a value of the declared type, or change the variable's type annotation to match.")
+        elif "has no len()" in msg:
+            type_rule = (
+                f"len() was called on a value that has no length{where}.",
+                f"len() only works on collections or text (such as lists, strings, or dicts), not single numbers or None ({msg}).",
+                "Pass a list or string to len(), or convert the number with str(...) if you want its digit count.")
         else:
             type_rule = (
                 f"Two different kinds of data are being combined{where}.",
@@ -568,6 +646,10 @@ class NLPExplainer:
                 f"The value has the right type but the wrong content{where}.",
                 f"For example, int('hello') fails because 'hello' is not a number. Python said: {msg}",
                 "Check the value before converting it, or wrap the conversion in try/except."),
+            "AttributeError": (
+                f"An attribute or method was used on a value that may not support it{where}.",
+                f"Only certain data types have certain methods (for example, .upper() exists on text, not numbers). Python said: {msg}",
+                "Check the value's type first with isinstance(...) or hasattr(...), or convert it with str(...) before calling string methods."),
             "ModuleNotFoundError": (
                 f"Python cannot find a library called '{name}'{where}.",
                 "Either the library is not installed on this computer, or its name is misspelled."
@@ -676,7 +758,12 @@ class NLPExplainer:
         if tree is None or code.strip().startswith(("elif", "else", "except", "finally")):
             return
         slot, ind = _decl_slot(tree, ln, lines)
-        lines.insert(slot, f"{ind}{bad} = {_infer_init(bad, code)}  # TODO: define a real value")
+        is_call = bool(re.search(rf"(?<![\w.]){re.escape(bad)}\s*\(", _mask(code)[0]))
+        if is_call:
+            ret_def = _return_default_for_line(tree, ln) or "None"
+            lines.insert(slot, f"{ind}def {bad}(*args, **kwargs): return {ret_def}  # TODO: implement")
+            return
+        lines.insert(slot, f"{ind}{bad} = {_infer_init(bad, code, tree, ln)}  # TODO: define a real value")
 
     # ---- TypeError -------------------------------------------------------
     def _fix_TypeError(self, ir, lines, i):
@@ -737,6 +824,81 @@ class NLPExplainer:
                         k = line.find("/", le, rs)
                         if k >= 0:
                             edits.append((k, k + 1, "//"))
+        elif "has no len()" in msg:
+            for n in here:
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "len" and len(n.args) == 1:
+                    arg = n.args[0]
+                    s, e = _span(line, arg)
+                    edits.append((s, e, f"str({line[s:e]})"))
+        elif "return type mismatch" in msg:
+            rm = re.search(r"expected '([^']+)', got '([^']+)'", msg)
+            exp = rm.group(1).split(" | ")[0].strip() if rm else None
+            for n in here:
+                if isinstance(n, ast.Return) and n.value is not None and exp:
+                    val = n.value
+                    s, e = _span(line, val)
+                    seg = line[s:e]
+                    if exp == "str":
+                        edits.append((s, e, f"str({seg})"))
+                    elif isinstance(val, ast.Constant) and isinstance(val.value, str) \
+                            and exp in ("int", "float") and re.fullmatch(r"\s*-?\d+(\.\d+)?\s*", val.value):
+                        num = str(int(float(val.value))) if exp == "int" else str(float(val.value))
+                        edits.append((s, e, num))
+                    elif exp in _TYPE_DEFAULTS:
+                        edits.append((s, e, _TYPE_DEFAULTS[exp]))
+        elif "incompatible type in assignment" in msg:
+            rm = re.search(r"assignment to '([^']+)': expected '([^']+)', got '([^']+)'", msg)
+            if rm:
+                var_name, exp, got = rm.groups()
+                exp = exp.split(" | ")[0].strip()
+                got = got.split(" | ")[0].strip()
+                fn = _enclosing_func(tree, i + 1)
+                fn_ret = _ann_base_name(fn.returns) if fn else None
+                # If the variable is returned from a function whose return annotation matches `got`,
+                # fix the variable's type annotation so the whole function becomes type-consistent.
+                returned_here = fn is not None and any(
+                    isinstance(r, ast.Return) and isinstance(r.value, ast.Name) and r.value.id == var_name
+                    for r in ast.walk(fn)
+                )
+                for n in here:
+                    if isinstance(n, ast.AnnAssign) and n.value is not None:
+                        if returned_here and fn_ret == got and got in _TYPE_DEFAULTS:
+                            s, e = _span(line, n.annotation)
+                            edits.append((s, e, got))
+                        else:
+                            val = n.value
+                            s, e = _span(line, val)
+                            seg = line[s:e]
+                            if exp == "str":
+                                edits.append((s, e, f"str({seg})"))
+                            elif isinstance(val, ast.Constant) and isinstance(val.value, str) \
+                                    and exp in ("int", "float") and re.fullmatch(r"\s*-?\d+(\.\d+)?\s*", val.value):
+                                num = str(int(float(val.value))) if exp == "int" else str(float(val.value))
+                                edits.append((s, e, num))
+                            elif exp in _TYPE_DEFAULTS:
+                                edits.append((s, e, _TYPE_DEFAULTS[exp]))
+        new = _apply(line, edits)
+        if new != line:
+            lines[i] = new
+
+    # ---- AttributeError ------------------------------------------------
+    def _fix_AttributeError(self, ir, lines, i):
+        msg = ir.get("error_message") or ""
+        tree = _parse(lines)
+        if tree is None:
+            return
+        m = re.search(r"attribute '([^']+)'", msg)
+        attr_name = m.group(1) if m else None
+        line, here, edits = lines[i], _on_line(tree, i + 1), []
+        for n in here:
+            if isinstance(n, ast.Attribute) and (attr_name is None or n.attr == attr_name):
+                if n.attr in _STR_METHODS:
+                    s, e = _span(line, n.value)
+                    edits.append((s, e, f"str({line[s:e]})"))
+                elif _pure(n.value):
+                    obj = _wrap(_seg(line, n.value), n.value)
+                    s, e = _span(line, n)
+                    edits.append((s, e, f"(getattr({obj}, {n.attr!r}, None))"))
         new = _apply(line, edits)
         if new != line:
             lines[i] = new
@@ -787,13 +949,14 @@ class NLPExplainer:
         # One candidate -> it must be the culprit. Several -> only guard obvious int positions
         # (lst[10]); guarding a dict lookup such as d[key] with len() would change working code.
         pick = cands if len(cands) == 1 else [(n, ix) for n, ix in cands if _is_int_const(ix)]
+        ret_def = _return_default_for_line(tree, i + 1) or "None"
         edits = []
         for n, ix in pick:
             v, k = _wrap(_seg(line, n.value), n.value), _wrap(_seg(line, ix), ix)
             nonneg = isinstance(ix, ast.Constant) and ix.value >= 0
             cond = f"len({v}) > {k}" if nonneg else f"-len({v}) <= {k} < len({v})"   # also covers negatives
             s, e = _span(line, n)
-            edits.append((s, e, f"({v}[{k}] if {cond} else None)"))
+            edits.append((s, e, f"({v}[{k}] if {cond} else {ret_def})"))
         new = _apply(line, edits)
         if new != line:
             lines[i] = new
@@ -828,12 +991,16 @@ class NLPExplainer:
         chosen = strkey or (subs if len(subs) == 1 else [])     # d['k'] is surely a dict; otherwise only if unambiguous
         cset = set(map(id, chosen))
 
+        ret_def = _return_default_for_line(tree, i + 1)
+
         def conv(n, outer):
             """d['a']['b'] -> d.get('a', {}).get('b'): inner levels default to {} so the chain survives."""
             inner = n.value
             base = conv(inner, False) if id(inner) in cset else _wrap(_seg(line, inner), inner)
             k = _seg(line, _idx(n))
-            return f"{base}.get({k})" if outer else f"{base}.get({k}, {{}})"
+            if outer:
+                return f"{base}.get({k}, {ret_def})" if ret_def is not None else f"{base}.get({k})"
+            return f"{base}.get({k}, {{}})"
         edits = [(*_span(line, n), conv(n, True)) for n in chosen]
         new = _apply(line, edits)
         if new != line:

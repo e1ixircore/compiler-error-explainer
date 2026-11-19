@@ -15,11 +15,24 @@ from nlp_explainer import NLPExplainer
 from ir_generator import IRGenerator
 from security_analyzer import SecurityAnalyzer
 from static_analyzer import static_check
+from cpp_explainer import (
+    apply_fix as apply_cpp_fix,
+    explain as explain_cpp_error,
+    hides_crash as cpp_hides_crash,
+    meaning as cpp_meaning,
+)
+from cpp_extractor import (
+    CPP_EXTENSIONS,
+    CompilerNotFound,
+    extract_cpp_error,
+    is_cpp_name,
+    run_cpp_code,
+)
 
 # CRITICAL/HIGH findings mean "do not execute, do not save".
 BLOCKING = {"CRITICAL", "HIGH"}
-MAX_REPAIR_PASSES = 25     # hard cap on patch passes (each pass fixes ONE error)
-MAX_REPAIR_SECONDS = 20    # wall-clock budget: every runtime pass spawns a sandbox, so bound the total
+MAX_REPAIR_PASSES = 100    # hard cap on patch passes (each pass fixes ONE error)
+MAX_REPAIR_SECONDS = 60    # wall-clock budget: every runtime pass spawns a sandbox, so bound the total
 MAX_CODE_BYTES = 100_000   # reject giant inputs before parsing (protects the compiler itself)
 
 
@@ -36,12 +49,38 @@ class CompilerError:
 
 
 def _available_test_files():
-    files = glob.glob("test*.py")
-    fixed_files = glob.glob("*_fixed.py")
-    all_files = sorted(set(files + fixed_files))
+    files = []
+    for extension in (".py",) + CPP_EXTENSIONS:
+        files.extend(glob.glob(f"test*{extension}"))
+        files.extend(glob.glob(f"*_fixed{extension}"))
+    all_files = sorted(set(files))
     all_files = [f for f in all_files
                  if f not in ["test_ir.py", "test_nlp.py", "sample_input.py", "sample_input_fixed.py"]]
-    return [{"filename": f, "is_fixed": "_fixed.py" in f} for f in all_files]
+    return [{"filename": f, "is_fixed": "_fixed." in f, "language": "cpp" if is_cpp_name(f) else "python"}
+            for f in all_files]
+
+
+def detect_language(filename=None, code="", explicit=None):
+    """Decide whether source code is 'cpp' or 'python'."""
+    if isinstance(explicit, str):
+        val = explicit.strip().lower()
+        if val in ("cpp", "c++", "cxx", "cc"):
+            return "cpp"
+        if val in ("py", "python"):
+            return "python"
+    if filename:
+        if is_cpp_name(filename):
+            return "cpp"
+        if str(filename).lower().endswith(".py"):
+            return "python"
+    if isinstance(code, str) and code.strip():
+        if re.search(r"^\s*#\s*include\s*[<\"].+[>\"]", code, re.MULTILINE):
+            return "cpp"
+        if re.search(r"\b(?:int|void)\s+main\s*\(", code) or re.search(r"\busing\s+namespace\s+std\b", code):
+            return "cpp"
+        if re.search(r"\bstd::\w+", code) or re.search(r"\b(?:cout|cerr)\s*<<|\bcin\s*>>", code):
+            return "cpp"
+    return "python"
 
 
 def safe_name(name):
@@ -62,18 +101,18 @@ def read_source(filename):
             return f.read()
 
 
-def scan(code):
+def scan(code, language="python"):
     """Returns (vulns, formatted log lines, is_blocked)."""
-    vulns = SecurityAnalyzer().scan_code(code)
+    vulns = SecurityAnalyzer().scan_code(code, language=language)
     log = [f"[{v['severity']}] Line {v['line']}: {v['message']}" for v in vulns]
     return vulns, log, any(v["severity"] in BLOCKING for v in vulns)
 
 
-def fix_is_safe(original, fixed):
+def fix_is_safe(original, fixed, language="python"):
     """A patch may never ADD a vulnerability class that the original didn't have."""
     sa = SecurityAnalyzer()
-    before = Counter(v["type"] for v in sa.scan_code(original))
-    after = Counter(v["type"] for v in sa.scan_code(fixed))
+    before = Counter(v["type"] for v in sa.scan_code(original, language=language))
+    after = Counter(v["type"] for v in sa.scan_code(fixed, language=language))
     return all(after[t] <= before[t] for t in after)
 
 def verify_fix(original, fixed):
@@ -111,6 +150,23 @@ def build_metrics(ir_dict):
     return (f"Execution Time\n{t*1000:.2f} ms\n\n"
             f"CodeCarbon Emissions\n{kg*1e6:.6f} mg CO2 eq\n\n"
             f"Energy Consumed\n{kwh*1e6:.6f} mWh\n")
+
+
+def build_metrics_data(scan_ms, ir_dict=None):
+    """Structured metrics for the bottom summary bar in index.html."""
+    import analytics_data
+    power_w = analytics_data.load_power()["mean_w"]
+    g = (ir_dict or {}).get("green_metrics") or {}
+    run_ms = round((g.get("execution_time_sec") or 0) * 1000, 2)
+    emissions_mg = round((g.get("emissions_kg") or 0) * 1e6, 4)
+    return {
+        "scan_ms": round(scan_ms, 2),
+        "run_ms": run_ms,
+        "est_energy_mj": round(power_w * scan_ms, 1),
+        "power_w": power_w,
+        "codecarbon": emissions_mg > 0,
+        "emissions_mg": emissions_mg,
+    }
 
 def _changed_lines(before, after):
     """(sign, text) pairs for lines a patch removed ('-') or added ('+'), for display."""
@@ -155,16 +211,18 @@ def _orig_line(origin, ln):
 def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECONDS, first_ir=None):
     """Agent loop: perceive (analyze) -> decide (pick rule) -> act (patch) -> observe (re-analyze).
     Runs UNTIL THE CODE IS CLEAN, one error per pass, so any number of errors can be fixed.
-    Termination is guaranteed by four independent stops (a loop that 'continues until done'
-    must prove it cannot spin forever):
+    If one static error has no safe automatic fix, it is recorded and skipped so remaining static
+    errors in the same file are still reported and fixed.
+    Termination is guaranteed by four independent stops:
       1. clean           : no error remains                       -> success
-      2. no safe fix     : no rule, or the patch fails safety     -> stuck
+      2. no safe fix     : all remaining errors have no safe rule -> partial / stuck
       3. no progress     : patch reproduces an earlier program, or the same error recurs 3x
       4. budget          : pass cap or wall-clock limit reached   -> partial
     first_ir lets the caller hand over an analysis it already ran (avoids executing twice)."""
     history, current = [], code
     seen_states = {code}                 # every program version produced so far (cycle detection)
     repeats = Counter()                  # how often the same (type, message, line) came back
+    skipped_static = set()               # unfixable static error keys (type, msg, orig_line)
     t_start = time.perf_counter()
     origin = list(range(1, len(code.split("\n")) + 1))   # line i of `current` came from original line origin[i]
     for i in range(max_iters):
@@ -178,15 +236,35 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
             break
         tb = ir_dict.get("traceback") or ""
         stage = "static" if tb.startswith("(static") else "runtime"
-        if ir_dict["error_type"] == "SyntaxError":
+        if ir_dict["error_type"] in ("SyntaxError", "IndentationError"):
             stage = "parser"             # rejected before any AST existed
-        err = CompilerError(ir_dict["error_type"], ir_dict.get("error_message"),
-                            ir_dict.get("line_number"), stage, tb)
+
+        # If static analysis found multiple errors and earlier ones were unfixable, advance to
+        # the next unskipped static error so EVERY error is explained and fixable ones are patched.
+        active = ir_dict
+        if stage == "static" and ir_dict.get("all_errors"):
+            picked = None
+            for cand in ir_dict["all_errors"]:
+                key = (cand["error_type"], cand.get("error_message"), _orig_line(origin, cand.get("line_number")))
+                if key not in skipped_static:
+                    picked = cand
+                    break
+            if picked is None:
+                break                    # every remaining static error was already reported as unfixable
+            active = dict(ir_dict,
+                          error_type=picked["error_type"],
+                          error_message=picked.get("error_message"),
+                          line_number=picked.get("line_number"),
+                          column=picked.get("column"),
+                          suggestion=picked.get("suggestion"))
+
+        err = CompilerError(active["error_type"], active.get("error_message"),
+                            active.get("line_number"), stage, tb)
         ir = json.loads(IRGenerator(current, err).generate_ir())   # the IR: one JSON payload PER error
-        ir["suggestion"] = ir_dict.get("suggestion")          # symbol-table "did you mean"
+        ir["suggestion"] = active.get("suggestion")           # symbol-table "did you mean"
         # Promised fields for the Diagnostic JSON (now attached to every issue, not just the first).
         ir["phase"] = stage                                   # "parser" | "static" | "runtime"
-        ir["column"] = ir_dict.get("column")                  # only the static checker knows columns
+        ir["column"] = active.get("column")                   # only the static checker knows columns
 
         t0 = time.perf_counter()
         explanation = explainer.explain(ir)                   # explain THIS error
@@ -203,21 +281,38 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
             if m:
                 frames.append(f"line {m.group(1)}" + (f" in {m.group(2)}" if m.group(2) else ""))
         frames = frames[1:]
+        orig_ln = _orig_line(origin, ln)
         entry = {"step": i + 1, "error": ir["error_type"], "line": ln, "column": ir["column"],
                  "stage": stage, "source": src, "ir": ir, "trace": frames,
                  "explanation": explanation, "explain_ms": explain_ms, "patch": [],
-                 "orig_line": _orig_line(origin, ln)}      # where to highlight in the ORIGINAL code
+                 "orig_line": orig_ln}      # where to highlight in the ORIGINAL code
 
         sig = (ir["error_type"], ir.get("error_message"), ln)
+        static_key = (ir["error_type"], ir.get("error_message"), orig_ln)
         repeats[sig] += 1
         fixed = explainer.generate_fixed_code(ir, current)    # decide + act
+        has_more_static = (
+            stage == "static"
+            and bool(ir_dict.get("all_errors"))
+            and any(
+                (c["error_type"], c.get("error_message"), _orig_line(origin, c.get("line_number")))
+                not in (skipped_static | {static_key})
+                for c in ir_dict["all_errors"]
+            )
+        )
         if fixed == current or not fix_is_safe(current, fixed):
             entry["result"] = "stuck (no safe fix)"
             history.append(entry)
+            if has_more_static:
+                skipped_static.add(static_key)
+                continue
             break
         if fixed in seen_states or repeats[sig] >= 3:         # patching in circles
             entry["result"] = "stuck (patch is not making progress)"
             history.append(entry)
+            if has_more_static:
+                skipped_static.add(static_key)
+                continue
             break
         seen_states.add(fixed)
         entry["patch"] = _changed_lines(current, fixed)
@@ -231,6 +326,183 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
     return current, history
 
 
+def cpp_repair_loop(code, max_iters=30, time_budget=45, first_ir=None):
+    """Iteratively apply safe fixes, checking each revision with the C++ compiler (-fsyntax-only)."""
+    history, current = [], code
+    seen_states = {code}
+    skipped = set()
+    origin = list(range(1, len(code.split("\n")) + 1))
+    started = time.perf_counter()
+    cached_ir = first_ir
+
+    for step in range(max_iters):
+        if time.perf_counter() - started > time_budget:
+            history.append({"step": "final", "result": f"stopped: {time_budget}s time budget reached"})
+            break
+        ir = cached_ir if cached_ir is not None else extract_cpp_error(current)
+        cached_ir = ir
+        diagnostics = ir.get("all_errors") or ([ir] if ir.get("error_type") else [])
+        if not diagnostics:
+            history.append({"step": step + 1, "result": "clean"})
+            return current, history, ir
+
+        # Pick the first diagnostic not yet marked unfixable.
+        diagnostic = None
+        for cand in diagnostics:
+            key = (cand.get("error_type"), cand.get("error_message"), _orig_line(origin, cand.get("line_number")))
+            if key not in skipped:
+                diagnostic = cand
+                break
+        if diagnostic is None:
+            break
+
+        line = diagnostic.get("line_number")
+        orig_ln = _orig_line(origin, line)
+        lines = current.split("\n")
+        source = lines[line - 1].strip() if line and 1 <= line <= len(lines) else ""
+        mistake, reason, guidance = explain_cpp_error(diagnostic)
+        entry = {
+            "step": step + 1,
+            "error": diagnostic["error_type"],
+            "line": line,
+            "column": diagnostic.get("column"),
+            "stage": "compiler",
+            "source": source,
+            "ir": diagnostic,
+            "meaning": cpp_meaning(diagnostic["error_type"]),
+            "mistake": mistake,
+            "reason": reason,
+            "guidance": guidance,
+            "patch": [],
+            "orig_line": orig_ln,
+        }
+        key = (diagnostic.get("error_type"), diagnostic.get("error_message"), orig_ln)
+        fixed = apply_cpp_fix(current, {
+            "error_type": diagnostic.get("error_type"),
+            "message": diagnostic.get("error_message"),
+            "line": line,
+            "column": diagnostic.get("column"),
+            "name": diagnostic.get("name"),
+            "header": diagnostic.get("header"),
+            "suggestion": diagnostic.get("suggestion"),
+            "notes": diagnostic.get("notes", []),
+        })
+        if fixed == current or not fix_is_safe(current, fixed, language="cpp"):
+            entry["result"] = "no safe automatic fix"
+            history.append(entry)
+            skipped.add(key)
+            continue
+        if fixed in seen_states:
+            entry["result"] = "stopped: patch made no progress"
+            history.append(entry)
+            skipped.add(key)
+            continue
+
+        entry["patch"] = _changed_lines(current, fixed)
+        entry["result"] = "patched"
+        history.append(entry)
+        seen_states.add(fixed)
+        origin = _remap_origin(origin, current, fixed)
+        current = fixed
+        cached_ir = None
+    else:
+        history.append({"step": "final", "result": f"stopped: reached the {max_iters}-pass safety cap"})
+
+    final_ir = cached_ir if cached_ir is not None else extract_cpp_error(current)
+    if not final_ir.get("error_type"):
+        history.append({"step": len(history) + 1, "result": "clean"})
+    return current, history, final_ir
+
+
+def build_cpp_issues(original_code, history):
+    """Convert compiler repair history into the issue shape consumed by the web UI."""
+    src_lines = original_code.split("\n")
+    issues = []
+    for entry in history:
+        if not entry.get("error"):
+            continue
+        ir = entry["ir"]
+        line = entry.get("orig_line")
+        patched = entry["result"] == "patched"
+        patch_list = entry.get("patch", [])
+        issues.append({
+            "id": len(issues) + 1,
+            "line": line,
+            "column": entry.get("column"),
+            "type": entry["error"],
+            "meaning": entry.get("meaning") or cpp_meaning(entry["error"]),
+            "stage": "compiler",
+            "source": src_lines[line - 1].strip() if line and line <= len(src_lines) else entry.get("source"),
+            "mistake": entry.get("mistake") or entry.get("meaning", ""),
+            "reason": entry["reason"],
+            "how_to_fix": entry["guidance"],
+            "suggestion": ir.get("suggestion"),
+            "patched": patched,
+            "status": entry["result"],
+            "patch": [{"sign": sign, "text": text} for sign, text in patch_list],
+            "hides_crash": patched and cpp_hides_crash(entry["error"], patch_list),
+        })
+    return issues
+
+
+def analyze_cpp(code, sec_struct=None, sec_log=None, first_ir=None, scan_start=None):
+    """Compile-check C++ and return corrections without executing untrusted binaries."""
+    t0 = scan_start if scan_start is not None else time.perf_counter()
+    fixed_code, history, final_ir = cpp_repair_loop(code, first_ir=first_ir)
+    scan_ms = (time.perf_counter() - t0) * 1000
+    errors_remain = bool(final_ir.get("error_type"))
+    clean_check = any(entry.get("result") == "clean" for entry in history)
+    if clean_check and not errors_remain:
+        verdict = {
+            "verdict": "VERIFIED" if fixed_code != code else "CLEAN",
+            "detail": ("Patched C++ code passes compiler syntax & warning checks (-fsyntax-only)."
+                       if fixed_code != code else "C++ compile check passed with no errors."),
+        }
+    elif fixed_code != code:
+        rem_count = len(final_ir.get("all_errors") or [final_ir])
+        verdict = {
+            "verdict": "PARTIAL",
+            "detail": f"Some errors were fixed, but {rem_count} compiler error(s) remain.",
+        }
+    else:
+        verdict = {
+            "verdict": "NO FIX GENERATED",
+            "detail": "No safe automatic correction was available; see explanations to fix manually.",
+        }
+    issues = build_cpp_issues(code, history)
+    compiler = final_ir.get("compiler") or (first_ir or {}).get("compiler")
+    warnings = final_ir.get("warnings") or []
+    summary = build_summary(issues, verdict)
+    raw_lines = [
+        f"[C++ COMPILER] {compiler or 'g++/clang++'} (-fsyntax-only -Wall -Wextra -std=c++17)",
+        f"[VERDICT] {verdict['verdict']}: {verdict['detail']}",
+    ]
+    for iss in issues:
+        raw_lines.append(f"  Line {iss['line']}: {iss['type']} [{iss['status']}] - {iss['mistake']}")
+    return {
+        "status": "success" if not issues and not errors_remain else "error_intercepted",
+        "language": "cpp",
+        "compiler": compiler,
+        "analysis_note": f"Compile-checked using {compiler or 'C++ compiler'}. Press Run to compile and execute.",
+        "warnings": [f"line {w.get('line', '?')}: {w.get('message', '')}" for w in warnings],
+        "original_code": code,
+        "fixed_code": fixed_code,
+        "raw_text": "\n".join(raw_lines),
+        "message": "C++ compile check passed cleanly. Press Run to compile and execute.",
+        "issues": issues,
+        "by_line": by_line(issues),
+        "diagnostics": [entry["ir"] for entry in history if entry.get("error")],
+        "verdict": verdict,
+        "summary": summary,
+        "metrics": build_metrics(final_ir),
+        "metrics_data": build_metrics_data(scan_ms, final_ir),
+        "blocked": False,
+        "security": sec_struct or [],
+        "security_alerts": sec_log or [],
+        "notes": [h["result"] for h in history if not h.get("error") and h["result"] != "clean"],
+    }
+
+
 
 # ----------------------------------------------------------------------
 # STRUCTURED OUTPUT FOR THE UI (replaces parsing the raw_text blob)
@@ -238,7 +510,7 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
 def _hides_crash(etype, patch):
     text = " ".join(t for _, t in patch)
     return (etype in ("ZeroDivisionError", "KeyError", "IndexError", "ModuleNotFoundError", "ValueError")
-            or "= None" in text or "TODO: define a real value" in text)
+            or "= None" in text or "TODO: define a real value" in text or "TODO: implement" in text)
 
 
 def build_issues(original_code, history):
@@ -294,7 +566,8 @@ def by_line(issues):
     return out
 
 
-STAGE_LABEL = {"parser": "the parser", "static": "static analysis", "runtime": "runtime execution"}
+STAGE_LABEL = {"parser": "the parser", "static": "static analysis", "runtime": "runtime execution",
+               "compiler": "the C++ compiler"}
 
 
 def format_pipeline(sec_log, first_ir, history, verdict):
@@ -409,9 +682,11 @@ def read_file():
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_code():
+    t_req = time.perf_counter()
     data = request.json or {}
     filename = safe_name(data.get('filename'))
     posted = data.get('code')
+    explicit_lang = data.get('language')
     # The UI can now send the (possibly edited) code directly. It goes through exactly the same
     # security scan + sandbox as /api/execute, so this opens nothing new.
     if isinstance(posted, str):
@@ -423,16 +698,20 @@ def analyze_code():
     if len(code.encode("utf-8", "ignore")) > MAX_CODE_BYTES:
         return jsonify({"error": "Input too large"}), 413
 
-    # ---- STAGE 0: security gate. Runs BEFORE anything executes. ----
-    vulns, sec_log, blocked = scan(code)
+    lang = detect_language(filename=filename or data.get('filename'), code=code, explicit=explicit_lang)
+
+    # ---- STAGE 0: security gate. Runs BEFORE anything compiles or executes. ----
+    vulns, sec_log, blocked = scan(code, language=lang)
     sec_struct = [{"line": v["line"], "severity": v["severity"], "type": v["type"], "message": v["message"]}
                   for v in vulns]
     if blocked:
         return jsonify({
             "status": "blocked",
+            "language": lang,
             "original_code": code,
             "raw_text": "[SECURITY] Execution BLOCKED. Critical/High findings:\n  " + "\n  ".join(sec_log),
             "metrics": "Not executed (blocked by security scan).",
+            "metrics_data": build_metrics_data((time.perf_counter() - t_req) * 1000),
             "blocked": True,
             "security": sec_struct,          # UI: red banner + highlight these lines
             "issues": [], "by_line": {},
@@ -440,7 +719,17 @@ def analyze_code():
                         "verdict": "BLOCKED", "detail": "Not run: security scan found critical/high risks."},
         })
 
-    # ---- STAGES 1-3: static analysis, then sandboxed run (inside extract_error) ----
+    # ---- C++ PIPELINE ----
+    if lang == "cpp":
+        try:
+            first_ir = extract_cpp_error(code)
+            result = analyze_cpp(code, sec_struct=sec_struct, sec_log=sec_log,
+                                 first_ir=first_ir, scan_start=t_req)
+        except CompilerNotFound as e:
+            return jsonify({"status": "error", "error": str(e)}), 503
+        return jsonify(result)
+
+    # ---- PYTHON PIPELINE: static analysis, then sandboxed run (inside extract_error) ----
     try:
         ir_dict = extract_error(code)
     except RuntimeError as e:          # sandbox child died unexpectedly
@@ -459,6 +748,7 @@ def analyze_code():
 
         verdict = verify_fix(code, fixed_code)
         issues = build_issues(code, repair_history)
+        scan_ms = (time.perf_counter() - t_req) * 1000
 
         log_text = format_pipeline(sec_log, ir_dict, repair_history, verdict)
         log_text += "\n" + format_diagnosis(repair_history)
@@ -470,11 +760,13 @@ def analyze_code():
 
         return jsonify({
             "status": "error_intercepted",
+            "language": "python",
             "original_code": code,
             "raw_text": log_text,
             "diagnostics": [h["ir"] for h in repair_history if h.get("error")],   # full IR JSON, one per issue
             "fixed_code": fixed_code,
             "metrics": build_metrics(ir_dict),
+            "metrics_data": build_metrics_data(scan_ms, ir_dict),
             # ---- structured data for the new UI ----
             "blocked": False,
             "security": sec_struct,
@@ -486,17 +778,20 @@ def analyze_code():
         })
 
     # No error found
+    scan_ms = (time.perf_counter() - t_req) * 1000
     out_msg = "Execution completed normally. No compilation or runtime errors intercepted."
     captured = (ir_dict or {}).get("stdout", "")
     if captured and captured.strip():
         out_msg += f"\n\n[STDOUT OUTPUT]:\n{captured.strip()}"
     return jsonify({
         "status": "success",
+        "language": "python",
         "original_code": code,
         "message": out_msg,
         "fixed_code": code,
         "security_alerts": sec_log,
         "metrics": build_metrics(ir_dict),
+        "metrics_data": build_metrics_data(scan_ms, ir_dict),
         "blocked": False, "security": sec_struct, "issues": [], "by_line": {},
         "summary": {"total": 0, "fixed": 0, "unfixed": 0, "by_type": {}, "by_stage": {},
                     "verdict": "CLEAN", "detail": "No errors found."},
@@ -505,25 +800,31 @@ def analyze_code():
 
 @app.route('/api/execute', methods=['POST'])
 def execute_code():
-    code_to_run = (request.json or {}).get('code', '')
+    data = request.json or {}
+    code_to_run = data.get('code', '')
     if len(code_to_run.encode("utf-8", "ignore")) > MAX_CODE_BYTES:
         return jsonify({"output": "BLOCKED: input too large."})
-    _, _, blocked = scan(code_to_run)
+    lang = detect_language(filename=data.get('filename'), code=code_to_run, explicit=data.get('language'))
+    _, _, blocked = scan(code_to_run, language=lang)
     if blocked:
         return jsonify({"output": "BLOCKED: critical security findings, code not executed."})
 
     try:
-        execution = run_code(code_to_run)     # child process + 5s timeout
-    except RuntimeError as e:
+        if lang == "cpp":
+            execution = run_cpp_code(code_to_run)
+        else:
+            execution = run_code(code_to_run)     # child process + 5s timeout
+    except (RuntimeError, CompilerNotFound) as e:
         return jsonify({"output": f"Sandbox failure: {e}"})
 
     output = execution["stdout"]
     if execution["error_type"]:
-        output += (f"\nCRASH DURING EXECUTION:\n"
+        prefix = "COMPILE / EXECUTION ERROR" if lang == "cpp" else "CRASH DURING EXECUTION"
+        output += (f"\n{prefix}:\n"
                    f"{execution['error_type']}: {execution['error_message']}")
     elif not output.strip():
         output = "Code executed cleanly (No standard output returned)."
-    return jsonify({"output": output})
+    return jsonify({"output": output, "language": lang})
 
 
 @app.route('/api/save', methods=['POST'])
@@ -534,20 +835,27 @@ def save_file():
         return jsonify({"error": "Code must be text"}), 400
     if len(code.encode("utf-8", "ignore")) > MAX_CODE_BYTES:
         return jsonify({"error": "Input too large"}), 413
+
+    lang = detect_language(filename=data.get('filename'), code=code, explicit=data.get('language'))
     # Never persist code with critical findings.
-    if scan(code)[2]:
+    if scan(code, language=lang)[2]:
         return jsonify({"error": "Refusing to save code with critical security findings"}), 400
 
     if data.get('create') is True:
         requested_name = data.get('filename')
         if not isinstance(requested_name, str):
             return jsonify({"error": "Enter a valid filename"}), 400
-        stem = requested_name.strip()
-        if stem.endswith(".py"):
-            stem = stem[:-3]
+        raw_name = requested_name.strip()
+        ext = ".cpp" if lang == "cpp" else ".py"
+        stem = raw_name
+        for candidate_ext in (".py",) + CPP_EXTENSIONS:
+            if raw_name.lower().endswith(candidate_ext):
+                ext = candidate_ext
+                stem = raw_name[:-len(candidate_ext)]
+                break
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,60}", stem):
             return jsonify({"error": "Use 1-60 letters, numbers, underscores, or hyphens for the filename"}), 400
-        new_filename = f"test_user_{stem}.py"
+        new_filename = f"test_user_{stem}{ext}"
         try:
             with open(new_filename, "x", encoding="utf-8") as f:
                 f.write(code)
@@ -559,9 +867,9 @@ def save_file():
     if not original_filename:
         return jsonify({"error": "Missing or invalid filename/code"}), 400
 
-    # Always write to <name>_fixed.py so the original test file is never overwritten.
-    new_filename = (original_filename if original_filename.endswith("_fixed.py")
-                    else original_filename.replace(".py", "_fixed.py"))
+    # Always write to <name>_fixed<ext> so the original test file is never overwritten.
+    base, ext = os.path.splitext(original_filename)
+    new_filename = original_filename if base.endswith("_fixed") else f"{base}_fixed{ext}"
 
     with open(new_filename, "w", encoding="utf-8") as f:
         f.write(code)
@@ -609,7 +917,7 @@ def refresh_analytics():
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
-    """Saves an uploaded/pasted .py file as test_upload_<name>.py. Does NOT run it.
+    """Saves an uploaded/pasted .py or .cpp/.cc/.cxx file as test_upload_<name><ext>. Does NOT run it.
     The prefix means (a) the existing whitelist lists it automatically and
     (b) an upload can never overwrite one of your real test files."""
     data = request.json or {}
@@ -618,16 +926,19 @@ def upload_file():
 
     if not isinstance(code, str) or not code.strip():
         return jsonify({"error": "Empty file"}), 400
-    if not name.endswith('.py'):
-        return jsonify({"error": "Only .py files are accepted"}), 400
+    allowed_exts = (".py",) + CPP_EXTENSIONS
+    matched_ext = next((ext for ext in allowed_exts if name.lower().endswith(ext)), None)
+    if not matched_ext:
+        return jsonify({"error": "Only .py, .cpp, .cc, and .cxx files are accepted"}), 400
     if "\x00" in code:
         return jsonify({"error": "Null byte in source"}), 400      # ast.parse would raise ValueError
     if len(code.encode("utf-8", "ignore")) > MAX_CODE_BYTES:
         return jsonify({"error": "File too large (100 KB max)"}), 413
 
     # Whitelist characters in the stem so the name can't contain path tricks.
-    stem = re.sub(r'[^A-Za-z0-9_]', '_', name[:-3])[:40] or 'file'
-    new_name = f"test_upload_{stem}.py"
+    raw_stem = name[:-len(matched_ext)]
+    stem = re.sub(r'[^A-Za-z0-9_]', '_', raw_stem)[:40] or 'file'
+    new_name = f"test_upload_{stem}{matched_ext}"
     with open(new_name, "w", encoding="utf-8") as f:
         f.write(code)
     return jsonify({"status": "success", "filename": new_name})

@@ -12,7 +12,7 @@
       color-scheme: light;
       --bg:#f6f4ef; --panel:#ffffff; --panel2:#efece6; --line:#dcd7cd; --ink:#1c1917; --mute:#6b665e;
       --accent:#1b4332; --accent-hover:#143326; --accent-soft:#e6f0ec;
-      --parser:#6d28d9; --static:#b45309; --runtime:#b91c1c; --sec:#be123c; --ok:#1b4332; --warn:#b45309;
+      --parser:#6d28d9; --static:#b45309; --runtime:#b91c1c; --compiler:#0369a1; --sec:#be123c; --ok:#1b4332; --warn:#b45309;
       --head:'Manrope',-apple-system,BlinkMacSystemFont,sans-serif;
       --body:'Work Sans',-apple-system,BlinkMacSystemFont,sans-serif;
       --mono:'IBM Plex Mono',monospace;
@@ -42,9 +42,12 @@
     #menu {top:58px;left:12px;width:270px;max-height:70%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-6px) scale(0.98);transform-origin:top left;transition:opacity .18s ease,transform .18s cubic-bezier(0.16,1,0.3,1),visibility .18s ease;}
     #menu.open {opacity:1;visibility:visible;pointer-events:auto;transform:none;}
     #menu h4 {font-size:11.5px;color:var(--mute);font-weight:700;margin:12px 4px 4px;text-transform:uppercase;letter-spacing:0.04em;}
-    .fi {padding:7px 8px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12.5px;display:flex;justify-content:space-between;transition:background-color .15s ease;}
+    .fi {padding:7px 8px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:6px;transition:background-color .15s ease;}
     .fi:hover,.fi.on {background:var(--panel2);}
     .fi small {color:var(--ok);font-weight:600;}
+    .fi .lang-tag {font:700 10px/1 var(--head);padding:2px 5px;border-radius:4px;background:var(--panel2);color:var(--mute);flex:none;}
+    .fi .lang-tag.cpp {background:#e0f2fe;color:#0369a1;}
+    #langSel {font-family:var(--head);font-size:12.5px;font-weight:600;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;}
     #menu a {display:block;margin-top:8px;padding:9px;border-top:1px solid var(--line);color:var(--accent);font-family:var(--head);font-size:13px;font-weight:700;text-decoration:none;}
     #menu a:hover {text-decoration:underline;}
     #topBar {display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 12px 60px;border-bottom:1px solid var(--line);min-height:62px;background:#fcfbf9;}
@@ -59,8 +62,9 @@
     .ln.parser {background:#f5f3ff;border-color:var(--parser);}
     .ln.static {background:#fef9ec;border-color:var(--static);}
     .ln.runtime {background:#fef2f2;border-color:var(--runtime);}
+    .ln.compiler {background:#f0f9ff;border-color:var(--compiler);}
     .ln.sec {background:#fff1f2;border-color:var(--sec);}
-    .ln.parser,.ln.static,.ln.runtime,.ln.sec {cursor:pointer;}
+    .ln.parser,.ln.static,.ln.runtime,.ln.compiler,.ln.sec {cursor:pointer;}
     .ln.active {box-shadow:inset 0 0 0 1px rgba(27,67,50,0.35);filter:brightness(0.97);}
     #legend {position:absolute;bottom:0;left:0;right:0;display:flex;gap:16px;justify-content:center;padding:8px;font-size:12px;font-weight:500;color:var(--mute);background:#fcfbf9;border-top:1px solid var(--line);}
     .dot {display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;}
@@ -155,8 +159,8 @@
   <section id="left">
     <button class="float" id="menuBtn" aria-label="Open files menu">☰</button>
     <div class="float" id="menu">
-      <button style="width:100%" id="upBtn">Upload .py file</button>
-      <input type="file" id="upIn" accept=".py" hidden>
+      <button style="width:100%" id="upBtn">Upload .py / .cpp file</button>
+      <input type="file" id="upIn" accept=".py,.cpp,.cc,.cxx" hidden>
       <h4>Test cases</h4>
       <div id="files"></div>
       <a href="/analytics">Open eco dashboard</a>
@@ -165,6 +169,11 @@
     <div id="topBar">
       <div id="fname">Pick a test case from the menu to begin.</div>
       <div id="codeBtns">
+        <select id="langSel" title="Source language">
+          <option value="auto">Auto</option>
+          <option value="python">Python</option>
+          <option value="cpp">C++</option>
+        </select>
         <button id="newBtn" class="ghost">New</button>
         <button id="applyBtn" class="ghost" disabled title="Load the auto-fixed code into the editor">Apply fixes</button>
         <button id="editBtn" class="ghost" disabled>Edit</button>
@@ -181,6 +190,7 @@
       <span><i class="dot" style="background:var(--parser)"></i>Syntax</span>
       <span><i class="dot" style="background:var(--static)"></i>Found without running</span>
       <span><i class="dot" style="background:var(--runtime)"></i>Found by running</span>
+      <span><i class="dot" style="background:var(--compiler)"></i>C++ compiler</span>
       <span><i class="dot" style="background:var(--sec)"></i>Security</span>
     </div>
   </section>
@@ -234,15 +244,17 @@
   <script>
     const $ = s => document.querySelector(s);
     const A = '/api';
-    const COL = { parser:'var(--parser)', static:'var(--static)', runtime:'var(--runtime)' };
-    const STG = { parser:'Syntax check', static:'Found without running', runtime:'Found by running' };
+    const COL = { parser:'var(--parser)', static:'var(--static)', runtime:'var(--runtime)', compiler:'var(--compiler)' };
+    const STG = { parser:'Syntax check', static:'Found without running', runtime:'Found by running', compiler:'C++ compiler' };
     const VC = { VERIFIED:'#1b4332', CLEAN:'#1b4332', PARTIAL:'#b45309', REJECTED:'#b91c1c', BLOCKED:'#7f1d1d', 'NO FIX GENERATED':'#6b665e' };
     const PANES = { fix:'fixPane', out:'outPane' };
     const EMPTY_C = '<p class="empty">Scan a file and every mistake will be explained here.</p>';
     const EMPTY_F = '<p class="empty">Suggested fixes appear here.</p>';
     const EMPTY_OUT = "Press Run (top of the code panel) to see the program's output here.";
 
-    let S = { file:null, newFile:false, code:'', fixed:'', issues:[], sec:[], blocked:false, lm:{}, editing:false, dirty:false };
+    let S = { file:null, newFile:false, lang:'auto', code:'', fixed:'', issues:[], sec:[], blocked:false, lm:{}, editing:false, dirty:false };
+    const activeLang = () => S.lang === 'auto' ? null : S.lang;
+    $('#langSel').onchange = e => { S.lang = e.target.value; };
 
     function el(t, c, x) { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
 
@@ -268,8 +280,15 @@
       box.innerHTML = '';
       d.files.forEach(f => {
         const e = el('div', 'fi' + (f.filename === S.file ? ' on' : ''));
-        e.append(el('span', '', f.filename));
-        if (f.is_fixed) e.append(el('small', '', 'fixed'));
+        const left = el('span', '', f.filename);
+        left.style.overflow = 'hidden'; left.style.textOverflow = 'ellipsis';
+        e.append(left);
+        const right = el('span');
+        right.style.display = 'flex'; right.style.gap = '4px'; right.style.alignItems = 'center'; right.style.flex = 'none';
+        if (f.is_fixed) right.append(el('small', '', 'fixed'));
+        const isCpp = f.language === 'cpp' || /\.(cpp|cc|cxx)$/i.test(f.filename);
+        right.append(el('span', 'lang-tag' + (isCpp ? ' cpp' : ''), isCpp ? 'C++' : 'PY'));
+        e.append(right);
         e.onclick = () => pick(f.filename);
         box.append(e);
       });
@@ -279,6 +298,8 @@
       try {
         const d = await j('/source?filename=' + encodeURIComponent(n));
         S.file = n; S.newFile = false; S.code = d.code;
+        S.lang = /\.(cpp|cc|cxx)$/i.test(n) ? 'cpp' : 'python';
+        $('#langSel').value = S.lang;
         reset();
         $('#fname').textContent = n;
         $('#editBtn').hidden = false;
@@ -291,6 +312,8 @@
     function startNew() {
       S.file = null;
       S.newFile = true;
+      S.lang = 'auto';
+      $('#langSel').value = 'auto';
       S.code = '';
       reset();
       S.editing = true;
@@ -303,7 +326,7 @@
       $('#runBtn').disabled = false;
       $('#saveBtn').disabled = false;
       $('#menu').classList.remove('open');
-      $('#sumTxt').textContent = 'Type code here, then scan, run, or save your file.';
+      $('#sumTxt').textContent = 'Type Python or C++ code here, then scan, run, or save your file.';
       $('#editor').focus();
     }
 
@@ -353,11 +376,13 @@
     }
 
     // "Apply fixes" is only useful when the scan produced code that differs from what is on screen.
-    function updateApply() { $('#applyBtn').disabled = S.editing || !S.fixed || S.fixed === S.code; }
+    function updateApply() { $('#applyBtn').disabled = (S.editing && !S.newFile) || !S.fixed || S.fixed === S.code; }
 
     $('#applyBtn').onclick = () => {
       const stand = S.issues.some(i => i.hides_crash);
-      setCode(S.fixed, 'Fixes applied. Click Re-scan to confirm the code is clean, or Save it.' +
+      const next = S.fixed;
+      if (S.newFile) $('#editor').value = next;
+      setCode(next, 'Fixes applied. Click Re-scan to confirm the code is clean, or Save it.' +
         (stand ? ' Some fixes use stand-in values (0 or None): check they are what you want.' : ''));
       $('#saveBtn').disabled = false;
     };
@@ -414,7 +439,10 @@
       document.body.classList.add('busy');
       $('#scanBtn').disabled = true; $('#editBtn').disabled = true;
       try {
-        const r = await post('/analyze', { filename:S.file, code:S.code });
+        const src = (S.newFile || S.editing) ? $('#editor').value : S.code;
+        S.code = src;
+        const r = await post('/analyze', { filename:S.file, code:src, language:activeLang() });
+        if (r.language && S.lang === 'auto') { S.lang = r.language; $('#langSel').value = r.language; }
         S.issues = r.issues || []; S.sec = r.security || []; S.blocked = !!r.blocked;
         S.fixed = S.blocked ? '' : (r.fixed_code || '');
         updateApply();
@@ -440,6 +468,13 @@
         const b = el('div', 'banner soft');
         b.append(el('b', '', 'Security notes (the code still ran)'));
         S.sec.forEach(s => b.append(el('div', '', `line ${s.line} [${s.severity}] ${s.message}`)));
+        sb.append(b);
+      }
+      if (r.warnings && r.warnings.length) {
+        const b = el('div', 'banner soft');
+        b.style.background = '#fef9ec'; b.style.color = '#92400e'; b.style.borderColor = '#f3dfb0';
+        b.append(el('b', '', 'Compiler warnings (non-blocking)'));
+        r.warnings.forEach(w => b.append(el('div', '', w)));
         sb.append(b);
       }
 
@@ -531,8 +566,8 @@
       showTab('out');
       setOutput(label, 'Running...');
       try {
-        const out = (await post('/execute', { code:src })).output;
-        setOutput(label, out, /CRASH DURING EXECUTION|BLOCKED|Sandbox failure/.test(out));
+        const out = (await post('/execute', { code:src, filename:S.file, language:activeLang() })).output;
+        setOutput(label, out, /CRASH DURING EXECUTION|COMPILE \/ EXECUTION ERROR|BLOCKED|Sandbox failure/.test(out));
       } catch (e) { setOutput(label, 'Error: ' + e.message, true); }
     }
     $('#runBtn').onclick = () => runCode(S.editing ? $('#editor').value : S.code, 'Output: ' + (S.file || 'your code'));
@@ -540,12 +575,14 @@
       if (!S.file && !S.newFile) return;
       if (S.newFile) {
         $('#saveDialog').hidden = false;
+        const defExt = S.lang === 'cpp' ? '.cpp' : '';
+        if (defExt && !/\.(py|cpp|cc|cxx)$/i.test($('#saveName').value)) $('#saveName').value = 'my_program' + defExt;
         $('#saveName').focus();
         $('#saveName').select();
         return;
       }
       try {
-        const d = await post('/save', { filename:S.file, code });
+        const d = await post('/save', { filename:S.file, code, language:activeLang() });
         if (code === S.code) { S.dirty = false; $('#saveBtn').disabled = true; }
         const old = btn.textContent;
         btn.textContent = 'Saved: ' + d.new_filename;
@@ -553,13 +590,17 @@
         await loadFiles();
       } catch (e) { $('#sumTxt').textContent = 'Could not save: ' + e.message; }
     }
-    $('#saveBtn').onclick = () => save(S.code, $('#saveBtn'));
+    $('#saveBtn').onclick = () => save(S.newFile ? $('#editor').value : S.code, $('#saveBtn'));
     $('#saveCancel').onclick = () => { $('#saveDialog').hidden = true; };
     $('#saveForm').onsubmit = async e => {
       e.preventDefault();
       try {
-        const d = await post('/save', { filename:$('#saveName').value, code:S.code, create:true });
+        const src = S.newFile ? $('#editor').value : S.code;
+        const d = await post('/save', { filename:$('#saveName').value, code:src, create:true, language:activeLang() });
         S.file = d.new_filename;
+        S.lang = /\.(cpp|cc|cxx)$/i.test(S.file) ? 'cpp' : 'python';
+        $('#langSel').value = S.lang;
+        S.code = src;
         S.newFile = false;
         S.editing = false;
         S.dirty = false;

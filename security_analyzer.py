@@ -1,4 +1,5 @@
 import ast
+import re
 
 # Dotted-name blocklist. Resolving the full name (os.system, not just .system)
 # means we catch subprocess.run etc. without flagging every method named run().
@@ -80,10 +81,72 @@ def _opens_for_write(call):
             and any(c in mode.value for c in "wax+"))
 
 
+# C++ security rules (regex-based on comment/string-stripped source).
+_CPP_DANGEROUS_CALLS = [
+    (re.compile(r"\b(?:std::)?system\s*\("), "Command Injection", "CRITICAL", "system() executes arbitrary shell commands."),
+    (re.compile(r"\b(?:_)?popen\s*\("), "Command Injection", "CRITICAL", "popen() executes arbitrary shell commands."),
+    (re.compile(r"\bexec(?:l|le|lp|v|vp|ve|vpe)\s*\("), "Command Injection", "CRITICAL", "exec*() spawns external processes."),
+    (re.compile(r"\bShellExecute[AW]?\s*\("), "Command Injection", "CRITICAL", "ShellExecute() launches external commands."),
+    (re.compile(r"\b(?:v)?fork\s*\("), "Process Manipulation", "HIGH", "fork() creates new OS processes."),
+    (re.compile(r"\b(?:__)?asm(?:__)?\s*[\(\{]"), "Inline Assembly", "HIGH", "Inline assembly bypasses compiler safety checks."),
+    (re.compile(r"\b(?:std::filesystem::remove_all|std::filesystem::remove)\s*\("), "Destructive File Operation", "HIGH", "filesystem remove deletes files or directories."),
+    (re.compile(r"\b(?:std::)?remove\s*\("), "Destructive File Operation", "HIGH", "remove() deletes files from disk."),
+    (re.compile(r"\b(?:unlink|rmdir)\s*\("), "Destructive File Operation", "HIGH", "unlink()/rmdir() deletes files or directories."),
+    (re.compile(r"\bgets\s*\("), "Buffer Overflow", "HIGH", "gets() is unsafe and removed from modern C++ (use std::getline)."),
+    (re.compile(r"\b(?:strcpy|strcat|sprintf)\s*\("), "Unsafe Memory Function", "MEDIUM", "Unbounded C string function can cause buffer overflow (prefer std::string or snprintf)."),
+    (re.compile(r"\b(?:std::)?ofstream\b"), "File Write", "MEDIUM", "std::ofstream writes to files on disk."),
+    (re.compile(r"\bfopen\s*\([^,\n]+,\s*\x00"), "File Write", "MEDIUM", "fopen() accesses files on disk."),
+]
+
+_CPP_RISKY_HEADERS = {
+    "sys/socket.h": ("Network Access", "MEDIUM", "sys/socket.h gives the program raw network socket access."),
+    "netinet/in.h": ("Network Access", "MEDIUM", "netinet/in.h gives the program network access."),
+    "winsock2.h": ("Network Access", "MEDIUM", "winsock2.h gives the program network access."),
+}
+
+
+def _strip_cpp_comments_and_strings(code):
+    """Replace C++ comments and string/char literal bodies with spaces/\\x00, preserving newlines."""
+    out, i, n = [], 0, len(code)
+    while i < n:
+        c = code[i]
+        if c == "/" and i + 1 < n and code[i + 1] == "/":
+            j = code.find("\n", i)
+            j = n if j < 0 else j
+            out.append(" " * (j - i))
+            i = j
+            continue
+        if c == "/" and i + 1 < n and code[i + 1] == "*":
+            j = code.find("*/", i + 2)
+            j = n if j < 0 else j + 2
+            out.append("".join("\n" if ch == "\n" else " " for ch in code[i:j]))
+            i = j
+            continue
+        if c in ('"', "'"):
+            q = c
+            out.append("\x00")
+            i += 1
+            while i < n:
+                if code[i] == "\\" and i + 1 < n:
+                    out.append("\n" if code[i + 1] == "\n" else "\x00")
+                    i += 2
+                    continue
+                if code[i] == q:
+                    out.append("\x00")
+                    i += 1
+                    break
+                out.append("\n" if code[i] == "\n" else "\x00")
+                i += 1
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
 class SecurityAnalyzer:
     def __init__(self):
         """
-        Security Enforcement Mechanism (AST based blocklist).
+        Security Enforcement Mechanism (AST based blocklist for Python, lexical blocklist for C++).
         Detects: command injection, arbitrary code execution, destructive file operations,
         insecure temp files, hardcoded secrets, plus (new) import-alias evasion,
         getattr-by-name, ctypes, sandbox-escape attributes, network imports, file writes.
@@ -91,10 +154,45 @@ class SecurityAnalyzer:
         """
         pass
 
-    def scan_code(self, code_string):
+    def scan_cpp_code(self, code_string):
+        """Scan C++ source for dangerous calls, risky headers, and hardcoded secrets."""
+        vulnerabilities = []
+        raw_lines = code_string.split("\n")
+        cleaned_lines = _strip_cpp_comments_and_strings(code_string).split("\n")
+
+        for lineno, (raw, clean) in enumerate(zip(raw_lines, cleaned_lines), 1):
+            inc = re.match(r"^\s*#\s*include\s*[<\"]([^>\"]+)[>\"]", raw)
+            if inc:
+                hdr = inc.group(1).strip()
+                if hdr in _CPP_RISKY_HEADERS:
+                    vtype, sev, msg = _CPP_RISKY_HEADERS[hdr]
+                    vulnerabilities.append({"type": vtype, "severity": sev, "message": f"#include <{hdr}>: {msg}", "line": lineno})
+                continue
+
+            for pat, vtype, sev, msg in _CPP_DANGEROUS_CALLS:
+                # Special check for fopen: only flag write/append modes.
+                if pat.pattern.startswith(r"\bfopen"):
+                    if re.search(r'\bfopen\s*\([^,\n]+,\s*"[^"]*[wa+]', raw):
+                        vulnerabilities.append({"type": vtype, "severity": sev, "message": msg, "line": lineno})
+                elif pat.search(clean):
+                    vulnerabilities.append({"type": vtype, "severity": sev, "message": msg, "line": lineno})
+
+            sec_m = re.search(r"\b([A-Za-z_]\w*(?:password|secret|api_key|token)\w*)\s*=\s*\"[^\"]+\"", raw, re.IGNORECASE)
+            if sec_m:
+                vulnerabilities.append({
+                    "type": "Hardcoded Secret",
+                    "severity": "LOW",
+                    "message": f"Potential hardcoded secret detected in variable '{sec_m.group(1)}'.",
+                    "line": lineno,
+                })
+        return vulnerabilities
+
+    def scan_code(self, code_string, language="python"):
         """
         Parses the code string and returns a list of detected vulnerabilities.
         """
+        if language == "cpp":
+            return self.scan_cpp_code(code_string)
         vulnerabilities = []
         try:
             tree = ast.parse(code_string)
