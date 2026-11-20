@@ -20,8 +20,20 @@ BENCH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benchmarks
 
 
 # ---------------------------------------------------------------------------
-# Planted Python Vulnerability Snippets (mapping every metric SEC_01 .. SEC_45)
+# Planted Real-World Compiler & Runtime Errors across the 8 TOACD Categories
 # ---------------------------------------------------------------------------
+COMPILER_BUG_TEMPLATES = [
+    ("ZeroDivisionError (divisor literal zero)", "ZeroDivisionError", "val = 100 / 0  # COMPILER_BUG: Division by zero"),
+    ("NameError (typo in scoped symbol)", "NameError", "total_val = 50\n    return totl_val  # COMPILER_BUG: Typo of total_val"),
+    ("NameError (missing 'self.' in class method)", "NameError", "self.metrics_counter = 1\n    return metrics_counter + 1  # COMPILER_BUG: Missing self."),
+    ("TypeError (string + integer concatenation)", "TypeError", "status_msg = 'Elapsed cycles: ' + 42  # COMPILER_BUG: str + int"),
+    ("TypeError (float used as sequence index)", "TypeError", "items = [10, 20, 30]\n    val = items[4 / 2]  # COMPILER_BUG: float index"),
+    ("KeyError (direct dictionary missing key)", "KeyError", "conf = {'host': '127.0.0.1'}\n    val = conf['port']  # COMPILER_BUG: Missing dict key"),
+    ("IndexError (list out of bounds access)", "IndexError", "samples = [1.2, 3.4, 5.6]\n    val = samples[9]  # COMPILER_BUG: Out of bounds index"),
+    ("AttributeError ('NoneType' object has no attribute)", "AttributeError", "raw_data = None\n    val = raw_data.strip()  # COMPILER_BUG: NoneType call"),
+    ("SyntaxError (missing colon on condition)", "SyntaxError", "if True  # COMPILER_BUG: Missing colon"),
+    ("SyntaxError (assignment '=' in condition)", "SyntaxError", "x = 5\n    if x = 5:  # COMPILER_BUG: Assignment '=' in if\n        pass"),
+]
 PYTHON_PLANTED_CASES: List[Tuple[str, List[str], str]] = [
     ("OS Command Injection (os.system)", ["SEC_01"], """
 def run_diagnostic_cmd(host_arg):

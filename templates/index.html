@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>IntelliFix</title>
+  <title>IntelliFix — Secure Agentic AI Compiler</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@500;600;700;800&family=Work+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
@@ -220,6 +220,51 @@
       *,*::before,*::after {animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
     }
     @keyframes panelFade {from {opacity:0;transform:translateY(3px);} to {opacity:1;transform:none;}}
+
+    /* ---------- Secure AI Compiler (Learner-Focused Tab) ---------- */
+    #agenticPane {overflow:auto;padding:18px 20px 28px;background:var(--bg);}
+    .ag-hero {background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+    .ag-hero-text h3 {font:700 15.5px/1.3 var(--head);color:var(--ink);margin-bottom:4px;}
+    .ag-hero-text p {font-size:13px;color:var(--mute);line-height:1.45;max-width:480px;}
+    .ag-hero-btns {display:flex;gap:8px;flex-wrap:wrap;}
+    .ag-grid {display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+    @media (max-width:1080px) {.ag-grid {grid-template-columns:repeat(2,1fr);}}
+    .ag-stat {background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
+    .ag-stat .k {font:700 11px/1.2 var(--head);text-transform:uppercase;letter-spacing:0.04em;color:var(--mute);margin-bottom:6px;}
+    .ag-stat .v {font:800 20px/1.2 var(--head);color:var(--ink);}
+    .ag-stat .sub {font-size:12px;color:var(--mute);margin-top:4px;}
+    .ag-bar {height:7px;background:var(--panel2);border-radius:999px;overflow:hidden;margin-top:7px;}
+    .ag-bar > i {display:block;height:100%;border-radius:999px;background:var(--ok);transition:width .4s ease;}
+    .ag-card {background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+    .ag-card h4 {font:700 13.5px/1.3 var(--head);color:var(--ink);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+    .ag-pill {font:700 11px/1 var(--head);padding:3px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);}
+    .ag-pill.warn {background:#fef3c7;color:#92400e;}
+    .ag-pill.bad {background:#ffe4e6;color:#9f1239;}
+    .ag-step {display:flex;gap:10px;padding:9px 10px;border-radius:8px;background:#faf9f6;border:1px solid #ebe7de;margin-bottom:8px;align-items:flex-start;}
+    .ag-step:last-child {margin-bottom:0;}
+    .ag-step .num {width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font:700 12px/24px var(--head);text-align:center;flex:none;}
+    .ag-step .who {font:700 12.5px/1.3 var(--head);color:var(--ink);}
+    .ag-step .desc {font-size:13px;color:#44403c;margin-top:2px;line-height:1.45;}
+    .ag-fix-item {padding:10px 12px;border-left:3px solid var(--ok);background:#f4faf6;border-radius:0 8px 8px 0;margin-bottom:8px;font-size:13px;line-height:1.45;}
+    .ag-fix-item b {font-family:var(--head);color:var(--ok);}
+    .ag-explain-card {border-left:4px solid var(--runtime);background:#ffffff;border-radius:10px;padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-top:1px solid #e7e5e4;border-right:1px solid #e7e5e4;border-bottom:1px solid #e7e5e4;}
+    .ag-explain-card.clean {border-left-color:var(--ok);}
+    .ag-explain-card h3 {font:700 15px/1.3 var(--head);color:var(--ink);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+    .ag-trio {display:flex;flex-direction:column;gap:10px;}
+    .ag-trio-part {border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;}
+    .ag-trio-part.m {background:#fff1f2;color:#9f1239;border:1px solid #ffe4e6;}
+    .ag-trio-part.r {background:#fefce8;color:#854d0e;border:1px solid #fef9c3;}
+    .ag-trio-part.f {background:#f0fdf4;color:#166534;border:1px solid #dcfce7;}
+    .ag-trio-part strong {font-family:var(--head);display:block;margin-bottom:3px;font-size:11.5px;letter-spacing:0.04em;text-transform:uppercase;}
+    .ag-slice-box {margin-top:10px;background:#1c1917;color:#f5f5f4;padding:10px 14px;border-radius:8px;font:12px/1.6 var(--mono);overflow-x:auto;}
+    .ag-slice-box .highlight {color:#fde047;font-weight:700;}
+    .ag-ok-banner {padding:14px 16px;border-radius:10px;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;font-size:13.5px;line-height:1.5;}
+    .ag-details {background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;}
+    .ag-details summary {cursor:pointer;font:700 13px/1.4 var(--head);color:var(--accent);user-select:none;}
+    .ag-metrics-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:6px;margin-top:12px;}
+    .ag-mchip {font:500 11.5px/1.35 var(--mono);padding:6px 8px;border-radius:6px;background:var(--panel2);color:var(--ink);display:flex;justify-content:space-between;gap:6px;border:1px solid transparent;}
+    .ag-mchip.hit {background:#fff1f2;border-color:#fecdd3;color:#9f1239;font-weight:600;}
+    .ag-mchip.clean {background:#f0fdf4;border-color:#bbf7d0;color:#166534;}
   </style>
 </head>
 <body>
@@ -251,7 +296,7 @@
     <div id="code"></div>
     <textarea id="editor" spellcheck="false" hidden></textarea>
 
-    <button class="float" id="scanBtn" disabled>Scan &amp; diagnose</button>
+    <button class="float" id="scanBtn" disabled>Run Secure AI Compiler</button>
     <div id="legend">
       <span><i class="dot" style="background:var(--parser)"></i>Syntax</span>
       <span><i class="dot" style="background:var(--static)"></i>Found without running</span>
@@ -263,17 +308,35 @@
 
   <section id="right">
     <div id="tabs">
-      <button class="tab on" data-t="fix">Corrections &amp; fixes</button>
+      <button class="tab on" data-t="agentic">Secure AI Compiler<span class="pip" id="agPip" hidden></span></button>
+      <button class="tab" data-t="fix">Line-by-Line Corrections</button>
       <button class="tab" data-t="out">Output<span class="pip" id="outPip" hidden></span></button>
     </div>
 
-    <!-- tab 1 -->
-    <div class="pane on" id="fixPane">
+    <!-- tab 1 (PRIMARY): Secure Agentic AI Compiler (Learner View) -->
+    <div class="pane on" id="agenticPane">
+      <div class="ag-hero">
+        <div class="ag-hero-text">
+          <h3>Secure Agentic AI Compiler</h3>
+          <p>Audits your code against <strong>52 security rules</strong>, explains risks in plain English, and safely hardens &amp; repairs your program using 5 cooperating AI compiler agents.</p>
+        </div>
+        <div class="ag-hero-btns">
+          <button id="agRunBtn">Run Secure AI Compiler</button>
+          <button id="agApplyBtn" class="ghost" disabled title="Load the hardened code into the editor">Apply hardened code</button>
+        </div>
+      </div>
+      <div id="agBody">
+        <p class="empty">Open a sample file from <strong>☰</strong> or write code on the left, then click <strong>Run Secure AI Compiler</strong> to see your safety grade, plain-English fixes, and how the 5 compiler agents worked step by step.</p>
+      </div>
+    </div>
+
+    <!-- tab 2: Line-by-Line Corrections -->
+    <div class="pane" id="fixPane">
       <div id="secBox"></div>
       <div id="cols">
         <section class="col wide">
           <h2>Corrections <span id="nC"></span></h2>
-          <div class="list" id="corr"><p class="empty">Scan a file and every mistake will be explained here.</p></div>
+          <div class="list" id="corr"><p class="empty">Run the Secure AI Compiler and every mistake will be explained here.</p></div>
         </section>
         <section class="col">
           <h2>Fixes <span id="nF"></span></h2>
@@ -282,15 +345,15 @@
       </div>
     </div>
 
-    <!-- tab 2 -->
+    <!-- tab 3: Output -->
     <div class="pane" id="outPane">
       <div class="bar"><span id="outLabel">Output</span><button id="outClear" class="ghost">Clear</button></div>
       <pre id="term">Press Run (top of the code panel) to see the program's output here.</pre>
     </div>
 
     <div id="sum">
-      <div class="verdict" id="vd">No scan yet</div>
-      <div id="sumTxt">Pick a file and press Scan &amp; diagnose.</div>
+      <div class="verdict" id="vd">Ready</div>
+      <div id="sumTxt">Pick a file or write code, then press Run Secure AI Compiler.</div>
       <div id="met"></div>
     </div>
   </section>
@@ -313,7 +376,7 @@
     const COL = { parser:'var(--parser)', static:'var(--static)', runtime:'var(--runtime)', compiler:'var(--compiler)' };
     const STG = { parser:'Syntax check', static:'Found without running', runtime:'Found by running', compiler:'C++ compiler' };
     const VC = { VERIFIED:'#1b4332', CLEAN:'#1b4332', PARTIAL:'#b45309', REJECTED:'#b91c1c', BLOCKED:'#7f1d1d', 'NO FIX GENERATED':'#6b665e' };
-    const PANES = { fix:'fixPane', out:'outPane' };
+    const PANES = { fix:'fixPane', out:'outPane', agentic:'agenticPane' };
     const EMPTY_C = '<p class="empty">Scan a file and every mistake will be explained here.</p>';
     const EMPTY_F = '<p class="empty">Suggested fixes appear here.</p>';
     const EMPTY_OUT = "Press Run (top of the code panel) to see the program's output here.";
@@ -337,6 +400,7 @@
       document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
       Object.entries(PANES).forEach(([k, id]) => $('#' + id).classList.toggle('on', k === t));
       if (t === 'out') $('#outPip').hidden = true;
+      if (t === 'agentic') $('#agPip').hidden = true;
     }
     document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.t));
 
@@ -403,19 +467,22 @@
       $('#fixes').innerHTML = EMPTY_F;
       $('#nC').textContent = $('#nF').textContent = '';
       $('#met').innerHTML = '';
+      lastHardenedCode = '';
+      if ($('#agApplyBtn')) $('#agApplyBtn').disabled = true;
+      if ($('#agBody')) $('#agBody').innerHTML = '<p class="empty">Open a sample file from <strong>☰</strong> or write code on the left, then click <strong>Run Secure AI Compiler</strong> to see your safety grade, plain-English fixes, and 5-agent walkthrough.</p>';
     }
 
     function reset() {
       Object.assign(S, { issues:[], sec:[], blocked:false, lm:{}, editing:false, dirty:false, fixed:'' });
       updateApply();
       $('#code').hidden = false; $('#editor').hidden = true; $('#editor').value = '';
-      $('#scanBtn').textContent = 'Scan & diagnose';
+      $('#scanBtn').textContent = 'Run Secure AI Compiler';
       $('#saveBtn').disabled = true;
       clearOutput();
       clearResults();
-      showTab('fix');
-      const v = $('#vd'); v.textContent = 'No scan yet'; v.style.background = 'var(--mute)';
-      $('#sumTxt').textContent = 'Pick a file and press Scan & diagnose.';
+      showTab('agentic');
+      const v = $('#vd'); v.textContent = 'Ready'; v.style.background = 'var(--mute)';
+      $('#sumTxt').textContent = 'Pick a file or write code, then press Run Secure AI Compiler.';
     }
 
     /* ---------- code panel ---------- */
@@ -459,7 +526,7 @@
       updateApply();
       clearResults();
       clearOutput();
-      $('#scanBtn').textContent = 'Re-scan';
+      $('#scanBtn').textContent = 'Re-run Secure AI Compiler';
       $('#scanBtn').disabled = false;
       $('#saveBtn').disabled = false;
       const v = $('#vd'); v.textContent = 'Edited'; v.style.background = 'var(--warn)'; popVerdict();
@@ -479,26 +546,68 @@
       if (S.newFile) setCode($('#editor').value, 'Code updated. Scan or run it, or save it as a new file.');
     });
 
-    /* ---------- scan ---------- */
-    $('#scanBtn').onclick = async () => {
+    /* ---------- unified Secure AI Compiler + diagnostics scan ---------- */
+    async function runFullSecureCompile() {
+      const src = (S.newFile || S.editing) ? $('#editor').value : S.code;
+      if (!src || !src.trim()) {
+        $('#sumTxt').textContent = 'Write or open some code on the left first.';
+        return;
+      }
       document.body.classList.add('busy');
       $('#scanBtn').disabled = true;
+      $('#agRunBtn').disabled = true;
+      $('#scanBtn').textContent = 'Running 5 AI Agents...';
+      $('#agRunBtn').textContent = 'Running 5 AI Agents...';
       try {
-        const src = (S.newFile || S.editing) ? $('#editor').value : S.code;
         S.code = src;
-        const r = await post('/analyze', { filename:S.file, code:src, language:activeLang() });
-        if (r.language && S.lang === 'auto') { S.lang = r.language; $('#langSel').value = r.language; }
-        S.issues = r.issues || []; S.sec = r.security || []; S.blocked = !!r.blocked;
-        S.fixed = S.blocked ? '' : (r.fixed_code || '');
+        const payload = { filename:S.file, code:src, language:activeLang() };
+        const [agRes, diagRes] = await Promise.all([
+          post('/agentic-compile', { ...payload, max_iterations: 4, execute_sandbox: true }),
+          post('/analyze', payload).catch(() => null),
+        ]);
+
+        if (diagRes) {
+          if (diagRes.language && S.lang === 'auto') { S.lang = diagRes.language; $('#langSel').value = diagRes.language; }
+          S.issues = diagRes.issues || [];
+          S.sec = diagRes.security || [];
+          S.blocked = !!diagRes.blocked;
+          show(diagRes);
+          if (diagRes.status === 'success') setOutput('Program output (from scan)', diagRes.message || '');
+        }
+
+        // Prefer the AI Compiler's hardened code when it improved or transformed the source
+        const hardened = agRes.compiled_code || '';
+        const aiChanged = Boolean(hardened && hardened !== src);
+        S.fixed = aiChanged ? hardened : (diagRes && !S.blocked ? (diagRes.fixed_code || '') : '');
         updateApply();
-        show(r); paint();
-        $('#scanBtn').textContent = 'Re-scan';
-        // A clean run already produced program output: put it in the Output tab (no tab switch).
-        if (r.status === 'success') setOutput('Program output (from scan)', r.message || '');
-      } catch (e) { $('#sumTxt').textContent = 'Scan failed: ' + e.message; }
+        renderAgenticResult(agRes);
+        paint();
+
+        // Update bottom summary bar with learner-friendly AI Compiler grade
+        const finS = agRes.final_summary || {};
+        const initS = agRes.initial_summary || {};
+        const v = $('#vd');
+        v.textContent = 'Grade ' + (finS.grade || '?') + ' · ' + Math.round(finS.security_health_score || 0) + '/100';
+        v.style.background = gradeColor(finS.grade);
+        popVerdict();
+        const st = $('#sumTxt');
+        st.textContent = '';
+        st.append(
+          el('b', '', `52 security rules checked (${initS.total_findings || 0} → ${finS.total_findings || 0} findings, ${agRes.risk_reduction_pct || 0}% risk reduced). `),
+          document.createTextNode(aiChanged ? 'Click "Apply hardened code" or "Apply fixes" to load the safer version into your editor.' : 'Your code is clean and ready to run.')
+        );
+        showTab('agentic');
+        $('#scanBtn').textContent = 'Re-run Secure AI Compiler';
+      } catch (e) {
+        $('#sumTxt').textContent = 'Secure AI Compiler error: ' + e.message;
+        $('#scanBtn').textContent = 'Run Secure AI Compiler';
+      }
       document.body.classList.remove('busy');
       $('#scanBtn').disabled = false;
-    };
+      $('#agRunBtn').disabled = false;
+      $('#agRunBtn').textContent = 'Run Secure AI Compiler';
+    }
+    $('#scanBtn').onclick = runFullSecureCompile;
 
     function show(r) {
       const sb = $('#secBox');
@@ -651,7 +760,7 @@
           iss._applied = true;
           if (S.newFile) $('#editor').value = S.code;
           $('#saveBtn').disabled = false;
-          $('#scanBtn').textContent = 'Re-scan';
+          $('#scanBtn').textContent = 'Re-run Secure AI Compiler';
           $('#scanBtn').disabled = false;
           updateApply();
 
@@ -898,6 +1007,212 @@
       try { const d = await post('/upload', { filename:f.name, code:await f.text() }); await pick(d.filename); }
       catch (x) { $('#fname').textContent = 'Upload failed: ' + x.message; }
       e.target.value = '';
+    };
+
+    /* ---------- Secure Agentic AI Compiler (Learner View) ---------- */
+    const AGENT_FRIENDLY = {
+      PerceptionAndIRAgent: '1. Code Reader (Syntax & Prompt-Injection Check)',
+      SecurityAuditorAgent: '2. Security Auditor (52-Rule Scanner)',
+      IntelligentSynthesizerAgent: '3. Smart Fixer (Security Hardening)',
+      SandboxVerifierAgent: '4. Sandbox Tester (Safe Verification)',
+      AgenticCompilerCoordinator: '5. Compiler Coordinator',
+    };
+    let lastHardenedCode = '';
+
+    function gradeColor(g) {
+      if (g === 'A' || g === 'B') return 'var(--ok)';
+      if (g === 'C' || g === 'D') return 'var(--warn)';
+      return 'var(--sec)';
+    }
+
+    function renderAgenticResult(d) {
+      const body = $('#agBody');
+      body.textContent = '';
+      const initS = d.initial_summary || {};
+      const finS = d.final_summary || {};
+      lastHardenedCode = d.compiled_code || '';
+      const hasChanges = Boolean(lastHardenedCode && lastHardenedCode !== (S.editing ? $('#editor').value : S.code));
+      $('#agApplyBtn').disabled = !hasChanges;
+
+      // 1. At-a-Glance Learner Scorecard (4 cards)
+      const grid = el('div', 'ag-grid');
+
+      const c1 = el('div', 'ag-stat');
+      c1.append(el('div', 'k', 'Safety Grade'));
+      const gVal = el('div', 'v', (initS.grade || '?') + ' → ' + (finS.grade || '?'));
+      gVal.style.color = gradeColor(finS.grade);
+      c1.append(gVal, el('div', 'sub', finS.blocked ? 'Still needs review' : 'Safe to run'));
+
+      const c2 = el('div', 'ag-stat');
+      c2.append(el('div', 'k', 'Health Score'));
+      c2.append(el('div', 'v', Math.round(finS.security_health_score || 0) + ' / 100'));
+      const bar = el('div', 'ag-bar');
+      const fill = el('i');
+      fill.style.width = Math.max(4, Math.min(100, finS.security_health_score || 0)) + '%';
+      fill.style.background = gradeColor(finS.grade);
+      bar.append(fill);
+      c2.append(bar, el('div', 'sub', 'Started at ' + Math.round(initS.security_health_score || 0) + '/100'));
+
+      const c3 = el('div', 'ag-stat');
+      c3.append(el('div', 'k', 'Risk Reduced'));
+      c3.append(el('div', 'v', (d.risk_reduction_pct || 0) + '%'));
+      c3.append(el('div', 'sub', (d.security_regressions || []).length === 0 ? '0 new risks added' : 'Checked by safety gate'));
+
+      const c4 = el('div', 'ag-stat');
+      c4.append(el('div', 'k', '52 Rules Checked'));
+      c4.append(el('div', 'v', (initS.total_findings || 0) + ' → ' + (finS.total_findings || 0)));
+      c4.append(el('div', 'sub', 'Issues found (' + Math.round(d.total_time_ms || 0) + ' ms)'));
+
+      grid.append(c1, c2, c3, c4);
+      body.append(grid);
+
+      // 1.5 Learner-First 3-Part Error Explanation Card (Mistake -> Context -> How to Fix)
+      const explObj = d.learner_explanation || null;
+      if (explObj && (explObj.mistake || explObj.reason)) {
+        const expCard = el('div', 'ag-explain-card');
+        const h3 = el('h3');
+        h3.append(el('span', '', 'Error Diagnosis & Context Slice'));
+        if (explObj.error_type) {
+          h3.append(el('span', 'ag-pill bad', explObj.error_type + (explObj.line ? ' at Line ' + explObj.line : '')));
+        }
+        expCard.append(h3);
+
+        const trio = el('div', 'ag-trio');
+        if (explObj.mistake) {
+          const m = el('div', 'ag-trio-part m');
+          m.append(el('strong', '', '1. What went wrong (Mistake)'), document.createTextNode(explObj.mistake));
+          trio.append(m);
+        }
+        if (explObj.reason) {
+          const r = el('div', 'ag-trio-part r');
+          r.append(el('strong', '', '2. Why Python stopped (Compiler Reason)'), document.createTextNode(explObj.reason));
+          trio.append(r);
+        }
+        if (explObj.how_to_fix) {
+          const f = el('div', 'ag-trio-part f');
+          f.append(el('strong', '', '3. How to fix it (Recommended Resolution)'), document.createTextNode(explObj.how_to_fix));
+          trio.append(f);
+        }
+        expCard.append(trio);
+
+        if (explObj.slice_context) {
+          const sliceBox = el('pre', 'ag-slice-box', explObj.slice_context);
+          expCard.append(sliceBox);
+        }
+        body.append(expCard);
+      }
+
+      // 2. Plain-English Fixes Applied (or All-Clear Banner)
+      const actions = d.actions_applied || [];
+      if (actions.length === 0 && (finS.total_findings || 0) === 0) {
+        const ok = el('div', 'ag-ok-banner');
+        ok.append(el('strong', '', 'Great job! '));
+        ok.append(document.createTextNode('Your code passed all 52 security checks with zero risky patterns detected.'));
+        body.append(ok);
+      } else {
+        const fixCard = el('div', 'ag-card');
+        const h = el('h4', '', 'What the AI Compiler Fixed');
+        const pill = el('span', 'ag-pill' + (actions.length ? '' : ' warn'), actions.length ? (actions.length + ' safe edits') : 'Manual review needed');
+        h.append(pill);
+        fixCard.append(h);
+        if (actions.length) {
+          actions.forEach(a => {
+            const item = el('div', 'ag-fix-item');
+            const parts = a.split(': ');
+            if (parts.length > 1) {
+              item.append(el('b', '', parts[0] + ': '), document.createTextNode(parts.slice(1).join(': ')));
+            } else {
+              item.textContent = a;
+            }
+            fixCard.append(item);
+          });
+        } else {
+          fixCard.append(el('p', 'empty', 'Issues were flagged for review. Inspect the highlighted metrics below to harden them safely.'));
+        }
+        body.append(fixCard);
+      }
+
+      // 3. How the 5 Agents Worked Together (Readable Step-by-Step Timeline)
+      const trace = d.agent_trace || [];
+      if (trace.length) {
+        const tCard = el('div', 'ag-card');
+        const th = el('h4', '', 'How the 5 AI Agents Checked Your Code');
+        th.append(el('span', 'ag-pill', (d.iterations_used || 1) + ' pass' + ((d.iterations_used || 1) > 1 ? 'es' : '')));
+        tCard.append(th);
+        trace.forEach((step, idx) => {
+          const row = el('div', 'ag-step');
+          row.append(el('div', 'num', String(idx + 1)));
+          const txt = el('div');
+          txt.append(el('div', 'who', AGENT_FRIENDLY[step.sender] || step.sender));
+          txt.append(el('div', 'desc', step.summary || ''));
+          row.append(txt);
+          tCard.append(row);
+        });
+        body.append(tCard);
+      }
+
+      // 4. Collapsible All 52 Metrics Inspector (clean for learners, complete for grading!)
+      const initM = d.initial_metrics || {};
+      const finM = d.final_metrics || {};
+      const keys = Object.keys(initM).sort();
+      if (keys.length) {
+        const det = el('details', 'ag-details');
+        det.append(el('summary', '', 'Inspect all ' + keys.length + ' security metrics (SEC_01 – SEC_52)'));
+        const mg = el('div', 'ag-metrics-grid');
+        keys.forEach(k => {
+          const beforeVal = initM[k];
+          const afterVal = finM[k];
+          const isQuant = Number(k.split('_')[1]) >= 46;
+          const chip = el('div', 'ag-mchip ' + (!isQuant && afterVal > 0 ? 'hit' : (!isQuant && beforeVal > 0 && afterVal === 0 ? 'clean' : '')));
+          chip.append(el('span', '', k));
+          chip.append(el('span', '', beforeVal === afterVal ? String(afterVal) : (beforeVal + '→' + afterVal)));
+          mg.append(chip);
+        });
+        det.append(mg);
+        body.append(det);
+      }
+    }
+
+    async function runAgenticCompiler() {
+      const src = S.editing ? $('#editor').value : S.code;
+      if (!src || !src.trim()) {
+        $('#agBody').innerHTML = '<p class="empty">Open a sample file or write some code on the left first.</p>';
+        return;
+      }
+      const btn = $('#agRunBtn');
+      btn.disabled = true;
+      btn.textContent = 'Analyzing 52 metrics...';
+      $('#agApplyBtn').disabled = true;
+      try {
+        const res = await post('/agentic-compile', {
+          code: src,
+          filename: S.file,
+          language: activeLang(),
+          max_iterations: 4,
+          execute_sandbox: true,
+        });
+        renderAgenticResult(res);
+      } catch (e) {
+        $('#agBody').textContent = '';
+        $('#agBody').append(el('p', 'empty', 'Could not run Secure AI Compiler: ' + e.message));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Run Secure AI Check';
+      }
+    }
+
+    $('#agRunBtn').onclick = runFullSecureCompile;
+    $('#agApplyBtn').onclick = () => {
+      if (!lastHardenedCode) return;
+      S.code = lastHardenedCode;
+      S.dirty = true;
+      $('#editor').value = lastHardenedCode;
+      $('#saveBtn').disabled = false;
+      if (!S.editing) paint();
+      const btn = $('#agApplyBtn');
+      btn.textContent = 'Applied to editor!';
+      btn.disabled = true;
+      setTimeout(() => { btn.textContent = 'Apply hardened code'; }, 1800);
     };
 
     startNew();

@@ -35,7 +35,7 @@ from cpp_extractor import (
 BLOCKING = {"CRITICAL", "HIGH"}
 MAX_REPAIR_PASSES = 100    # hard cap on patch passes (each pass fixes ONE error)
 MAX_REPAIR_SECONDS = 60    # wall-clock budget: every runtime pass spawns a sandbox, so bound the total
-MAX_CODE_BYTES = 100_000   # reject giant inputs before parsing (protects the compiler itself)
+MAX_CODE_BYTES = 2_000_000 # allow large 2,000+ LOC benchmark files while still bounding input size
 
 
 # ----------------------------------------------------------------------

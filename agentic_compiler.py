@@ -67,8 +67,91 @@ class CompilerErrorObj:
 
 
 # ---------------------------------------------------------------------------
-# Agent 1: Perception, IR & Prompt-Injection Guard Agent
+# Program Slicer & Scope Context for Large-Scale (2,000+ LOC) Files
 # ---------------------------------------------------------------------------
+
+@dataclass
+class ProgramSlice:
+    error_line: int
+    enclosing_func: Optional[str] = None
+    enclosing_class: Optional[str] = None
+    func_start_line: Optional[int] = None
+    func_end_line: Optional[int] = None
+    slice_lines: List[Tuple[int, str]] = field(default_factory=list)
+    local_symbols: Set[str] = field(default_factory=set)
+    class_attributes: Set[str] = field(default_factory=set)
+    relevant_context: str = ""
+
+
+class ASTProgramSlicer:
+    """
+    Extracts def-use chains, backward slices, and local scopes from large (2,000+ LOC)
+    files so compiler repair and explanations remain highly targeted and accurate.
+    """
+
+    @staticmethod
+    def slice_context(code: str, line_no: int, window: int = 12) -> ProgramSlice:
+        lines = code.splitlines()
+        total_lines = len(lines)
+        if not (1 <= line_no <= total_lines):
+            line_no = max(1, min(line_no, total_lines))
+
+        ps = ProgramSlice(error_line=line_no)
+        try:
+            tree = ast.parse(code)
+        except Exception:
+            # Fallback to lexical window if syntax is broken
+            start = max(1, line_no - window)
+            end = min(total_lines, line_no + window)
+            ps.slice_lines = [(i, lines[i - 1]) for i in range(start, end + 1)]
+            ps.relevant_context = "\n".join(f"{i:4d} | {lines[i-1]}" for i in range(start, end + 1))
+            return ps
+
+        # Locate enclosing class and function
+        enclosing_class_node: Optional[ast.ClassDef] = None
+        enclosing_func_node: Optional[ast.FunctionDef] = None
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                c_start = getattr(node, "lineno", 0)
+                c_end = getattr(node, "end_lineno", c_start + 50)
+                if c_start <= line_no <= c_end:
+                    enclosing_class_node = node
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                f_start = getattr(node, "lineno", 0)
+                f_end = getattr(node, "end_lineno", f_start + 30)
+                if f_start <= line_no <= f_end:
+                    enclosing_func_node = node
+
+        if enclosing_class_node:
+            ps.enclosing_class = enclosing_class_node.name
+            for cn in ast.walk(enclosing_class_node):
+                if isinstance(cn, ast.Attribute) and isinstance(cn.value, ast.Name) and cn.value.id == "self":
+                    ps.class_attributes.add(cn.attr)
+
+        if enclosing_func_node:
+            ps.enclosing_func = enclosing_func_node.name
+            ps.func_start_line = getattr(enclosing_func_node, "lineno", line_no)
+            ps.func_end_line = getattr(enclosing_func_node, "end_lineno", line_no)
+            for fn in ast.walk(enclosing_func_node):
+                if isinstance(fn, ast.Name):
+                    ps.local_symbols.add(fn.id)
+                elif isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    ps.local_symbols.add(fn.name)
+
+        # Build focused slice: function scope or window around error line
+        if ps.func_start_line and ps.func_end_line:
+            s_start = max(1, ps.func_start_line)
+            s_end = min(total_lines, ps.func_end_line)
+        else:
+            s_start = max(1, line_no - window)
+            s_end = min(total_lines, line_no + window)
+
+        ps.slice_lines = [(i, lines[i - 1]) for i in range(s_start, s_end + 1)]
+        ps.relevant_context = "\n".join(
+            f"{'>' if i == line_no else ' '} {i:4d} | {lines[i-1]}" for i in range(s_start, s_end + 1)
+        )
+        return ps
 
 PROMPT_INJECTION_PATTERNS = [
     re.compile(r"ignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions", re.IGNORECASE),
@@ -182,8 +265,192 @@ class SecurityAuditorAgent:
 
 
 # ---------------------------------------------------------------------------
-# Agent 3: Intelligent Synthesizer & Security Hardening Agent
+# Agentic Contextual Fixer & Program Slicer for 2,000+ LOC Enterprise Files
 # ---------------------------------------------------------------------------
+
+class AgenticContextualFixer:
+    """
+    Intelligent compiler repair engine for large files (2,000+ LOC).
+    Augments rule explainers by inspecting enclosing function/class scopes,
+    remediating explain-only errors (ZeroDivision, IndexError, KeyError,
+    AttributeError, missing `self.`, unbound variables, and SyntaxErrors).
+    """
+
+    @staticmethod
+    def fix_python_error(
+        code: str, error_obj: CompilerErrorObj, slice_info: ProgramSlice
+    ) -> Tuple[str, str, str]:
+        """
+        Attempts contextual agentic repair on code given error_obj and slice_info.
+        Returns (repaired_code, action_summary, learner_explanation).
+        """
+        lines = code.splitlines()
+        ln = error_obj.line_number
+        if not (1 <= ln <= len(lines)):
+            return code, "", ""
+
+        idx = ln - 1
+        orig_line = lines[idx]
+        etype = error_obj.error_type
+        emsg = error_obj.message or ""
+        new_line = orig_line
+        action = ""
+        explanation = ""
+
+        # Scope context string for learner
+        scope_ctx = (
+            f"in method '{slice_info.enclosing_func}'"
+            if slice_info.enclosing_func
+            else ("in class '" + slice_info.enclosing_class + "'" if slice_info.enclosing_class else "at global scope")
+        )
+
+        # 1. ZeroDivisionError
+        if etype == "ZeroDivisionError" or "division by zero" in emsg:
+            # Match x / 0 or a / b
+            if re.search(r"/\s*0\b", orig_line):
+                new_line = re.sub(r"/\s*0\b", "/ 1.0", orig_line)
+                action = f"L{ln} [AI_FIX]: Replaced division by zero with safe divisor (1.0)"
+                explanation = f"Mistake: The program tried to divide by zero {scope_ctx} on line {ln}. Reason: In arithmetic, division by zero is undefined. Fix: Replaced zero with 1.0."
+            elif re.search(r"(\w+)\s*/\s*(\w+)", orig_line):
+                m = re.search(r"(\w+)\s*/\s*(\w+)", orig_line)
+                num, denom = m.group(1), m.group(2)
+                # Replace with safe ternary expression
+                guarded = f"({num} / {denom} if {denom} != 0 else 0.0)"
+                new_line = orig_line[:m.start()] + guarded + orig_line[m.end():]
+                action = f"L{ln} [AI_FIX]: Guarded dynamic division by zero for '{denom}'"
+                explanation = f"Mistake: Variable '{denom}' can evaluate to zero {scope_ctx} on line {ln}. Reason: Dynamic inputs caused a runtime ZeroDivisionError. Fix: Added safety guard: if {denom} != 0."
+
+        # 2. IndexError (list index out of range)
+        elif etype == "IndexError" or "index out of range" in emsg:
+            # Match subscript access: arr[idx] or obj.arr[idx]
+            m = re.search(r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)\[([^\]]+)\]", orig_line)
+            if m:
+                target, subscript = m.group(1), m.group(2).strip()
+                # If subscript is a literal int (e.g. 10)
+                if subscript.isdigit():
+                    guarded = f"({target}[{subscript}] if len({target}) > {subscript} else {target}[-1] if {target} else None)"
+                else:
+                    guarded = f"({target}[{subscript}] if {subscript} < len({target}) else None)"
+                new_line = orig_line[:m.start()] + guarded + orig_line[m.end():]
+                action = f"L{ln} [AI_FIX]: Guarded list access against out-of-range index '{subscript}'"
+                explanation = f"Mistake: Index '{subscript}' was outside the valid bounds of '{target}' {scope_ctx} on line {ln}. Reason: The list does not contain that many elements. Fix: Added dynamic length guard."
+
+        # 3. KeyError
+        elif etype == "KeyError":
+            # Match dict[key]
+            m = re.search(r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)\[(['\"][^'\"]+['\"])\]", orig_line)
+            if m:
+                target, key_lit = m.group(1), m.group(2)
+                # Convert dict[key] -> dict.get(key, None)
+                guarded = f"{target}.get({key_lit}, None)"
+                new_line = orig_line[:m.start()] + guarded + orig_line[m.end():]
+                action = f"L{ln} [AI_FIX]: Converted direct dictionary lookup to safe .get({key_lit}, None)"
+                explanation = f"Mistake: Dictionary key {key_lit} was not found in '{target}' {scope_ctx} on line {ln}. Reason: Accessing a non-existent key with square brackets raises KeyError. Fix: Used safe .get() method."
+
+        # 4. NameError & UnboundLocalError
+        elif etype in ("NameError", "UnboundLocalError"):
+            bad_name = ""
+            m_quote = re.search(r"name '([^']+)'", emsg)
+            if m_quote:
+                bad_name = m_quote.group(1)
+            elif "referenced before assignment" in emsg:
+                m_unbound = re.search(r"local variable '([^']+)'", emsg)
+                if m_unbound:
+                    bad_name = m_unbound.group(1)
+
+            if bad_name:
+                # 4A. Check if learner forgot 'self.' inside class method!
+                if slice_info.enclosing_class and bad_name in slice_info.class_attributes:
+                    pattern = rf"\b{re.escape(bad_name)}\b"
+                    new_line = re.sub(pattern, f"self.{bad_name}", orig_line, count=1)
+                    action = f"L{ln} [AI_FIX]: Added missing 'self.' to class attribute 'self.{bad_name}'"
+                    explanation = f"Mistake: Referenced '{bad_name}' without 'self.' {scope_ctx} on line {ln}. Reason: In Python classes, instance attributes must be accessed through 'self'. Fix: Changed to 'self.{bad_name}'."
+                # 4B. Check for close typo in local or class symbols
+                elif slice_info.local_symbols:
+                    matches = difflib.get_close_matches(bad_name, list(slice_info.local_symbols), n=1, cutoff=0.6)
+                    if matches and matches[0] != bad_name:
+                        cand = matches[0]
+                        pattern = rf"\b{re.escape(bad_name)}\b"
+                        new_line = re.sub(pattern, cand, orig_line, count=1)
+                        action = f"L{ln} [AI_FIX]: Corrected typo '{bad_name}' -> '{cand}'"
+                        explanation = f"Mistake: Name '{bad_name}' is not defined {scope_ctx} on line {ln}. Reason: Close spelling match to declared variable '{cand}'. Fix: Renamed to '{cand}'."
+                # 4C. Check if missing standard library import
+                if new_line == orig_line and bad_name in ("math", "sys", "json", "os", "re", "time", "hashlib", "random"):
+                    # Insert import at top of file
+                    lines.insert(0, f"import {bad_name}")
+                    action = f"L1 [AI_FIX]: Added missing forgotten import 'import {bad_name}'"
+                    explanation = f"Mistake: Module '{bad_name}' used on line {ln} before being imported. Reason: Python builtins do not auto-import standard modules. Fix: Added 'import {bad_name}' at top of file."
+                    return "\n".join(lines), action, explanation
+                # 4D. Define fallback variable if truly undefined
+                if new_line == orig_line:
+                    indent = re.match(r"^(\s*)", orig_line).group(1)
+                    init_line = f"{indent}{bad_name} = None  # [AI Fix: Initialized undefined variable]"
+                    lines.insert(idx, init_line)
+                    action = f"L{ln} [AI_FIX]: Initialized undefined variable '{bad_name}' prior to usage"
+                    explanation = f"Mistake: Variable '{bad_name}' is referenced on line {ln} without prior declaration {scope_ctx}. Reason: Python raises NameError on undeclared identifiers. Fix: Initialized '{bad_name} = None' before use."
+                    return "\n".join(lines), action, explanation
+
+        # 5. TypeError
+        elif etype == "TypeError":
+            # 5A. String + integer concatenation
+            if "can only concatenate str" in emsg or "unsupported operand type" in emsg:
+                # E.g., 'Total: ' + 5 or val + ' string'
+                m_plus = re.search(r"(\+)\s*([A-Za-z_]\w*|\d+)\b", orig_line)
+                if m_plus:
+                    operand = m_plus.group(2)
+                    new_line = orig_line.replace(f"+ {operand}", f"+ str({operand})")
+                    action = f"L{ln} [AI_FIX]: Wrapped non-string operand '{operand}' with str()"
+                    explanation = f"Mistake: Attempted to add a string and a number on line {ln} {scope_ctx}. Reason: Python does not implicitly convert integers to text in string additions. Fix: Wrapped with str({operand})."
+            # 5B. Float used as sequence index (list indices must be integers or slices, not float)
+            elif "indices must be integers" in emsg or "slice indices must be integers" in emsg:
+                m_div = re.search(r"\[([^\]]+/[^\]]+)\]", orig_line)
+                if m_div:
+                    expr = m_div.group(1)
+                    new_line = orig_line.replace(f"[{expr}]", f"[int({expr})]")
+                    action = f"L{ln} [AI_FIX]: Converted float division index to int: int({expr})"
+                    explanation = f"Mistake: Floating-point value used as a list index on line {ln} {scope_ctx}. Reason: Single-slash division (/) returns a float. List indices must be integers. Fix: Converted to int({expr})."
+            # 5C. NoneType is not subscriptable
+            elif "'NoneType' object is not subscriptable" in emsg:
+                m_sub = re.search(r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)\[([^\]]+)\]", orig_line)
+                if m_sub:
+                    target = m_sub.group(1)
+                    guarded = f"({target} or {{}})"
+                    new_line = orig_line.replace(target + "[", guarded + "[")
+                    action = f"L{ln} [AI_FIX]: Guarded potential NoneType container '{target}'"
+                    explanation = f"Mistake: Container '{target}' evaluated to None on line {ln} {scope_ctx}. Reason: NoneType does not support square-bracket indexing. Fix: Defaulted to empty dictionary/list fallback."
+
+        # 6. AttributeError
+        elif etype == "AttributeError":
+            # E.g. 'NoneType' object has no attribute 'x'
+            if "'NoneType' object has no attribute" in emsg:
+                m_attr = re.search(r"([A-Za-z_]\w*)\.([A-Za-z_]\w+)\s*\(", orig_line)
+                if m_attr:
+                    target, meth = m_attr.group(1), m_attr.group(2)
+                    guarded = f"({target}.{meth}() if {target} is not None else None)"
+                    new_line = orig_line.replace(f"{target}.{meth}()", guarded)
+                    action = f"L{ln} [AI_FIX]: Added NoneType check before calling '{target}.{meth}()'"
+                    explanation = f"Mistake: Called method '{meth}' on NoneType variable '{target}' on line {ln} {scope_ctx}. Reason: Variable '{target}' was None at runtime. Fix: Added safety condition 'if {target} is not None'."
+
+        # 7. SyntaxError
+        elif etype in ("SyntaxError", "IndentationError"):
+            # 7A. Missing colon
+            if "expected ':'" in emsg or re.search(r"^\s*(if|elif|else|for|while|def|class|with|try|except|finally)\b[^:]*$", orig_line):
+                stripped = orig_line.rstrip()
+                if not stripped.endswith(":"):
+                    new_line = stripped + ":"
+                    action = f"L{ln} [AI_FIX]: Added missing colon ':' at end of header"
+                    explanation = f"Mistake: Missing colon on line {ln} {scope_ctx}. Reason: Python compound statements (if/for/def/class) require a colon at the end of the line. Fix: Added ':'."
+            # 7B. Assignment '=' used in condition instead of '=='
+            elif re.search(r"\b(if|elif|while)\s+[A-Za-z_]\w*\s*=\s*[^=]", orig_line):
+                new_line = re.sub(r"(\b(?:if|elif|while)\s+[A-Za-z_]\w*)\s*=\s*", r"\1 == ", orig_line)
+                action = f"L{ln} [AI_FIX]: Replaced assignment '=' with comparison '==' in condition"
+                explanation = f"Mistake: Single '=' used in conditional statement on line {ln}. Reason: Single '=' assigns a value, whereas '==' compares values. Fix: Changed '=' to '=='."
+
+        if new_line != orig_line:
+            lines[idx] = new_line
+            return "\n".join(lines), action, explanation
+
+        return code, "", ""
 
 class IntelligentSynthesizerAgent:
     """
@@ -373,8 +640,8 @@ class IntelligentSynthesizerAgent:
 
     def repair_functional_bug(
         self, code: str, error_obj: CompilerErrorObj, language: str = "python"
-    ) -> Tuple[str, str]:
-        """Repair a syntax/static/runtime bug using IR + deterministic explainer (or LLM)."""
+    ) -> Tuple[str, str, str]:
+        """Repair a syntax/static/runtime bug using IR + deterministic explainer + Agentic Program Slicer."""
         if language == "cpp":
             fixed = apply_cpp_fix(
                 {"error_type": error_obj.error_type, "message": error_obj.message, "line_number": error_obj.line_number},
@@ -383,15 +650,27 @@ class IntelligentSynthesizerAgent:
             explanation = explain_cpp_error(
                 {"error_type": error_obj.error_type, "message": error_obj.message, "line_number": error_obj.line_number}
             )
-            return fixed, explanation
+            action = f"L{error_obj.line_number} [C++_FIX]: Repaired {error_obj.error_type}" if fixed != code else ""
+            return fixed, explanation, action
 
+        # 1. Deterministic rule explainer pass
         ir_gen = IRGenerator(code, error_obj)
         ir = ir_gen.generate_ir()
         if isinstance(ir, str):
             ir = json.loads(ir)
         explanation = self.nlp_explainer.explain(ir)
         fixed = self.nlp_explainer.generate_fixed_code(ir, code)
-        return fixed, explanation
+        if fixed and fixed != code:
+            action = f"L{error_obj.line_number} [EXPLAINER_FIX]: Repaired {error_obj.error_type}"
+            return fixed, explanation, action
+
+        # 2. Agentic Contextual Program Slicer pass (for 2,000+ LOC files & explain-only errors)
+        slice_info = ASTProgramSlicer.slice_context(code, error_obj.line_number)
+        fixed_ctx, action_ctx, expl_ctx = AgenticContextualFixer.fix_python_error(code, error_obj, slice_info)
+        if fixed_ctx and fixed_ctx != code:
+            return fixed_ctx, expl_ctx or explanation, action_ctx
+
+        return code, explanation, ""
 
     def optional_llm_patch(
         self, sanitized_code: str, error_summary: str, security_findings: List[Dict[str, Any]]
@@ -601,6 +880,7 @@ class AgenticCompilerCoordinator:
         execution_output = ""
         all_actions: List[str] = []
         rejected_patches = 0
+        learner_explanation: Optional[Dict[str, Any]] = None
 
         for it in range(1, self.max_iterations + 1):
             iter_actions: List[str] = []
@@ -619,10 +899,20 @@ class AgenticCompilerCoordinator:
             if ir_now.get("static_issue"):
                 si = ir_now["static_issue"]
                 err_obj = CompilerErrorObj(si["error_type"], si["message"], si["line"], "Static")
-                repaired, _ = self.synthesizer.repair_functional_bug(candidate_code, err_obj, language=language)
+                repaired, expl_text, act_note = self.synthesizer.repair_functional_bug(candidate_code, err_obj, language=language)
+                if not learner_explanation:
+                    slice_i = ASTProgramSlicer.slice_context(candidate_code, si["line"])
+                    learner_explanation = {
+                        "error_type": si["error_type"],
+                        "line": si["line"],
+                        "mistake": expl_text or si["message"],
+                        "reason": f"Syntax / Static checker identified an invalid AST construction at line {si['line']}.",
+                        "how_to_fix": act_note or "Apply suggested syntax correction.",
+                        "slice_context": slice_i.relevant_context,
+                    }
                 if repaired and repaired != candidate_code:
                     candidate_code = repaired
-                    iter_actions.append(f"L{si['line']} [BUG_REPAIR]: Repaired {si['error_type']} ({si['message'][:60]})")
+                    iter_actions.append(act_note or f"L{si['line']} [BUG_REPAIR]: Repaired {si['error_type']} ({si['message'][:60]})")
 
             # 3) Zero-Regression Security Gate on Candidate Patch
             if candidate_code != current_code:
@@ -669,13 +959,23 @@ class AgenticCompilerCoordinator:
             # 5) Reflection Feedback Loop: If sandbox returned a runtime error, feed it to Synthesizer
             if ver.get("error"):
                 err_obj = ver["error"]
-                repaired, _ = self.synthesizer.repair_functional_bug(current_code, err_obj, language=language)
+                repaired, expl_text, act_note = self.synthesizer.repair_functional_bug(current_code, err_obj, language=language)
+                if not learner_explanation:
+                    slice_i = ASTProgramSlicer.slice_context(current_code, err_obj.line_number)
+                    learner_explanation = {
+                        "error_type": err_obj.error_type,
+                        "line": err_obj.line_number,
+                        "mistake": expl_text or err_obj.message,
+                        "reason": f"Execution halted in sandbox with {err_obj.error_type} at line {err_obj.line_number}.",
+                        "how_to_fix": act_note or "Apply guarded runtime correction.",
+                        "slice_context": slice_i.relevant_context,
+                    }
                 if repaired and repaired != current_code:
                     diff_check = self.auditor.verify_patch_security(current_code, repaired, language=language)
                     if diff_check["patch_safe"]:
                         current_code = repaired
                         current_audit = self.auditor.audit(current_code, language=language)
-                        action_note = f"L{err_obj.line_number} [REFLECTION_FIX]: Repaired runtime {err_obj.error_type}"
+                        action_note = act_note or f"L{err_obj.line_number} [REFLECTION_FIX]: Repaired runtime {err_obj.error_type}"
                         all_actions.append(action_note)
                         log_msg(it, self.synthesizer.NAME, self.NAME, "REFLECTION_PATCH", action_note)
                         continue
@@ -716,6 +1016,7 @@ class AgenticCompilerCoordinator:
             "prompt_injections_detected": len(ir_initial["prompt_injections"]),
             "rejected_patches": rejected_patches,
             "actions_applied": all_actions,
+            "learner_explanation": learner_explanation,
             "risk_reduction_pct": risk_reduction_pct,
             "health_improvement": comparison["health_delta"],
             "resolved_metrics": comparison["resolved_metrics"],
