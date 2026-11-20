@@ -1,16 +1,16 @@
 file,lines,truth,detected,stage,patches,verdict,detail,detect_ms,repair_ms,verify_ms,total_ms,est_energy_mJ
-test1.py,52,ZeroDivisionError,ZeroDivisionError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",11.13,521.77,455.21,988.11,8800.11
-test2.py,87,SyntaxError,SyntaxError,parser,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",19.8,521.47,484.37,1025.64,9134.37
-test3.py,112,NameError,NameError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",34.18,674.08,486.83,1195.09,10643.5
-test4.py,152,IndexError,IndexError,runtime,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",475.33,1473.57,557.97,2506.87,22326.2
-test6.py,204,KeyError,KeyError,runtime,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",608.36,2218.77,739.71,3566.84,31766.29
-test7.py,302,TypeError,TypeError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",84.33,1117.77,866.69,2068.79,18424.65
-test8.py,402,ModuleNotFoundError,ModuleNotFoundError,runtime,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",504.41,1568.59,780.74,2853.74,25415.44
-testA.py,2,TimeoutError,TimeoutError,runtime,0,NO FIX GENERATED,No auto-fix rule for this error; explanation only.,5022.2,5028.23,0.03,10050.46,89509.36
-testB.py,10,TypeError,TypeError,static,3,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",3.45,830.77,364.78,1199.0,10678.27
-testC.py,21,NameError,NameError,static,12,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",12.65,2749.59,428.71,3190.95,28418.62
-testD.py,10,NameError,NameError,static,4,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",8.64,630.01,415.88,1054.54,9391.7
-testE.py,14,SyntaxError,SyntaxError,parser,4,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",2.65,1274.36,753.65,2030.66,18085.1
-testF.py,10,IndexError,IndexError,runtime,3,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",497.9,3351.19,532.62,4381.71,39023.51
-testG.py,7,ValueError,ValueError,runtime,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",647.81,1184.84,573.4,2406.04,21428.22
-test_case_large.py,241,NameError,NameError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",56.22,1160.39,897.61,2114.21,18829.2
+test1.py,52,ZeroDivisionError,ZeroDivisionError,static,0,NO FIX GENERATED,No auto-fix rule for this error; explanation only.,1.06,3.0,0.0,4.06,33.88
+test2.py,87,SyntaxError,SyntaxError,parser,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",2.82,97.85,83.45,184.12,1536.82
+test3.py,112,NameError,NameError,static,0,NO FIX GENERATED,No auto-fix rule for this error; explanation only.,3.83,12.59,0.0,16.42,137.08
+test4.py,152,IndexError,IndexError,static,0,NO FIX GENERATED,No auto-fix rule for this error; explanation only.,4.6,10.35,0.0,14.94,124.74
+test6.py,204,KeyError,KeyError,static,0,NO FIX GENERATED,No auto-fix rule for this error; explanation only.,6.31,22.62,0.0,28.93,241.47
+test7.py,302,TypeError,TypeError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",11.19,140.47,94.34,246.0,2053.38
+test8.py,402,ModuleNotFoundError,ModuleNotFoundError,static,0,NO FIX GENERATED,No auto-fix rule for this error; explanation only.,15.56,32.54,0.0,48.11,401.54
+testA.py,2,TimeoutError,TimeoutError,runtime,0,NO FIX GENERATED,No auto-fix rule for this error; explanation only.,5008.44,5010.54,0.01,10018.99,83628.49
+testB.py,10,TypeError,TypeError,static,2,PARTIAL,1 static error(s) remain; first: KeyError on line 7,0.52,6.37,0.48,7.37,61.48
+testC.py,21,NameError,NameError,static,6,PARTIAL,6 static error(s) remain; first: ZeroDivisionError on line 13,1.29,47.34,1.05,49.68,414.7
+testD.py,10,NameError,NameError,static,3,PARTIAL,1 static error(s) remain; first: ZeroDivisionError on line 8,0.74,9.9,0.65,11.29,94.26
+testE.py,557,SyntaxError,SyntaxError,parser,2,PARTIAL,2 static error(s) remain; first: NameError on line 27,10.06,330.56,42.03,382.65,3193.98
+testF.py,503,IndexError,IndexError,static,0,NO FIX GENERATED,No auto-fix rule for this error; explanation only.,31.01,256.21,0.0,287.22,2397.46
+testG.py,7,ValueError,ValueError,static,1,VERIFIED,"Patched code passes static analysis, security scan, and sandboxed execution.",0.75,73.96,73.89,148.6,1240.35
+test_case_large.py,241,NameError,NameError,static,0,NO FIX GENERATED,No auto-fix rule for this error; explanation only.,7.93,22.76,0.0,30.69,256.16
