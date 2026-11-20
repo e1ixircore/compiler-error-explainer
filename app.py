@@ -944,8 +944,16 @@ def format_diagnosis(history):
 
 
 app = Flask(__name__)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 CORS(app)
 explainer = NLPExplainer()
+
+
+@app.after_request
+def _no_cache(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    return response
 
 
 # ----------------------------------------------------------------------

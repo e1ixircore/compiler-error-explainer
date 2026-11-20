@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IntelliFix — Beginner Error Explanation &amp; Secure Agentic AI Compiler</title>
+  <title>IntelliFix — Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -35,86 +35,67 @@
       flex-direction: column;
       background: var(--bg);
       color: var(--ink);
-      font: 14px/1.55 var(--body);
+      font: 13.5px/1.5 var(--body);
       overflow: hidden;
     }
 
-    /* ---------- Multi-Page Top Navigation Header ---------- */
+    /* ---------- Minimal Top Nav ---------- */
     #appHeader {
-      height: 50px;
+      height: 46px;
       flex: none;
       background: #14281f;
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 18px;
-      border-bottom: 1px solid #0d1b14;
+      padding: 0 16px;
       z-index: 25;
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font: 700 16px/1 var(--head);
-      letter-spacing: -0.01em;
-    }
-    .brand-badge {
-      font: 700 11px/1 var(--mono);
-      background: #2d6a4f;
-      color: #d8f3dc;
-      padding: 4px 8px;
-      border-radius: 999px;
-    }
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .brand { font: 700 15px/1 var(--head); letter-spacing: -0.01em; }
+    .nav-links { display: flex; align-items: center; gap: 4px; }
     .nav-link {
       color: #d1fae5;
       text-decoration: none;
-      font: 600 13px/1 var(--head);
-      padding: 8px 13px;
-      border-radius: 7px;
-      transition: all .15s ease;
+      font: 600 12.5px/1 var(--head);
+      padding: 7px 12px;
+      border-radius: 6px;
+      transition: background .15s;
     }
     .nav-link:hover { background: rgba(255,255,255,0.1); color: #fff; }
     .nav-link.active { background: #2d6a4f; color: #fff; }
 
-    /* ---------- Main 2-Column Studio Layout ---------- */
+    /* ---------- Workspace ---------- */
     #workspace {
       flex: 1;
       display: grid;
-      grid-template-columns: 45% 55%;
+      grid-template-columns: minmax(0, 46%) minmax(0, 54%);
       min-height: 0;
     }
 
     button {
-      font: 600 13px var(--head);
-      padding: 7px 14px;
-      border-radius: 7px;
+      font: 600 12.5px var(--head);
+      padding: 6px 12px;
+      border-radius: 6px;
       border: 1px solid transparent;
       cursor: pointer;
       background: var(--accent);
       color: #fff;
-      transition: all .15s ease;
+      transition: filter .15s, background .15s;
     }
     button:hover:not(:disabled) { filter: brightness(1.08); }
-    button:active:not(:disabled) { transform: scale(.98); }
     button:disabled { opacity: .45; cursor: not-allowed; }
     button.ghost { background: var(--panel); color: var(--ink); border-color: var(--line); }
-    button.ghost:hover:not(:disabled) { background: var(--panel2); border-color: #c7c0b3; }
+    button.ghost:hover:not(:disabled) { background: var(--panel2); }
     button.amber { background: #b45309; color: #fff; }
-    button.danger { background: var(--sec); color: #fff; }
 
-    /* ---------- Left Column: Code Viewer & Inline Line Editor ---------- */
+    /* ---------- Left Column: Code Viewer ---------- */
     #left {
       position: relative;
       display: flex;
       flex-direction: column;
       border-right: 1px solid var(--line);
       background: var(--panel);
+      min-width: 0;
       min-height: 0;
     }
     #topBar {
@@ -122,83 +103,66 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 10px 14px;
+      padding: 8px 12px;
       border-bottom: 1px solid var(--line);
       background: #fcfbf9;
     }
-    #topBarLeft {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
+    #topBarLeft { display: flex; align-items: center; gap: 8px; min-width: 0; }
     #menuBtn {
-      padding: 6px 11px;
-      font-size: 13px;
+      padding: 5px 10px;
       background: var(--accent-soft);
       color: var(--accent);
-      border: 1px solid #b7e4c7;
+      border-color: #b7e4c7;
       flex: none;
     }
     #fname {
-      font: 700 13.5px var(--mono);
-      color: var(--ink);
+      font: 600 13px var(--mono);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    #codeBtns { display: flex; gap: 6px; align-items: center; flex: none; }
+    #codeBtns { display: flex; gap: 5px; align-items: center; flex: none; }
     #langSel {
-      font: 600 12.5px var(--head);
-      padding: 6px 9px;
-      border-radius: 7px;
+      font: 600 12px var(--head);
+      padding: 5px 8px;
+      border-radius: 6px;
       border: 1px solid var(--line);
       background: var(--panel);
       color: var(--ink);
-      cursor: pointer;
     }
 
-    /* Slide-out Categorized Test Files Menu */
+    /* File Menu */
     #menu {
       position: absolute;
-      top: 52px;
-      left: 12px;
+      top: 46px;
+      left: 10px;
       z-index: 20;
-      width: 340px;
-      max-height: calc(100% - 70px);
+      width: 320px;
+      max-height: calc(100% - 60px);
       overflow: auto;
-      padding: 14px;
+      padding: 12px;
       display: none;
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 10px;
-      box-shadow: 0 12px 32px rgba(28,25,23,.18);
+      box-shadow: 0 12px 28px rgba(28,25,23,.16);
     }
     #menu.open { display: block; }
-    .menu-filter {
-      display: flex;
-      gap: 5px;
-      margin: 10px 0 6px;
-    }
-    .menu-filter button {
-      flex: 1;
-      padding: 5px 8px;
-      font-size: 11.5px;
-      border-radius: 6px;
-    }
+    .menu-filter { display: flex; gap: 4px; margin: 8px 0 4px; }
+    .menu-filter button { flex: 1; padding: 4px 6px; font-size: 11.5px; }
     #menu h4 {
-      font: 700 11px var(--head);
+      font: 700 10.5px var(--head);
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--mute);
-      margin: 12px 0 5px;
-      padding-bottom: 3px;
+      margin: 10px 0 4px;
+      padding-bottom: 2px;
       border-bottom: 1px solid var(--line);
     }
     .fi {
-      padding: 6px 9px;
-      border-radius: 6px;
-      font: 12.5px var(--mono);
+      padding: 5px 8px;
+      border-radius: 5px;
+      font: 12px var(--mono);
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -207,70 +171,69 @@
     }
     .fi:hover { background: var(--panel2); }
     .fi.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-    .lang-tag {
-      font: 700 10px/1 var(--head);
+    .tag {
+      font: 700 9.5px/1 var(--head);
       padding: 2px 5px;
-      border-radius: 4px;
+      border-radius: 3px;
       background: #e7e5e4;
       color: #44403c;
     }
-    .lang-tag.cpp { background: #e0f2fe; color: #0369a1; }
-    .lang-tag.sec { background: #fee2e2; color: #991b1b; }
-    .lang-tag.err { background: #dcfce7; color: #166534; }
+    .tag.cpp { background: #e0f2fe; color: #0369a1; }
+    .tag.sec { background: #fee2e2; color: #991b1b; }
+    .tag.err { background: #dcfce7; color: #166534; }
 
-    /* Code Lines Container */
+    /* Code Lines */
     #code {
       flex: 1;
       overflow: auto;
-      padding: 12px 0 72px;
-      font: 13px/1.65 var(--mono);
-      background: var(--panel);
+      padding: 8px 0 24px;
+      font: 12.5px/1.6 var(--mono);
     }
     .ln {
       display: grid;
-      grid-template-columns: 50px 1fr auto;
-      padding: 1px 14px 1px 0;
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+      padding: 1px 10px 1px 0;
       border-left: 3px solid transparent;
       align-items: center;
     }
     .ln:hover { background: #faf8f5; }
-    .ln > .ln-num {
+    .ln-num {
       color: #a8a29e;
       text-align: right;
-      padding-right: 12px;
+      padding-right: 10px;
       user-select: none;
-      font-size: 11.5px;
+      font-size: 11px;
     }
-    .ln > .ln-txt {
+    .ln-txt {
       white-space: pre;
       overflow-x: auto;
       padding: 1px 4px;
-      border-radius: 4px;
+      border-radius: 3px;
       outline: none;
     }
-    .ln > .ln-txt.editing-inline {
+    .ln-txt.editing-inline {
       background: #fffbeb;
       border: 1px solid #f59e0b;
-      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
-      white-space: pre;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18);
     }
-    .ln > .ln-actions {
+    .ln-actions {
       display: flex;
       align-items: center;
-      gap: 5px;
-      padding-left: 8px;
+      gap: 4px;
+      padding-left: 6px;
     }
-    .ln-edit-btn {
+    .ln-btn {
       opacity: 0;
-      font: 600 10.5px var(--head);
+      font: 700 11px/1 var(--mono);
       padding: 2px 6px;
       border-radius: 4px;
       background: var(--panel2);
-      color: var(--mute);
+      color: var(--ink);
       border: 1px solid var(--line);
       cursor: pointer;
     }
-    .ln:hover .ln-edit-btn, .ln.editing .ln-edit-btn { opacity: 1; }
+    .ln-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+    .ln:hover .ln-btn, .ln.editing .ln-btn { opacity: 1; }
     .ln.hit { cursor: pointer; }
     .ln.parser   { background: #f5f0ff; border-left-color: var(--parser); }
     .ln.static   { background: #fef7ec; border-left-color: var(--static); }
@@ -278,127 +241,116 @@
     .ln.compiler { background: #f0f9ff; border-left-color: var(--compiler); }
     .ln.sec      { background: #fde8e8; border-left-color: var(--sec); }
     .ln.patched-line { background: #ecfdf5; border-left-color: var(--ok); }
-    .ln.active   { outline: 2px solid var(--ink); outline-offset: -2px; }
-    .ln .badge {
-      font: 700 10.5px/1.3 var(--head);
+    .ln.active   { outline: 1.5px solid var(--ink); outline-offset: -1.5px; }
+    .badge {
+      font: 700 10px/1.2 var(--head);
       color: #fff;
-      padding: 2px 7px;
+      padding: 2px 6px;
       border-radius: 999px;
     }
+    .add-end-row {
+      margin: 6px 12px 0 44px;
+      padding: 5px 10px;
+      border-radius: 5px;
+      border: 1px dashed var(--line);
+      color: var(--mute);
+      font: 600 12px var(--head);
+      cursor: pointer;
+      display: inline-block;
+    }
+    .add-end-row:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 
     #leftFooter {
-      padding: 10px 14px;
+      padding: 8px 12px;
       border-top: 1px solid var(--line);
       background: #fcfbf9;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
     }
-    #legend {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      font-size: 11.5px;
-      color: var(--mute);
-    }
-    .dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: 4px;
-      vertical-align: middle;
-    }
-    #scanBtn {
-      padding: 9px 18px;
-      font-size: 13.5px;
-      box-shadow: 0 4px 12px rgba(27,67,50,.2);
-    }
+    #legend { display: flex; gap: 9px; flex-wrap: wrap; font-size: 11px; color: var(--mute); }
+    .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    #scanBtn { padding: 7px 16px; font-size: 13px; }
 
-    /* ---------- Right Column: 3-Pillar Score Bar + Tabs + Panes ---------- */
+    /* ---------- Right Column: Compact 3-Pillar Score + Clean Cards ---------- */
     #right {
       display: flex;
       flex-direction: column;
+      min-width: 0;
       min-height: 0;
       background: var(--bg);
     }
 
-    /* 3-Pillar Honest Score Banner */
     #scoreHeader {
       background: var(--panel);
       border-bottom: 1px solid var(--line);
-      padding: 12px 16px;
+      padding: 10px 14px;
       display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 16px;
-      align-items: center;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 10px;
+      align-items: stretch;
+      min-width: 0;
     }
     .grade-box {
-      padding: 10px 16px;
-      border-radius: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
       background: var(--mute);
       color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       text-align: center;
-      min-width: 145px;
-      transition: background .25s ease;
+      min-width: 0;
     }
-    .grade-box .g-big { font: 800 18px/1.15 var(--head); }
-    .grade-box .g-sub { font: 500 11.5px/1.3 var(--body); opacity: 0.92; margin-top: 2px; }
+    .grade-box .g-big { font: 800 16px/1.15 var(--head); }
+    .grade-box .g-sub { font: 500 11px/1.2 var(--body); opacity: 0.9; margin-top: 2px; }
+
     .pillars {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      min-width: 0;
     }
     .pillar {
       background: #faf9f6;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 8px 11px;
+      border-radius: 7px;
+      padding: 7px 9px;
+      min-width: 0;
+      overflow: hidden;
     }
     .pillar-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      font: 700 11.5px var(--head);
+      align-items: baseline;
+      gap: 4px;
+      font: 700 10.5px var(--head);
       color: var(--mute);
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }
-    .pillar-top b {
-      font: 800 13.5px var(--mono);
-      color: var(--ink);
-    }
-    .pillar-bar {
-      height: 5px;
-      background: #e5e0d5;
-      border-radius: 999px;
-      overflow: hidden;
-      margin: 5px 0 4px;
-    }
-    .pillar-bar > i {
-      display: block;
-      height: 100%;
-      background: var(--ok);
-      width: 0%;
-      transition: width .35s ease;
-    }
+    .pillar-top b { font: 700 12.5px var(--mono); color: var(--ink); flex: none; }
+    .pillar-bar { height: 4px; background: #e5e0d5; border-radius: 999px; overflow: hidden; margin: 5px 0 4px; }
+    .pillar-bar > i { display: block; height: 100%; background: var(--ok); width: 0%; transition: width .3s ease; }
     .pillar-desc {
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--mute);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    /* Sub-Tabs */
+    /* Tabs */
     #tabs {
       display: flex;
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--line);
       background: #fcfbf9;
-      padding: 0 14px;
+      padding: 0 12px;
+      min-width: 0;
     }
     .tab-group { display: flex; }
     .tab {
@@ -407,240 +359,166 @@
       border: 0;
       border-bottom: 2px solid transparent;
       border-radius: 0;
-      padding: 10px 14px;
-      font-size: 13px;
+      padding: 9px 12px;
+      font-size: 12.5px;
     }
     .tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
     .tab .pip {
       display: inline-block;
-      width: 7px;
-      height: 7px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: var(--runtime);
-      margin-left: 6px;
+      margin-left: 5px;
       vertical-align: middle;
     }
+    #projHint {
+      font-size: 11.5px;
+      color: var(--accent);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-left: 8px;
+    }
 
-    .pane { display: none; flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+    .pane { display: none; flex: 1; min-height: 0; overflow: auto; padding: 14px; }
     .pane.on { display: block; }
 
-    /* ---------- Stage 1: Security Gate Intercept Card ---------- */
+    /* ---------- Security Gate Card ---------- */
     .sec-gate-card {
       background: #fff5f5;
-      border: 2px solid #f87171;
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 16px;
+      border: 1.5px solid #f87171;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
     }
     .sec-gate-card h3 {
-      font: 700 16px/1.3 var(--head);
+      font: 700 15px var(--head);
       color: #7f1d1d;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .sec-gate-card p { font-size: 13px; color: #991b1b; margin-bottom: 10px; }
+    .sec-finding-row {
+      background: #fff;
+      border: 1px solid #fecaca;
+      border-left: 3px solid var(--sec);
+      border-radius: 7px;
+      padding: 10px 12px;
       margin-bottom: 8px;
     }
-    .sec-gate-card p {
-      font-size: 13.5px;
-      color: #991b1b;
-      margin-bottom: 12px;
-      line-height: 1.5;
-    }
-    .sec-finding-row {
-      background: #ffffff;
-      border: 1px solid #fecaca;
-      border-left: 4px solid var(--sec);
-      border-radius: 8px;
-      padding: 12px 14px;
-      margin-bottom: 10px;
-    }
-    .sec-finding-head {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-      flex-wrap: wrap;
-    }
-    .sec-gate-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-top: 14px;
-      padding-top: 12px;
-      border-top: 1px solid #fecaca;
-    }
+    .sec-finding-head { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; flex-wrap: wrap; }
+    .sec-gate-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 
-    /* Non-blocking security notes banner */
     .sec-note-banner {
       background: #fffbeb;
       border: 1px solid #fde68a;
-      border-left: 4px solid #d97706;
-      border-radius: 9px;
-      padding: 11px 14px;
-      margin-bottom: 14px;
-      font-size: 12.5px;
+      border-left: 3px solid #d97706;
+      border-radius: 7px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      font-size: 12px;
       color: #92400e;
     }
 
-    /* ---------- Unified Beginner Diagnostic & Fix Cards ---------- */
+    /* ---------- Minimal Diagnostic Cards ---------- */
     .diag-toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
     }
-    .diag-toolbar h2 {
-      font: 700 15px var(--head);
-      color: var(--ink);
-    }
+    .diag-toolbar h2 { font: 700 14px var(--head); }
+
     .diag-card {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-left: 4px solid var(--c, var(--runtime));
-      border-radius: 10px;
-      padding: 15px 16px;
-      margin-bottom: 14px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
-      transition: border-color .15s ease, box-shadow .15s ease;
+      border-left: 3.5px solid var(--c, var(--runtime));
+      border-radius: 9px;
+      padding: 12px 14px;
+      margin-bottom: 11px;
     }
-    .diag-card.active {
-      box-shadow: 0 0 0 2px var(--ink);
-    }
-    .diag-card.is-patched {
-      border-left-color: var(--ok);
-      background: #f8fdf9;
-    }
+    .diag-card.active { box-shadow: 0 0 0 1.5px var(--ink); }
+    .diag-card.is-patched { border-left-color: var(--ok); background: #f8fdf9; }
     .diag-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
+      gap: 6px;
       margin-bottom: 8px;
     }
-    .diag-head-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    .diag-head-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .line-jump-pill {
-      font: 700 12px/1 var(--mono);
-      padding: 5px 10px;
-      border-radius: 6px;
-      background: var(--panel2);
-      color: var(--ink);
-      border: 1px solid #d5cfc4;
-      cursor: pointer;
-    }
-    .line-jump-pill:hover {
-      background: var(--accent-soft);
-      color: var(--accent);
-      border-color: var(--accent);
-    }
-    .type-chip {
       font: 700 11.5px/1 var(--mono);
       padding: 4px 8px;
       border-radius: 5px;
+      background: var(--panel2);
+      color: var(--ink);
+      border: 1px solid #d5cfc4;
+    }
+    .line-jump-pill:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+    .type-chip {
+      font: 700 11px/1 var(--mono);
+      padding: 4px 7px;
+      border-radius: 4px;
       color: #fff;
       background: var(--c, var(--runtime));
     }
-    .stage-label {
-      font-size: 12px;
-      color: var(--mute);
-      font-weight: 500;
-    }
-    .fix-status-pill {
-      font: 700 11px/1 var(--head);
-      padding: 4px 9px;
+    .fix-pill {
+      font: 700 10.5px/1 var(--head);
+      padding: 3px 8px;
       border-radius: 999px;
       background: #dcfce7;
       color: #166534;
     }
-    .fix-status-pill.ambig {
-      background: #fef3c7;
-      color: #92400e;
-    }
-    .fix-status-pill.applied {
-      background: #15803d;
-      color: #fff;
-    }
+    .fix-pill.ambig { background: #fef3c7; color: #92400e; }
+    .fix-pill.applied { background: #15803d; color: #fff; }
 
-    .meaning-line {
-      font-size: 12.5px;
-      color: var(--mute);
-      margin-bottom: 10px;
-    }
-
-    /* Beginner Mistake / Why / How Trio */
     .trio-grid {
       display: grid;
-      grid-template-columns: 110px 1fr;
-      gap: 6px 10px;
-      background: #faf9f6;
-      border: 1px solid #ece8df;
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 13px;
-      margin-bottom: 12px;
+      grid-template-columns: 62px 1fr;
+      gap: 4px 10px;
+      font-size: 12.5px;
+      margin-bottom: 10px;
     }
     .trio-grid dt {
-      font: 700 11px/1.4 var(--head);
+      font: 700 10.5px/1.5 var(--head);
       text-transform: uppercase;
-      letter-spacing: 0.04em;
       color: var(--mute);
     }
     .trio-grid dd { color: var(--ink); }
 
-    /* Diff & Patch Area inside Card */
     .patch-box {
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 7px;
       overflow: hidden;
       background: #fcfbf9;
     }
     .diff-line {
-      font: 12.5px/1.55 var(--mono);
-      padding: 6px 12px;
+      font: 12px/1.5 var(--mono);
+      padding: 5px 10px;
       white-space: pre-wrap;
       word-break: break-all;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
     }
     .diff-line.minus { background: #fde8e8; color: #7f1d1d; }
     .diff-line.plus { background: #dcfce7; color: #14532d; border-top: 1px solid #bbf7d0; }
 
-    /* Interactive Inline Code Box (Not a textarea!) */
     .manual-patch-wrap {
-      padding: 10px 12px;
+      padding: 8px 10px;
       background: #f5f3ef;
       border-top: 1px solid var(--line);
     }
-    .manual-patch-label {
-      font: 700 11.5px var(--head);
-      color: var(--mute);
-      margin-bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .inline-code-editor-row {
-      display: flex;
-      gap: 8px;
-      align-items: stretch;
-    }
+    .inline-code-editor-row { display: flex; gap: 6px; align-items: stretch; }
     .inline-code-gutter {
       background: #292524;
       color: #a8a29e;
-      font: 12px/1.6 var(--mono);
-      padding: 7px 9px;
-      border-radius: 6px 0 0 6px;
+      font: 11.5px/1.5 var(--mono);
+      padding: 6px 8px;
+      border-radius: 5px 0 0 5px;
       user-select: none;
       display: flex;
       align-items: center;
@@ -649,83 +527,74 @@
       flex: 1;
       background: #1c1917;
       color: #f5f5f4;
-      font: 12.5px/1.6 var(--mono);
-      padding: 7px 11px;
-      border-radius: 0 6px 6px 0;
+      font: 12px/1.55 var(--mono);
+      padding: 6px 10px;
+      border-radius: 0 5px 5px 0;
       border: 1px solid #44403c;
       outline: none;
       white-space: pre;
       overflow-x: auto;
-      min-height: 36px;
+      min-height: 32px;
     }
-    .inline-code-box:focus {
-      border-color: #34d399;
-      box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.25);
-    }
+    .inline-code-box:focus { border-color: #34d399; }
 
     .card-actions {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      padding: 8px 12px;
+      gap: 6px;
+      padding: 7px 10px;
       background: #faf8f5;
       border-top: 1px solid var(--line);
       flex-wrap: wrap;
     }
 
-    /* ---------- Tab 2: 5-Agent Pipeline & Score Breakdown ---------- */
+    /* Pipeline Pane */
     .ag-card {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 14px 16px;
-      margin-bottom: 14px;
+      border-radius: 9px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
     }
-    .ag-card h4 {
-      font: 700 14px var(--head);
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .ag-card h4 { font: 700 13.5px var(--head); margin-bottom: 8px; }
     .ag-step {
       display: flex;
-      gap: 10px;
-      padding: 9px 11px;
-      border-radius: 8px;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 7px;
       background: #faf9f6;
       border: 1px solid #ebe7de;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .ag-step .num {
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
       background: var(--accent-soft);
       color: var(--accent);
-      font: 700 12px/24px var(--head);
+      font: 700 11.5px/22px var(--head);
       text-align: center;
       flex: none;
     }
-    .ag-step .who { font: 700 12.5px var(--head); color: var(--ink); }
-    .ag-step .desc { font-size: 12.5px; color: #44403c; margin-top: 2px; }
+    .ag-step .who { font: 700 12px var(--head); }
+    .ag-step .desc { font-size: 12px; color: #44403c; margin-top: 1px; }
 
-    /* ---------- Tab 3: Output Terminal ---------- */
+    /* Output Terminal */
     #outPane.on { display: flex; flex-direction: column; padding: 0; }
     .bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 16px;
+      padding: 8px 14px;
       border-bottom: 1px solid var(--line);
       background: #fcfbf9;
-      font: 700 13px var(--head);
+      font: 700 12.5px var(--head);
     }
     #term {
       flex: 1;
       overflow: auto;
-      padding: 16px;
+      padding: 14px;
       white-space: pre-wrap;
       font: 12.5px/1.6 var(--mono);
       background: #1c1917;
@@ -735,182 +604,124 @@
 
     .empty-state {
       color: var(--mute);
-      padding: 36px 20px;
+      padding: 28px 18px;
       text-align: center;
-      font-size: 13.5px;
+      font-size: 13px;
       background: var(--panel);
       border: 1px dashed var(--line);
-      border-radius: 10px;
+      border-radius: 9px;
     }
-
-    /* Save Modal */
-    .modal {
-      position: fixed;
-      inset: 0;
-      z-index: 40;
-      display: grid;
-      place-items: center;
-      background: rgba(28,25,23,.45);
-    }
-    .modal[hidden] { display: none; }
-    .modal-card {
-      width: min(100%, 380px);
-      padding: 20px;
-      border-radius: 12px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-    }
-    .modal-card h3 { font: 700 16px var(--head); margin-bottom: 8px; }
-    .modal-card input {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      font: 13.5px var(--mono);
-      margin: 8px 0 14px;
-    }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
   </style>
 </head>
 <body>
-  <!-- Multi-Page Navigation Bar -->
   <header id="appHeader">
-    <div class="brand">
-      <span>IntelliFix Studio</span>
-      <span class="brand-badge">Secure Agentic AI Compiler</span>
-    </div>
+    <div class="brand">IntelliFix</div>
     <nav class="nav-links">
-      <a href="/" class="nav-link active">1. Compiler &amp; Error Studio</a>
-      <a href="/suite-report" class="nav-link">2. Test Suites &amp; Error Report</a>
-      <a href="/analytics" class="nav-link">3. 52-Metric Security &amp; Eco Dashboard</a>
+      <a href="/" class="nav-link active">Studio</a>
+      <a href="/suite-report" class="nav-link">Suites</a>
+      <a href="/analytics" class="nav-link">Eco Dashboard</a>
     </nav>
   </header>
 
   <main id="workspace">
-    <!-- Left Column: Code Viewer with Click-to-Edit Inline Code Lines -->
     <section id="left">
       <div id="topBar">
         <div id="topBarLeft">
-          <button id="menuBtn" title="Browse Normal Error & Security Test Suites">☰ Test Files</button>
-          <div id="fname">Pick a test file from ☰ Test Files to begin</div>
+          <button id="menuBtn">☰ Files</button>
+          <div id="fname">Select a file</div>
         </div>
         <div id="codeBtns">
-          <select id="langSel" title="Source language">
+          <select id="langSel">
             <option value="auto">Auto</option>
             <option value="python">Python</option>
             <option value="cpp">C++</option>
           </select>
-          <button id="addLineBtn" class="ghost" title="Append a new line to code">+ Line</button>
-          <button id="applyAllBtn" class="ghost" disabled title="Apply all unambiguous Agentic AI fixes at once">Apply All AI Fixes</button>
-          <button id="runBtn" class="ghost" disabled>Run Code</button>
+          <button id="runBtn" class="ghost" disabled>Run</button>
           <button id="saveBtn" class="ghost" disabled>Save</button>
         </div>
       </div>
 
-      <!-- Categorized File Picker Menu -->
       <div id="menu">
-        <button style="width:100%" id="upBtn">Upload .py / .cpp File</button>
+        <button style="width:100%" id="upBtn">Upload .py / .cpp</button>
         <input type="file" id="upIn" accept=".py,.cpp,.cc,.cxx" hidden>
         <div class="menu-filter">
-          <button id="fltAll" class=" on">All Suites</button>
-          <button id="fltErr" class="ghost">Error Suites</button>
-          <button id="fltSec" class="ghost">Security Suites</button>
+          <button id="fltAll">All</button>
+          <button id="fltErr" class="ghost">Errors</button>
+          <button id="fltSec" class="ghost">Security</button>
         </div>
         <div id="files"></div>
       </div>
 
-      <!-- Line-by-Line Code Viewer (Double-click or click ✎ on any line to edit inline!) -->
       <div id="code"></div>
 
       <div id="leftFooter">
         <div id="legend">
-          <span><i class="dot" style="background:var(--sec)"></i>1. Security Gate</span>
-          <span><i class="dot" style="background:var(--parser)"></i>2. Syntax</span>
-          <span><i class="dot" style="background:var(--static)"></i>3. Static / Logic</span>
-          <span><i class="dot" style="background:var(--runtime)"></i>4. Runtime</span>
+          <span><i class="dot" style="background:var(--sec)"></i>Security</span>
+          <span><i class="dot" style="background:var(--parser)"></i>Syntax</span>
+          <span><i class="dot" style="background:var(--static)"></i>Static</span>
+          <span><i class="dot" style="background:var(--runtime)"></i>Runtime</span>
           <span><i class="dot" style="background:var(--ok)"></i>Patched</span>
         </div>
-        <button id="scanBtn" disabled>Analyze &amp; Diagnose Code</button>
+        <button id="scanBtn" disabled>Analyze</button>
       </div>
     </section>
 
-    <!-- Right Column: 3-Pillar Score Bar + Beginner Diagnostic Cards -->
     <section id="right">
-      <!-- Honest 3-Pillar Score Header (Reflects Current Code State) -->
       <div id="scoreHeader">
         <div class="grade-box" id="gradeBox">
           <div class="g-big" id="gradeText">Ready</div>
-          <div class="g-sub" id="scoreSub">Select a file to analyze</div>
+          <div class="g-sub" id="scoreSub">—</div>
         </div>
         <div class="pillars">
           <div class="pillar">
-            <div class="pillar-top"><span>1. Security Gate</span><b id="pSecVal">— / 40</b></div>
+            <div class="pillar-top"><span>Security</span><b id="pSecVal">—/40</b></div>
             <div class="pillar-bar"><i id="pSecBar"></i></div>
-            <div class="pillar-desc" id="pSecDesc">Checked first (Critical/High stops diagnosis)</div>
+            <div class="pillar-desc" id="pSecDesc">Gate</div>
           </div>
           <div class="pillar">
-            <div class="pillar-top"><span>2. Error Diagnosis</span><b id="pErrVal">— / 45</b></div>
+            <div class="pillar-top"><span>Errors</span><b id="pErrVal">—/45</b></div>
             <div class="pillar-bar"><i id="pErrBar"></i></div>
-            <div class="pillar-desc" id="pErrDesc">Static, runtime &amp; logical errors</div>
+            <div class="pillar-desc" id="pErrDesc">Correctness</div>
           </div>
           <div class="pillar">
-            <div class="pillar-top"><span>3. Code Efficiency</span><b id="pEffVal">— / 15</b></div>
+            <div class="pillar-top"><span>Efficiency</span><b id="pEffVal">—/15</b></div>
             <div class="pillar-bar"><i id="pEffBar"></i></div>
-            <div class="pillar-desc" id="pEffDesc">Evaluated once code is executable</div>
+            <div class="pillar-desc" id="pEffDesc">Runtime</div>
           </div>
         </div>
       </div>
 
-      <!-- Focused Workspace Tabs -->
       <div id="tabs">
         <div class="tab-group">
-          <button class="tab on" data-t="diag">Diagnostic Report &amp; Fixes <span id="nDiag"></span></button>
-          <button class="tab" data-t="pipeline">5-Agent Pipeline &amp; Score Breakdown <span class="pip" id="agPip" hidden></span></button>
-          <button class="tab" data-t="out">Program Output <span class="pip" id="outPip" hidden></span></button>
+          <button class="tab on" data-t="diag">Diagnostics <span id="nDiag"></span></button>
+          <button class="tab" data-t="pipeline">Pipeline</button>
+          <button class="tab" data-t="out">Output <span class="pip" id="outPip" hidden></span></button>
         </div>
-        <div id="projHint" style="font-size:12px;color:var(--accent);font-weight:600;padding-right:6px;"></div>
+        <div id="projHint"></div>
       </div>
 
-      <!-- Pane 1: Beginner-Friendly Diagnostic Report & Interactive Fixes -->
       <div class="pane on" id="diagPane">
         <div id="secGateBox"></div>
         <div id="diagList">
-          <div class="empty-state">
-            Pick a test file from <strong>☰ Test Files</strong> on the left (or upload a file), then click <strong>Analyze &amp; Diagnose Code</strong>.<br><br>
-            <strong>Pipeline Order:</strong> Stage 1 checks for critical security risks first. Once safe, Stage 2 finds and explains every Static, Runtime, and Logical error with one-click Agentic AI fixes and an inline code box for manual patching.
-          </div>
+          <div class="empty-state">Select a file from <strong>☰ Files</strong> and click <strong>Analyze</strong>.</div>
         </div>
       </div>
 
-      <!-- Pane 2: 5-Agent Pipeline & Detailed Scoring Breakdown -->
       <div class="pane" id="pipelinePane">
         <div id="pipelineBody">
-          <div class="empty-state">Run <strong>Analyze &amp; Diagnose Code</strong> to inspect the step-by-step 5-Agent execution trace and scoring breakdown.</div>
+          <div class="empty-state">Run <strong>Analyze</strong> to view the pipeline trace.</div>
         </div>
       </div>
 
-      <!-- Pane 3: Program Execution Output -->
       <div class="pane" id="outPane">
         <div class="bar">
-          <span id="outLabel">Sandbox Execution Output</span>
+          <span id="outLabel">Output</span>
           <button id="outClear" class="ghost">Clear</button>
         </div>
-        <pre id="term">Click "Run Code" at the top of the code viewer to execute the current program in the isolated sandbox.</pre>
+        <pre id="term">Click Run to execute code.</pre>
       </div>
     </section>
   </main>
-
-  <div class="modal" id="saveDialog" hidden>
-    <form class="modal-card" id="saveForm">
-      <h3>Save Program</h3>
-      <p style="font-size:13px;color:var(--mute);">Saves the file and adds it to the test files menu.</p>
-      <input id="saveName" maxlength="60" value="my_fixed_program" required>
-      <div class="modal-actions">
-        <button type="button" class="ghost" id="saveCancel">Cancel</button>
-        <button type="submit">Save File</button>
-      </div>
-    </form>
-  </div>
 
   <script>
     const $ = s => document.querySelector(s);
@@ -922,19 +733,7 @@
       compiler: 'var(--compiler)',
       sec: 'var(--sec)',
     };
-    const STG = {
-      parser: 'Syntax Check (Parser)',
-      static: 'Static / Logical Analysis',
-      runtime: 'Runtime Sandbox Execution',
-      compiler: 'C++ Compiler Diagnostic',
-    };
-    const GRADE_COL = {
-      A: '#15803d',
-      B: '#1b4332',
-      C: '#b45309',
-      D: '#c2410c',
-      F: '#991b1b',
-    };
+    const GRADE_COL = { A: '#15803d', B: '#1b4332', C: '#b45309', D: '#c2410c', F: '#991b1b' };
 
     let S = {
       file: null,
@@ -975,11 +774,10 @@
       document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
       Object.entries(PANES).forEach(([k, id]) => $('#' + id).classList.toggle('on', k === t));
       if (t === 'out') $('#outPip').hidden = true;
-      if (t === 'pipeline') $('#agPip').hidden = true;
     }
     document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.t));
 
-    /* ---------- Categorized File Menu (Separates Error Files from Security Files!) ---------- */
+    /* ---------- File Menu ---------- */
     async function loadFiles() {
       const d = await j('/files');
       S.allFiles = d.files || [];
@@ -1005,52 +803,29 @@
         if (S.menuFilter === 'sec') return f.is_security;
         return true;
       });
-
-      const stdErr = list.filter(f => f.suite_group === 'standard_error');
-      const lrgErr = list.filter(f => f.suite_group === 'large_error');
-      const stdSec = list.filter(f => f.suite_group === 'standard_security');
-      const lrgSec = list.filter(f => f.suite_group === 'large_security');
-
-      function addGroup(title, color, arr) {
+      const groups = [
+        ['Error Files', 'var(--accent)', list.filter(f => f.suite_group === 'standard_error')],
+        ['Error Benchmarks (2k+)', 'var(--accent)', list.filter(f => f.suite_group === 'large_error')],
+        ['Security Files', 'var(--sec)', list.filter(f => f.suite_group === 'standard_security')],
+        ['Security Benchmarks (2k+)', 'var(--sec)', list.filter(f => f.suite_group === 'large_security')],
+      ];
+      groups.forEach(([title, color, arr]) => {
         if (!arr.length) return;
         const h = el('h4', '', `${title} (${arr.length})`);
-        if (color) h.style.color = color;
+        h.style.color = color;
         box.append(h);
-        arr.forEach(f => renderFileItem(f, box));
-      }
-
-      addGroup('1. Standard Error Test Cases', 'var(--accent)', stdErr);
-      addGroup('2. 2,000+ Line Error Benchmarks', 'var(--accent)', lrgErr);
-      addGroup('3. Standard Security Gate Tests', 'var(--sec)', stdSec);
-      addGroup('4. 2,000+ Line Security Benchmarks', 'var(--sec)', lrgSec);
-    }
-
-    function renderFileItem(f, box) {
-      const e = el('div', 'fi' + (f.filename === S.file ? ' on' : ''));
-      const left = el('span', '', f.filename.replace('benchmarks/', ''));
-      left.title = f.filename;
-      left.style.overflow = 'hidden';
-      left.style.textOverflow = 'ellipsis';
-      e.append(left);
-
-      const right = el('span');
-      right.style.display = 'flex';
-      right.style.gap = '4px';
-      right.style.alignItems = 'center';
-      right.style.flex = 'none';
-
-      if (f.is_benchmark) {
-        const bTag = el('span', 'lang-tag ' + (f.is_security ? 'sec' : 'err'), '2k+');
-        right.append(bTag);
-      } else {
-        const sTag = el('span', 'lang-tag ' + (f.is_security ? 'sec' : 'err'), f.is_security ? 'SEC' : 'ERR');
-        right.append(sTag);
-      }
-      const isCpp = f.language === 'cpp';
-      right.append(el('span', 'lang-tag' + (isCpp ? ' cpp' : ''), isCpp ? 'C++' : 'PY'));
-      e.append(right);
-      e.onclick = () => pickFile(f.filename);
-      box.append(e);
+        arr.forEach(f => {
+          const item = el('div', 'fi' + (f.filename === S.file ? ' on' : ''));
+          const left = el('span', '', f.filename.replace('benchmarks/', ''));
+          left.style.overflow = 'hidden'; left.style.textOverflow = 'ellipsis';
+          const right = el('span');
+          right.style.display = 'flex'; right.style.gap = '3px'; right.style.flex = 'none';
+          right.append(el('span', 'tag ' + (f.language === 'cpp' ? 'cpp' : ''), f.language === 'cpp' ? 'C++' : 'PY'));
+          item.append(left, right);
+          item.onclick = () => pickFile(f.filename);
+          box.append(item);
+        });
+      });
     }
 
     async function pickFile(filename) {
@@ -1067,38 +842,31 @@
       S.blocked = false;
       S.patchedLines.clear();
 
-      $('#fname').textContent = filename;
+      $('#fname').textContent = filename.replace('benchmarks/', '');
+      $('#fname').title = filename;
       $('#scanBtn').disabled = false;
-      $('#scanBtn').textContent = 'Analyze & Diagnose Code';
+      $('#scanBtn').textContent = 'Analyze';
       $('#runBtn').disabled = false;
       $('#saveBtn').disabled = false;
-      $('#applyAllBtn').disabled = true;
 
       resetScoreHeader();
       $('#secGateBox').innerHTML = '';
-      $('#diagList').innerHTML = `<div class="empty-state">Loaded <strong>${filename}</strong> (${S.code.split('\n').length} lines).<br>Click <strong>Analyze &amp; Diagnose Code</strong> to run Stage 1 Security Gate &amp; Stage 2 Error Diagnosis.</div>`;
+      $('#diagList').innerHTML = `<div class="empty-state">Loaded <strong>${filename}</strong>. Click <strong>Analyze</strong>.</div>`;
       paintCode();
     }
 
     function resetScoreHeader() {
-      const gb = $('#gradeBox');
-      gb.style.background = 'var(--mute)';
+      $('#gradeBox').style.background = 'var(--mute)';
       $('#gradeText').textContent = 'Ready';
-      $('#scoreSub').textContent = 'Click Analyze & Diagnose';
-      $('#pSecVal').textContent = '— / 40';
-      $('#pSecBar').style.width = '0%';
-      $('#pSecDesc').textContent = 'Checked first (Critical/High stops diagnosis)';
-      $('#pErrVal').textContent = '— / 45';
-      $('#pErrBar').style.width = '0%';
-      $('#pErrDesc').textContent = 'Static, runtime & logical errors';
-      $('#pEffVal').textContent = '— / 15';
-      $('#pEffBar').style.width = '0%';
-      $('#pEffDesc').textContent = 'Evaluated once code is executable';
+      $('#scoreSub').textContent = '—';
+      $('#pSecVal').textContent = '—/40'; $('#pSecBar').style.width = '0%'; $('#pSecDesc').textContent = 'Gate';
+      $('#pErrVal').textContent = '—/45'; $('#pErrBar').style.width = '0%'; $('#pErrDesc').textContent = 'Correctness';
+      $('#pEffVal').textContent = '—/15'; $('#pEffBar').style.width = '0%'; $('#pEffDesc').textContent = 'Runtime';
       $('#projHint').textContent = '';
       $('#nDiag').textContent = '';
     }
 
-    /* ---------- Code Panel with Inline Single-Line Code Box Editing (No textarea!) ---------- */
+    /* ---------- Code Panel with Inline Edit & Insert-Line-Above Anywhere ---------- */
     function paintCode() {
       const box = $('#code');
       box.innerHTML = '';
@@ -1128,22 +896,21 @@
 
         if (S.patchedLines.has(lineNo)) {
           row.classList.add('patched-line');
-          const b = el('span', 'badge', '✓ Patched');
+          const b = el('span', 'badge', 'Patched');
           b.style.background = 'var(--ok)';
           actions.append(b);
         } else if (S.blocked && lineSec) {
           row.classList.add('sec', 'hit');
-          const b = el('span', 'badge', `${lineSec.metric_id || 'SEC'} · ${lineSec.severity}`);
+          const b = el('span', 'badge', lineSec.metric_id || 'SEC');
           b.style.background = 'var(--sec)';
           actions.append(b);
         } else if (lineIssues.length) {
           const first = lineIssues[0];
           row.classList.add(first.stage, 'hit');
-          const label = lineIssues.length > 1 ? `${first.type} +${lineIssues.length - 1}` : first.type;
-          const b = el('span', 'badge', label);
+          const b = el('span', 'badge', first.type);
           b.style.background = COL[first.stage] || 'var(--runtime)';
           actions.append(b);
-          row.onclick = ev => {
+          row.onclick = () => {
             if (codeSpan.isContentEditable) return;
             focusDiagnosticCard(first.id, lineNo);
           };
@@ -1154,8 +921,17 @@
           actions.append(b);
         }
 
-        // Inline Single-Line Edit Button (turns THIS line into an inline code box, never a full-file textarea!)
-        const editBtn = el('button', 'ln-edit-btn', '✎ Edit line');
+        // + Button: Insert a new line right ABOVE this line (matching indentation!)
+        const insBtn = el('button', 'ln-btn', '+');
+        insBtn.title = `Insert new line above line ${lineNo}`;
+        insBtn.onclick = ev => {
+          ev.stopPropagation();
+          insertLineAt(lineNo);
+        };
+
+        // Edit Button: Edit this line inline
+        const editBtn = el('button', 'ln-btn', '✎');
+        editBtn.title = `Edit line ${lineNo}`;
         editBtn.onclick = ev => {
           ev.stopPropagation();
           startInlineLineEdit(lineNo, codeSpan, editBtn);
@@ -1165,10 +941,58 @@
           startInlineLineEdit(lineNo, codeSpan, editBtn);
         };
 
-        actions.append(editBtn);
+        actions.append(insBtn, editBtn);
         row.append(num, codeSpan, actions);
         box.append(row);
       });
+
+      // Subtle "+ Add line" at end of file
+      if (S.file || S.code) {
+        const endBtn = el('div', 'add-end-row', '+ Add line at end');
+        endBtn.onclick = () => insertLineAt(lines.length + 1);
+        box.append(endBtn);
+      }
+    }
+
+    function shiftLineReferences(insertedAtLine) {
+      const nextPatched = new Set();
+      S.patchedLines.forEach(ln => nextPatched.add(ln >= insertedAtLine ? ln + 1 : ln));
+      nextPatched.add(insertedAtLine);
+      S.patchedLines = nextPatched;
+      S.issues.forEach(iss => {
+        if (iss.line && iss.line >= insertedAtLine) iss.line += 1;
+      });
+      S.sec.forEach(s => {
+        if (s.line && s.line >= insertedAtLine) s.line += 1;
+      });
+    }
+
+    function insertLineAt(lineNo, initialText = null) {
+      const lines = S.code.split('\n');
+      const idx = Math.max(0, Math.min(lineNo - 1, lines.length));
+      // Inherit indentation from the target line (or previous line if appending at end)
+      const refLine = lines[idx] ?? lines[idx - 1] ?? '';
+      const indent = (refLine.match(/^\s*/) || [''])[0];
+      const textToInsert = initialText !== null
+        ? (/^\s+/.test(initialText) ? initialText : indent + initialText)
+        : indent;
+      lines.splice(idx, 0, textToInsert);
+      S.code = lines.join('\n');
+      shiftLineReferences(idx + 1);
+      $('#scanBtn').textContent = 'Re-analyze';
+      paintCode();
+
+      const targetNo = idx + 1;
+      jumpToLine(targetNo);
+      if (initialText === null) {
+        const row = document.querySelector(`.ln[data-line="${targetNo}"]`);
+        if (row) {
+          const sp = row.querySelector('.ln-txt');
+          const btns = row.querySelectorAll('.ln-btn');
+          const editBtn = btns[btns.length - 1];
+          if (sp && editBtn) startInlineLineEdit(targetNo, sp, editBtn);
+        }
+      }
     }
 
     function startInlineLineEdit(lineNo, codeSpan, btn) {
@@ -1181,10 +1005,18 @@
       codeSpan.contentEditable = 'true';
       codeSpan.spellcheck = false;
       codeSpan.classList.add('editing-inline');
-      btn.textContent = '✓ Save line';
+      btn.textContent = '✓';
       btn.style.background = 'var(--ok)';
       btn.style.color = '#fff';
       codeSpan.focus();
+
+      // Move caret to end of line
+      const range = document.createRange();
+      range.selectNodeContents(codeSpan);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
 
       codeSpan.onkeydown = e => {
         if (e.key === 'Enter') {
@@ -1206,22 +1038,10 @@
       lines[lineNo - 1] = newText.replace(/\r?\n/g, '');
       S.code = lines.join('\n');
       S.patchedLines.add(lineNo);
-      $('#scanBtn').textContent = 'Re-run Compiler to Verify';
+      $('#scanBtn').textContent = 'Re-analyze';
       paintCode();
       jumpToLine(lineNo);
     }
-
-    $('#addLineBtn').onclick = () => {
-      S.code = S.code ? (S.code + '\n') : '';
-      paintCode();
-      const lastLn = S.code.split('\n').length;
-      const lastRow = document.querySelector(`.ln[data-line="${lastLn}"]`);
-      if (lastRow) {
-        const sp = lastRow.querySelector('.ln-txt');
-        const bt = lastRow.querySelector('.ln-edit-btn');
-        if (sp && bt) startInlineLineEdit(lastLn, sp, bt);
-      }
-    };
 
     function jumpToLine(lineNo) {
       if (!lineNo) return;
@@ -1243,22 +1063,19 @@
       if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    /* ---------- Main Pipeline Execution: Stage 1 Security Gate -> Stage 2 Error Diagnosis ---------- */
+    /* ---------- Analyze Pipeline ---------- */
     async function runCompilerPipeline() {
       if (!S.code || !S.code.trim()) return;
       const btn = $('#scanBtn');
       btn.disabled = true;
-      btn.textContent = 'Analyzing (Stage 1 Security -> Stage 2 Errors)...';
+      btn.textContent = 'Analyzing...';
 
       try {
-        const payload = { filename: S.file, code: S.code, language: activeLang() };
-        const res = await post('/analyze', payload);
-
+        const res = await post('/analyze', { filename: S.file, code: S.code, language: activeLang() });
         if (res.language && S.lang === 'auto') {
           S.lang = res.language;
           $('#langSel').value = res.language;
         }
-
         S.blocked = Boolean(res.blocked);
         S.sec = res.security || [];
         S.secSolution = res.security_solution || null;
@@ -1266,99 +1083,75 @@
         S.scoreData = res.score_data || null;
         S.fixed = (!S.blocked && res.fixed_code && res.fixed_code !== S.code) ? res.fixed_code : '';
 
-        $('#applyAllBtn').disabled = !S.fixed;
-
         renderScoreHeader(S.scoreData);
         renderDiagnosticsPane(res);
         renderPipelinePane(res);
         paintCode();
 
         if (res.status === 'success' && res.message) {
-          setOutput('Sandbox Output (Clean Run)', res.message, false);
+          setOutput('Output', res.message, false);
         }
 
         showTab('diag');
-        btn.textContent = 'Re-run Analyze & Diagnose';
+        btn.textContent = 'Re-analyze';
       } catch (e) {
-        $('#diagList').innerHTML = `<div class="empty-state" style="color:var(--runtime)">Analysis error: ${e.message}</div>`;
-        btn.textContent = 'Analyze & Diagnose Code';
+        $('#diagList').innerHTML = `<div class="empty-state" style="color:var(--runtime)">${e.message}</div>`;
+        btn.textContent = 'Analyze';
       } finally {
         btn.disabled = false;
       }
     }
     $('#scanBtn').onclick = runCompilerPipeline;
 
-    /* ---------- Render Honest 3-Pillar Score Header ---------- */
+    /* ---------- Compact 3-Pillar Score Header ---------- */
     function renderScoreHeader(sc) {
-      if (!sc) {
-        resetScoreHeader();
-        return;
-      }
-      const gb = $('#gradeBox');
-      gb.style.background = GRADE_COL[sc.grade] || 'var(--mute)';
-      $('#gradeText').textContent = `Grade ${sc.grade} · ${sc.total_score}/100`;
-      $('#scoreSub').textContent = sc.blocked
-        ? 'Stopped at Stage 1 Security Gate'
-        : (sc.errors.count === 0 ? 'Clean & Executable!' : `${sc.errors.count} error(s) in current code`);
+      if (!sc) { resetScoreHeader(); return; }
+      $('#gradeBox').style.background = GRADE_COL[sc.grade] || 'var(--mute)';
+      $('#gradeText').textContent = `${sc.grade} · ${sc.total_score}`;
+      $('#scoreSub').textContent = sc.blocked ? 'Blocked' : (sc.errors.count === 0 ? 'Clean' : `${sc.errors.count} errors`);
 
-      // Pillar 1: Security (40)
-      const pSec = sc.security || { score: 0, max: 40, status: '' };
-      $('#pSecVal').textContent = `${pSec.score} / ${pSec.max}`;
+      const pSec = sc.security || { score: 0, max: 40 };
+      $('#pSecVal').textContent = `${pSec.score}/${pSec.max}`;
       $('#pSecBar').style.width = `${Math.round((pSec.score / pSec.max) * 100)}%`;
       $('#pSecBar').style.background = sc.blocked ? 'var(--sec)' : (pSec.score === 40 ? 'var(--ok)' : 'var(--warn)');
-      $('#pSecDesc').textContent = pSec.status;
-      $('#pSecDesc').title = pSec.status;
+      $('#pSecDesc').textContent = sc.blocked ? 'Blocked' : (S.sec.length ? `${S.sec.length} note(s)` : 'Passed');
 
-      // Pillar 2: Errors (45)
-      const pErr = sc.errors || { score: 0, max: 45, status: '' };
-      $('#pErrVal').textContent = sc.blocked ? 'Skipped' : `${pErr.score} / ${pErr.max}`;
+      const pErr = sc.errors || { score: 0, max: 45, count: 0 };
+      $('#pErrVal').textContent = sc.blocked ? '—' : `${pErr.score}/${pErr.max}`;
       $('#pErrBar').style.width = sc.blocked ? '0%' : `${Math.round((pErr.score / pErr.max) * 100)}%`;
       $('#pErrBar').style.background = pErr.score === 45 ? 'var(--ok)' : (pErr.score >= 25 ? 'var(--warn)' : 'var(--runtime)');
-      $('#pErrDesc').textContent = pErr.status;
-      $('#pErrDesc').title = pErr.status;
+      $('#pErrDesc').textContent = sc.blocked ? 'Halted' : (pErr.count === 0 ? '0 errors' : `${pErr.count} found`);
 
-      // Pillar 3: Efficiency (15)
-      const pEff = sc.efficiency || { score: 0, max: 15, evaluated: false, status: '' };
-      $('#pEffVal').textContent = pEff.evaluated ? `${pEff.score} / ${pEff.max}` : 'Pending';
+      const pEff = sc.efficiency || { score: 0, max: 15, evaluated: false };
+      $('#pEffVal').textContent = pEff.evaluated ? `${pEff.score}/${pEff.max}` : '—/15';
       $('#pEffBar').style.width = pEff.evaluated ? `${Math.round((pEff.score / pEff.max) * 100)}%` : '0%';
       $('#pEffBar').style.background = pEff.evaluated ? 'var(--ok)' : '#9ca3af';
-      $('#pEffDesc').textContent = pEff.status;
-      $('#pEffDesc').title = pEff.status;
+      $('#pEffDesc').textContent = pEff.evaluated ? `CC ${pEff.avg_cyclomatic}` : 'Pending run';
 
-      // Projected score hint
       const ph = $('#projHint');
-      if (sc.projected && sc.errors.count > 0) {
-        const rem = sc.projected.unfixed_remaining;
-        ph.textContent = rem === 0
-          ? `💡 Apply all AI fixes to raise score to ~${sc.projected.score}/100 (Grade ${sc.projected.grade})`
-          : `💡 Apply AI fixes + ${rem} manual edit(s) to reach Grade A`;
+      if (sc.projected && pErr.count > 0) {
+        ph.textContent = sc.projected.unfixed_remaining === 0
+          ? `After AI fixes: ${sc.projected.score}/100 (${sc.projected.grade})`
+          : `After AI fixes: ${sc.projected.score}/100 (${sc.projected.unfixed_remaining} manual)`;
       } else {
         ph.textContent = '';
       }
     }
 
-    /* ---------- Render Pane 1: Stage 1 Security Gate OR Stage 2 Diagnostic Report ---------- */
+    /* ---------- Diagnostics Pane ---------- */
     function renderDiagnosticsPane(res) {
       const secBox = $('#secGateBox');
       const diagBox = $('#diagList');
       secBox.innerHTML = '';
       diagBox.innerHTML = '';
 
-      // CASE 1: BLOCKED AT STAGE 1 SECURITY GATE — STOP HERE! Do NOT show static/runtime errors!
       if (S.blocked) {
-        $('#nDiag').textContent = `(BLOCKED · ${S.sec.length} Security Threat${S.sec.length === 1 ? '' : 's'})`;
+        $('#nDiag').textContent = `(Blocked)`;
         const card = el('div', 'sec-gate-card');
         const h = el('h3');
-        h.append(
-          el('span', '', '🚨 Stage 1 Security Gate Intercept — Diagnosis Stopped'),
-          el('span', 'fix-status-pill ambig', 'Critical / High Security Threat')
-        );
+        h.append(el('span', '', 'Security Gate — Diagnosis Halted'), el('span', 'fix-pill ambig', `${S.sec.length} threat(s)`));
         card.append(h);
-        card.append(el('p', '',
-          'Our compiler checks security FIRST before analyzing static or runtime errors. ' +
-          'Because Critical/High security vulnerabilities were detected, code execution and further error diagnosis have been halted. ' +
-          'You can either sanitize the dangerous line(s) below using our Agentic AI Security Fix (or the inline code editor) to continue, or stop diagnosis here.'
-        ));
+        card.append(el('p', '', 'Resolve the critical/high security issue below to proceed with error diagnosis, or stop here.'));
 
         const codeLines = S.code.split('\n');
         const sol = S.secSolution || {};
@@ -1367,261 +1160,175 @@
         S.sec.forEach(v => {
           const row = el('div', 'sec-finding-row');
           const head = el('div', 'sec-finding-head');
-          const lnPill = el('button', 'line-jump-pill', `Line ${v.line}`);
+          const lnPill = el('button', 'line-jump-pill', `L${v.line}`);
           lnPill.onclick = () => jumpToLine(v.line);
-
           const sevChip = el('span', 'type-chip', `${v.metric_id || 'SEC'} · ${v.severity}`);
           sevChip.style.background = 'var(--sec)';
-
-          const typeB = el('strong', '', `${v.type} (${v.cwe || 'Security Rule'})`);
-          head.append(lnPill, sevChip, typeB);
+          head.append(lnPill, sevChip, el('strong', '', v.type));
           row.append(head);
 
           const msgP = el('div', '', v.message);
-          msgP.style.fontSize = '13px';
-          msgP.style.marginBottom = '8px';
+          msgP.style.fontSize = '12.5px'; msgP.style.marginBottom = '7px';
           row.append(msgP);
 
-          // Inline code box to manually edit or apply sanitized replacement on this security line
-          const origLineText = (codeLines[v.line - 1] || '').trim();
-          const suggestedSecLine = lineFixes[v.line] || `# [SANITIZED] ${origLineText}`;
-
-          const editWrap = el('div', 'manual-patch-wrap');
-          editWrap.style.borderRadius = '6px';
-          editWrap.append(el('div', 'manual-patch-label', `Sanitize Line ${v.line} directly (edit below or click Sanitize):`));
-
+          const origText = (codeLines[v.line - 1] || '').trim();
+          const suggested = lineFixes[v.line] || `# [SANITIZED] ${origText}`;
           const edRow = el('div', 'inline-code-editor-row');
           edRow.append(el('div', 'inline-code-gutter', `L${v.line}`));
-          const codeBox = el('div', 'inline-code-box', suggestedSecLine);
+          const codeBox = el('div', 'inline-code-box', suggested);
           codeBox.contentEditable = 'true';
           codeBox.spellcheck = false;
-
-          const applyLineBtn = el('button', '', `Sanitize Line ${v.line}`);
-          applyLineBtn.onclick = () => {
-            applyLineReplacement(v.line, codeBox.textContent);
-            runCompilerPipeline();
-          };
-          edRow.append(codeBox, applyLineBtn);
-          editWrap.append(edRow);
-          row.append(editWrap);
+          const btn = el('button', '', 'Sanitize');
+          btn.onclick = () => { applyLineReplacement(v.line, codeBox.textContent); runCompilerPipeline(); };
+          edRow.append(codeBox, btn);
+          row.append(edRow);
           card.append(row);
         });
 
-        const actBar = el('div', 'sec-gate-actions');
         if (sol.hardened_code) {
-          const sanitizeAllBtn = el('button', '', '✓ Apply AI Security Solution & Continue Diagnosis');
-          sanitizeAllBtn.onclick = () => {
-            S.code = sol.hardened_code;
-            paintCode();
-            runCompilerPipeline();
-          };
-          actBar.append(sanitizeAllBtn);
+          const act = el('div', 'sec-gate-actions');
+          const sanAll = el('button', '', 'Sanitize All & Continue');
+          sanAll.onclick = () => { S.code = sol.hardened_code; paintCode(); runCompilerPipeline(); };
+          act.append(sanAll);
+          card.append(act);
         }
-        const stopNote = el('span', '', 'Or leave the file halted at Stage 1 without running static/runtime analysis.');
-        stopNote.style.fontSize = '12.5px';
-        stopNote.style.color = '#7f1d1d';
-        actBar.append(stopNote);
-        card.append(actBar);
-
         secBox.append(card);
         return;
       }
 
-      // Non-blocking LOW/MEDIUM security warnings (if any)
       if (S.sec.length) {
         const nb = el('div', 'sec-note-banner');
-        nb.append(el('strong', '', `Stage 1 Security Gate Passed with ${S.sec.length} non-blocking note(s): `));
+        nb.append(el('strong', '', `Security notes (${S.sec.length}): `));
         S.sec.forEach(s => {
-          const d = el('div', '', `• Line ${s.line} [${s.severity} · ${s.type}]: ${s.message}`);
-          d.style.cursor = 'pointer';
+          const d = el('span', '', `L${s.line} ${s.type}  `);
+          d.style.cursor = 'pointer'; d.style.textDecoration = 'underline';
           d.onclick = () => jumpToLine(s.line);
           nb.append(d);
         });
         secBox.append(nb);
       }
 
-      // CASE 2: STAGE 1 PASSED -> SHOW STAGE 2 BEGINNER DIAGNOSTIC REPORT & INTERACTIVE FIXES
       const nTotal = S.issues.length;
       const nFixable = S.issues.filter(i => i.patched).length;
-      const nAmbig = nTotal - nFixable;
-      $('#nDiag').textContent = nTotal ? `(${nTotal} Error${nTotal === 1 ? '' : 's'})` : '(0 Errors)';
+      $('#nDiag').textContent = nTotal ? `(${nTotal})` : '';
 
       if (nTotal === 0) {
-        diagBox.innerHTML = `<div class="empty-state" style="border-color:#bbf7d0;background:#f0fdf4;color:#166534;">
-          <strong>✓ All Stages Passed Cleanly!</strong><br>
-          Stage 1 Security Gate found zero blocking threats, and Stage 2 found <strong>0 static, runtime, or logical errors</strong>.<br>
-          Your code is clean, executable, and earned <strong>${S.scoreData ? S.scoreData.grade_label : 'Grade A'}</strong>.
-        </div>`;
+        diagBox.innerHTML = `<div class="empty-state" style="border-color:#bbf7d0;background:#f0fdf4;color:#166534;"><strong>Clean</strong> — 0 errors found.</div>`;
         return;
       }
 
-      // Toolbar above cards
       const tbar = el('div', 'diag-toolbar');
-      tbar.append(el('h2', '', `Diagnostic Report: ${nTotal} Error${nTotal === 1 ? '' : 's'} Found (${nFixable} Auto-Fixable, ${nAmbig} Ambiguous / Manual)`));
+      tbar.append(el('h2', '', `${nTotal} Error${nTotal === 1 ? '' : 's'} (${nFixable} Auto-fix, ${nTotal - nFixable} Manual)`));
       if (S.fixed) {
-        const appAll = el('button', '', `✓ Apply All ${nFixable} Agentic AI Fix${nFixable === 1 ? '' : 'es'} & Re-Verify`);
+        const appAll = el('button', '', `Apply ${nFixable} AI Fix${nFixable === 1 ? '' : 'es'}`);
         appAll.onclick = applyAllAiFixes;
         tbar.append(appAll);
       }
       diagBox.append(tbar);
 
-      // Render one Beginner-Friendly Unified Card per error
-      S.issues.forEach((iss, idx) => {
-        diagBox.append(buildDiagnosticCard(iss, idx + 1, nTotal));
-      });
+      S.issues.forEach(iss => diagBox.append(buildDiagnosticCard(iss)));
     }
 
-    function buildDiagnosticCard(iss, num, total) {
+    function buildDiagnosticCard(iss) {
       const card = el('div', 'diag-card' + (iss._applied ? ' is-patched' : ''));
       card.dataset.id = iss.id;
       card.style.setProperty('--c', COL[iss.stage] || 'var(--runtime)');
 
-      // 1. Card Header
       const head = el('div', 'diag-head');
       const left = el('div', 'diag-head-left');
-
       const lnPill = el('button', 'line-jump-pill', `Line ${iss.line ?? '?'}`);
-      lnPill.title = 'Click to jump to this line in the code panel';
-      lnPill.onclick = ev => {
-        ev.stopPropagation();
-        jumpToLine(iss.line);
-      };
-
-      const typeChip = el('span', 'type-chip', `Error ${num}/${total} · ${iss.type}`);
-      const stgLbl = el('span', 'stage-label', `Found by ${STG[iss.stage] || iss.stage}`);
-      left.append(lnPill, typeChip, stgLbl);
+      lnPill.onclick = ev => { ev.stopPropagation(); jumpToLine(iss.line); };
+      left.append(lnPill, el('span', 'type-chip', iss.type));
 
       const statusPill = el(
         'span',
-        'fix-status-pill' + (iss._applied ? ' applied' : (iss.patched ? '' : ' ambig')),
-        iss._applied
-          ? '✓ Patched in Editor'
-          : (iss.patched ? '✓ Agentic AI Fix Ready' : '⚠ Ambiguous Error — Edit Below')
+        'fix-pill' + (iss._applied ? ' applied' : (iss.patched ? '' : ' ambig')),
+        iss._applied ? 'Patched' : (iss.patched ? 'Auto-fix' : 'Manual')
       );
       head.append(left, statusPill);
       card.append(head);
 
-      // One-line beginner definition of what this error class means
-      if (iss.meaning) {
-        card.append(el('div', 'meaning-line', iss.meaning));
-      }
-
-      // 2. Beginner Explanation Trio: What went wrong / Why it happened / How to fix
       const dl = el('dl', 'trio-grid');
       [
-        ['What went wrong', iss.mistake || iss.meaning],
-        ['Why it happened', iss.reason || 'Python encountered an invalid operation on this line.'],
-        ['How to fix it', iss.how_to_fix || 'Update the affected line using the AI fix or manual code box below.'],
+        ['Mistake', iss.mistake || iss.meaning],
+        ['Why', iss.reason || ''],
+        ['Fix', iss.how_to_fix || ''],
       ].forEach(([k, v]) => {
-        dl.append(el('dt', '', k), el('dd', '', v));
+        if (v) dl.append(el('dt', '', k), el('dd', '', v));
       });
       card.append(dl);
 
-      // 3. Affected Code Diff & Interactive Inline Code Box
       const pbox = el('div', 'patch-box');
-
-      const minusRow = el('div', 'diff-line minus');
-      minusRow.append(el('span', '', `-  ${iss.source || '(empty line)'}`));
-      minusRow.append(el('span', '', `Line ${iss.line || '?'}`));
-      pbox.append(minusRow);
+      pbox.append(el('div', 'diff-line minus', `- ${iss.source || ''}`));
 
       const plusPatches = (iss.patch || []).filter(p => p.sign === '+');
       const aiText = plusPatches.length ? plusPatches.map(p => p.text).join('\n') : '';
-
       if (iss.patched && aiText) {
-        const plusRow = el('div', 'diff-line plus');
-        plusRow.append(el('span', '', `+  ${aiText}`));
-        plusRow.append(el('span', '', 'Agentic AI Patch'));
-        pbox.append(plusRow);
+        pbox.append(el('div', 'diff-line plus', `+ ${aiText}`));
       }
 
-      // Manual Inline Code Box (Always open for Ambiguous Errors; toggleable for Auto-Fixable Errors)
+      // Inline Manual Code Box (Supports editing this line OR inserting a new line above!)
       const manualWrap = el('div', 'manual-patch-wrap');
-      manualWrap.hidden = Boolean(iss.patched && !iss._showManual);
-
-      const mLabel = el('div', 'manual-patch-label');
-      mLabel.append(
-        el('span', '', iss.patched
-          ? `Custom Manual Patch for Line ${iss.line} (modify the code below and click Apply Manual Patch):`
-          : `⚠ Ambiguous Error on Line ${iss.line} — Enter your intended code in the box below:`),
-        el('span', '', 'Press Enter or click Apply')
-      );
-      manualWrap.append(mLabel);
+      manualWrap.hidden = Boolean(iss.patched);
 
       const edRow = el('div', 'inline-code-editor-row');
       edRow.append(el('div', 'inline-code-gutter', `L${iss.line || 1}`));
-
       const codeBox = el('div', 'inline-code-box', aiText || iss.source || '');
       codeBox.contentEditable = 'true';
       codeBox.spellcheck = false;
 
-      const applyManualBtn = el('button', iss.patched ? 'ghost' : 'amber', `Apply Manual Patch to Line ${iss.line || 1}`);
+      const applyManBtn = el('button', iss.patched ? 'ghost' : 'amber', 'Apply');
       const commitManual = () => {
-        const val = codeBox.textContent;
-        applySingleIssueLine(iss, val);
-        statusPill.textContent = '✓ Patched in Editor';
-        statusPill.className = 'fix-status-pill applied';
+        applyLineReplacement(iss.line || 1, codeBox.textContent);
+        iss._applied = true;
+        statusPill.textContent = 'Patched';
+        statusPill.className = 'fix-pill applied';
         card.classList.add('is-patched');
       };
-      applyManualBtn.onclick = ev => {
-        ev.stopPropagation();
-        commitManual();
-      };
+      applyManBtn.onclick = ev => { ev.stopPropagation(); commitManual(); };
       codeBox.onkeydown = e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          commitManual();
-        } else if (e.key === 'Tab') {
-          e.preventDefault();
-          document.execCommand('insertText', false, '    ');
-        }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitManual(); }
+        else if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '    '); }
       };
 
-      edRow.append(codeBox, applyManualBtn);
+      edRow.append(codeBox, applyManBtn);
       manualWrap.append(edRow);
       pbox.append(manualWrap);
 
-      // 4. Card Bottom Action Bar
       const actBar = el('div', 'card-actions');
       const leftBtns = el('div');
-      leftBtns.style.display = 'flex';
-      leftBtns.style.gap = '8px';
+      leftBtns.style.display = 'flex'; leftBtns.style.gap = '6px';
 
       if (iss.patched && aiText) {
-        const aiBtn = el('button', '', iss._applied ? '✓ AI Fix Applied' : `✓ Apply AI Fix to Line ${iss.line}`);
+        const aiBtn = el('button', '', iss._applied ? 'Applied' : 'Apply AI Fix');
         aiBtn.disabled = Boolean(iss._applied);
         aiBtn.onclick = ev => {
           ev.stopPropagation();
           applySingleIssuePatch(iss);
-          aiBtn.textContent = '✓ AI Fix Applied';
+          aiBtn.textContent = 'Applied';
           aiBtn.disabled = true;
-          statusPill.textContent = '✓ Patched in Editor';
-          statusPill.className = 'fix-status-pill applied';
+          statusPill.textContent = 'Patched';
+          statusPill.className = 'fix-pill applied';
           card.classList.add('is-patched');
         };
-        leftBtns.append(aiBtn);
-
-        const toggleManualBtn = el('button', 'ghost', '✎ Write Custom Fix Instead');
-        toggleManualBtn.onclick = ev => {
+        const editTog = el('button', 'ghost', 'Edit');
+        editTog.onclick = ev => {
           ev.stopPropagation();
           manualWrap.hidden = !manualWrap.hidden;
           if (!manualWrap.hidden) codeBox.focus();
         };
-        leftBtns.append(toggleManualBtn);
-      } else {
-        const hint = el('span', '', 'Compiler needs your input because multiple valid fixes exist.');
-        hint.style.fontSize = '12px';
-        hint.style.color = '#92400e';
-        leftBtns.append(hint);
+        leftBtns.append(aiBtn, editTog);
       }
 
-      const jumpBtn = el('button', 'ghost', `Jump to Line ${iss.line} →`);
-      jumpBtn.onclick = ev => {
+      // Insert a new line right above this error line (e.g., to assign a missing variable)
+      const insAboveBtn = el('button', 'ghost', `+ Line above L${iss.line}`);
+      insAboveBtn.onclick = ev => {
         ev.stopPropagation();
-        jumpToLine(iss.line);
+        insertLineAt(iss.line || 1);
       };
+      leftBtns.append(insAboveBtn);
 
-      actBar.append(leftBtns, jumpBtn);
+      actBar.append(leftBtns);
       pbox.append(actBar);
       card.append(pbox);
 
@@ -1629,25 +1336,22 @@
       return card;
     }
 
-    /* ---------- Surgical Line Patching Helpers ---------- */
-    function applyLineReplacement(lineNo, newTrimmedOrFullLine) {
+    function applyLineReplacement(lineNo, newText) {
       const lines = S.code.split('\n');
       const idx = (lineNo || 1) - 1;
       if (idx < 0 || idx >= lines.length) return;
       const origIndent = (lines[idx].match(/^\s*/) || [''])[0];
-      const cleanNew = newTrimmedOrFullLine.replace(/\r?\n/g, '');
-      // Preserve original indentation if the user typed a trimmed statement
-      lines[idx] = /^\s+/.test(cleanNew) ? cleanNew : (origIndent + cleanNew.trim());
+      const parts = newText.replace(/\r\n/g, '\n').split('\n').map(p => (/^\s+/.test(p) ? p : origIndent + p.trim()));
+      lines.splice(idx, 1, ...parts);
       S.code = lines.join('\n');
       S.patchedLines.add(lineNo);
-      $('#scanBtn').textContent = 'Re-run Compiler to Verify';
+      if (parts.length > 1) {
+        const extra = parts.length - 1;
+        S.issues.forEach(o => { if (o.line && o.line > lineNo) o.line += extra; });
+      }
+      $('#scanBtn').textContent = 'Re-analyze';
       paintCode();
       jumpToLine(lineNo);
-    }
-
-    function applySingleIssueLine(iss, newCodeText) {
-      applyLineReplacement(iss.line || 1, newCodeText);
-      iss._applied = true;
     }
 
     function applySingleIssuePatch(iss) {
@@ -1658,32 +1362,24 @@
 
       const lines = S.code.split('\n');
       let targetLine = iss.line || 1;
-
       if (hasMinus) {
         const idx = targetLine - 1;
         if (idx < 0 || idx >= lines.length) return;
         const indent = (lines[idx].match(/^\s*/) || [''])[0];
-        const replacement = plusPatches.map(p => indent + p.text.trim()).join('\n');
-        lines.splice(idx, 1, ...replacement.split('\n'));
+        const rep = plusPatches.map(p => indent + p.text.trim());
+        lines.splice(idx, 1, ...rep);
       } else {
-        // Pure insertion (e.g., missing import or accumulator initialization)
         const pText = plusPatches[0].text.trim();
-        let insertIdx = Math.max(0, targetLine - 1);
-        if (/^(#include\b|import\s+|from\s+)/.test(pText)) {
-          insertIdx = 0;
-        }
+        const insertIdx = /^(#include\b|import\s+|from\s+)/.test(pText) ? 0 : Math.max(0, targetLine - 1);
         const refIndent = insertIdx > 0 ? ((lines[insertIdx].match(/^\s*/) || [''])[0]) : '';
         lines.splice(insertIdx, 0, refIndent + pText);
         targetLine = insertIdx + 1;
-        S.issues.forEach(other => {
-          if (other !== iss && other.line && other.line >= targetLine) other.line += 1;
-        });
+        S.issues.forEach(o => { if (o !== iss && o.line && o.line >= targetLine) o.line += 1; });
       }
-
       S.code = lines.join('\n');
       iss._applied = true;
       S.patchedLines.add(targetLine);
-      $('#scanBtn').textContent = 'Re-run Compiler to Verify';
+      $('#scanBtn').textContent = 'Re-analyze';
       paintCode();
       jumpToLine(targetLine);
     }
@@ -1695,124 +1391,78 @@
       paintCode();
       await runCompilerPipeline();
     }
-    $('#applyAllBtn').onclick = applyAllAiFixes;
 
-    /* ---------- Render Pane 2: 5-Agent Pipeline & Score Breakdown ---------- */
+    /* ---------- Pipeline Pane ---------- */
     function renderPipelinePane(res) {
       const box = $('#pipelineBody');
       box.innerHTML = '';
       const sc = res.score_data || {};
-
-      // 1. 3-Pillar Score Formula Explanation Card
-      const scCard = el('div', 'ag-card');
-      scCard.append(el('h4', '', `Current Code Score Breakdown: ${sc.grade_label || 'N/A'}`));
-      const scList = el('div');
+      const c1 = el('div', 'ag-card');
+      c1.append(el('h4', '', `Score Breakdown (${sc.grade_label || '—'})`));
       [
-        ['Stage 1 — Security Gate (40 pts max)', `${sc.security?.score ?? 0} / 40 pts`, sc.security?.status || ''],
-        ['Stage 2 — Error Correctness (45 pts max)', `${sc.errors?.score ?? 0} / 45 pts`, sc.errors?.status || ''],
-        ['Stage 3 — Code Efficiency (15 pts max)', `${sc.efficiency?.score ?? 0} / 15 pts`, sc.efficiency?.status || ''],
-      ].forEach(([title, pts, desc], i) => {
-        const step = el('div', 'ag-step');
-        step.append(el('div', 'num', String(i + 1)));
-        const body = el('div');
-        body.append(el('div', 'who', `${title} — ${pts}`));
-        body.append(el('div', 'desc', desc));
-        step.append(body);
-        scList.append(step);
+        ['Security', `${sc.security?.score ?? 0}/40`, sc.security?.status || ''],
+        ['Errors', `${sc.errors?.score ?? 0}/45`, sc.errors?.status || ''],
+        ['Efficiency', `${sc.efficiency?.score ?? 0}/15`, sc.efficiency?.status || ''],
+      ].forEach(([t, v, d], i) => {
+        const st = el('div', 'ag-step');
+        st.append(el('div', 'num', String(i + 1)));
+        const b = el('div');
+        b.append(el('div', 'who', `${t} · ${v}`), el('div', 'desc', d));
+        st.append(b);
+        c1.append(st);
       });
-      scCard.append(scList);
-      box.append(scCard);
+      box.append(c1);
 
-      // 2. 5-Agent Pipeline Execution Trace
-      const pipeCard = el('div', 'ag-card');
-      pipeCard.append(el('h4', '', '5-Agent Secure AI Compiler Workflow'));
-      const agents = [
-        [
-          '1. Perception & IR Agent',
-          `Parsed ${S.code.split('\n').length} lines of ${res.language || 'python'} source code into Intermediate Representation (IR).`,
-        ],
-        [
-          '2. Security Auditor Agent (52-Metric Gate)',
-          S.blocked
-            ? `BLOCKED execution & halted Stage 2 diagnosis: ${S.sec.length} Critical/High threat(s) intercepted.`
-            : `Passed Stage 1 Security Gate (${S.sec.length} non-blocking note(s)). Cleared for Stage 2 Error Diagnosis.`,
-        ],
-        [
-          '3. Static, Runtime & Logical Analyzer Agent',
-          S.blocked
-            ? 'Skipped (halted at Stage 1 Security Gate until security threat is sanitized).'
-            : `Identified ${S.issues.length} total error(s) across Syntax, Static Symbol Table, Logical AST, and Runtime Sandbox stages.`,
-        ],
-        [
-          '4. Intelligent Synthesizer Agent (AST Program Slicer)',
-          S.blocked
-            ? 'Prepared security sanitization patch to neutralize dangerous calls.'
-            : `Synthesized ${S.issues.filter(i => i.patched).length} unambiguous auto-fix(es) and flagged ${S.issues.filter(i => !i.patched).length} ambiguous error(s) for user input.`,
-        ],
-        [
-          '5. Sandbox Verifier & Scoring Coordinator',
-          `Verdict: ${(res.summary || {}).verdict || 'DONE'} — ${(res.summary || {}).detail || ''}`,
-        ],
-      ];
-      agents.forEach(([who, desc], idx) => {
-        const step = el('div', 'ag-step');
-        step.append(el('div', 'num', String(idx + 1)));
-        const txt = el('div');
-        txt.append(el('div', 'who', who));
-        txt.append(el('div', 'desc', desc));
-        step.append(txt);
-        pipeCard.append(step);
+      const c2 = el('div', 'ag-card');
+      c2.append(el('h4', '', '5-Agent Pipeline'));
+      [
+        ['Perception & IR', `Parsed ${S.code.split('\n').length} lines (${res.language || 'python'}).`],
+        ['Security Auditor', S.blocked ? `Blocked: ${S.sec.length} threat(s).` : `Passed (${S.sec.length} note(s)).`],
+        ['Static & Runtime Analyzer', S.blocked ? 'Skipped at Stage 1.' : `Found ${S.issues.length} error(s).`],
+        ['AI Synthesizer', S.blocked ? 'Generated security patch.' : `${S.issues.filter(i => i.patched).length} auto-fix, ${S.issues.filter(i => !i.patched).length} manual.`],
+        ['Verifier', (res.summary || {}).verdict || 'DONE'],
+      ].forEach(([w, d], i) => {
+        const st = el('div', 'ag-step');
+        st.append(el('div', 'num', String(i + 1)));
+        const b = el('div');
+        b.append(el('div', 'who', w), el('div', 'desc', d));
+        st.append(b);
+        c2.append(st);
       });
-      box.append(pipeCard);
+      box.append(c2);
     }
 
-    /* ---------- Sandbox Run & Save ---------- */
+    /* ---------- Run / Save / Menu / Upload ---------- */
     function setOutput(label, text, isErr) {
       $('#outLabel').textContent = label;
       $('#term').textContent = text;
       $('#term').classList.toggle('err', Boolean(isErr));
       if (!$('#outPane').classList.contains('on')) $('#outPip').hidden = false;
     }
-    $('#outClear').onclick = () => setOutput('Sandbox Execution Output', 'Cleared.', false);
+    $('#outClear').onclick = () => setOutput('Output', '', false);
 
     $('#runBtn').onclick = async () => {
       showTab('out');
-      setOutput('Running in Sandbox...', 'Executing program in isolated child process...');
+      setOutput('Running...', 'Executing...');
       try {
         const d = await post('/execute', { code: S.code, filename: S.file, language: activeLang() });
         const out = d.output || '';
-        setOutput(
-          'Output: ' + (S.file || 'current code'),
-          out,
-          /CRASH DURING EXECUTION|COMPILE \/ EXECUTION ERROR|BLOCKED|Sandbox failure/.test(out)
-        );
-      } catch (e) {
-        setOutput('Execution Error', e.message, true);
-      }
+        setOutput(S.file || 'Output', out, /CRASH|ERROR|BLOCKED|failure/i.test(out));
+      } catch (e) { setOutput('Error', e.message, true); }
     };
 
     $('#saveBtn').onclick = async () => {
-      if (!S.file) {
-        $('#saveDialog').hidden = false;
-        return;
-      }
+      if (!S.file) return;
       try {
         const d = await post('/save', { filename: S.file, code: S.code, language: activeLang() });
         const old = $('#saveBtn').textContent;
-        $('#saveBtn').textContent = 'Saved: ' + d.new_filename;
-        setTimeout(() => { $('#saveBtn').textContent = old; }, 2000);
+        $('#saveBtn').textContent = 'Saved';
+        setTimeout(() => { $('#saveBtn').textContent = old; }, 1600);
         await loadFiles();
-      } catch (e) {
-        alert('Could not save: ' + e.message);
-      }
+      } catch (e) { alert(e.message); }
     };
-    $('#saveCancel').onclick = () => { $('#saveDialog').hidden = true; };
 
-    /* ---------- Menu & Upload ---------- */
-    $('#menuBtn').onclick = () => {
-      $('#menu').classList.toggle('open');
-      loadFiles();
-    };
+    $('#menuBtn').onclick = () => { $('#menu').classList.toggle('open'); loadFiles(); };
     $('#upBtn').onclick = () => $('#upIn').click();
     $('#upIn').onchange = async e => {
       const f = e.target.files[0];
@@ -1821,17 +1471,13 @@
         const d = await post('/upload', { filename: f.name, code: await f.text() });
         await loadFiles();
         await pickFile(d.filename);
-      } catch (err) {
-        alert('Upload failed: ' + err.message);
-      }
+      } catch (err) { alert(err.message); }
       e.target.value = '';
     };
 
-    // Auto-load ?file=... if navigated from Page 2 (Test Suites & Error Report)
     window.addEventListener('DOMContentLoaded', async () => {
       await loadFiles();
-      const params = new URLSearchParams(window.location.search);
-      const targetFile = params.get('file');
+      const targetFile = new URLSearchParams(window.location.search).get('file');
       if (targetFile) {
         await pickFile(targetFile);
         await runCompilerPipeline();
