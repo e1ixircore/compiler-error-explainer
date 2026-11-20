@@ -1,111 +1,38 @@
-# test3.py - Target: 110 lines
-import sys
+# test3.py - Mixed Static, Runtime & Ambiguous Scope Errors (4 Fixable, 1 Ambiguous)
 import math
 
-def helper_func_0(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
+def summarize_inventory():
+    # ERROR 1 (NameError - fixable): typo in variable name 'total_items' -> 'totl_items'
+    total_items = 48
+    return totl_items
 
-def process_data_0(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_0(item))
-    return temp
+def read_server_port():
+    # ERROR 2 (KeyError - fixable): key 'port' does not exist in dictionary
+    config = {"host": "127.0.0.1", "protocol": "https"}
+    return config["port"]
 
-def helper_func_1(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
+def record_unique_tag():
+    # ERROR 3 (AttributeError - fixable): sets use .add(), not .append()
+    active_tags = {"alpha", "beta"}
+    active_tags.append("gamma")
+    return len(active_tags)
 
-def process_data_1(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_1(item))
-    return temp
+def calculate_calibrated_reading():
+    # ERROR 4 (ZeroDivisionError - fixable): division by zero
+    reading = 80 / 0
+    return reading
 
-def helper_func_2(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_2(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_2(item))
-    return temp
-
-def helper_func_3(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_3(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_3(item))
-    return temp
-
-def helper_func_4(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_4(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_4(item))
-    return temp
-
-def helper_func_5(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_5(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_5(item))
-    return temp
-
-def helper_func_6(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_6(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_6(item))
-    return temp
-
-def helper_func_7(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_7(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_7(item))
-    return temp
+def apply_custom_formula():
+    base_val = 10
+    # ERROR 5 (Ambiguous NameError - manual fix needed): 'custom_user_offset' has never been
+    # defined and has no close spelling match. Use the inline code box to set your intended value!
+    return base_val + custom_user_offset
 
 def main():
-    print('Running main...')
-    print(undefined_var) # ERROR: undefined variable
-    pass # padding
-    pass # padding
-    pass # padding
-    pass # padding
-    pass # padding
+    print("Inventory:", summarize_inventory())
+    print("Port:", read_server_port())
+    print("Tags:", record_unique_tag())
+    print("Reading:", calculate_calibrated_reading())
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -192,13 +192,19 @@ class StaticChecker(ast.NodeVisitor):
         self.return_stack = []
         # Set of parameter names in the current function explicitly annotated as dict.
         self.param_dict_stack = [set()]
-        # Known module-level function return types.
+        # Known module-level function return types and parameter arity.
         self.func_returns = {}
+        self.func_arity = {}
         for stmt in tree.body:
             if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 rt = _annotation_type(stmt.returns)
                 if rt is not None:
                     self.func_returns[stmt.name] = rt
+                a = stmt.args
+                if not a.vararg and not a.kwarg and not a.kwonlyargs and not a.posonlyargs:
+                    total_p = len(a.args)
+                    def_p = len(a.defaults)
+                    self.func_arity[stmt.name] = (total_p - def_p, total_p, [x.arg for x in a.args])
 
     def _err(self, etype, msg, node, **extra):
         self.errors.append({"error_type": etype, "error_message": msg,
@@ -703,6 +709,61 @@ class StaticChecker(ast.NodeVisitor):
                     t = self._infer_type(node.args[0])
                     if t in _NON_INT_INDEX_TYPES:
                         self._err("TypeError", f"'{t}' object cannot be interpreted as an integer", node)
+                elif fn in self.func_arity and not any(isinstance(a, ast.Starred) for a in node.args):
+                    min_req, max_req, pnames = self.func_arity[fn]
+                    given = len(node.args)
+                    if given < min_req:
+                        missing = [repr(p) for p in pnames[given:min_req]]
+                        diff = min_req - given
+                        self._err(
+                            "TypeError",
+                            f"{fn}() missing {diff} required positional argument{'s' if diff > 1 else ''}: {', '.join(missing)}",
+                            node,
+                        )
+                    elif given > max_req:
+                        self._err(
+                            "TypeError",
+                            f"{fn}() takes {max_req} positional argument{'s' if max_req != 1 else ''} but {given} were given",
+                            node,
+                        )
+        self.generic_visit(node)
+
+    def visit_Compare(self, node):
+        if len(node.ops) == 1 and len(node.comparators) == 1:
+            op = node.ops[0]
+            comp = node.comparators[0]
+            # 1. Fixable LogicalError: using 'is' / 'is not' with a literal value (str, int, float, etc.)
+            if isinstance(op, (ast.Is, ast.IsNot)):
+                is_non_singleton_lit = (
+                    (isinstance(comp, ast.Constant) and comp.value is not None and not isinstance(comp.value, bool))
+                    or isinstance(comp, (ast.List, ast.Dict, ast.Set, ast.Tuple))
+                )
+                if is_non_singleton_lit:
+                    op_word = "is not" if isinstance(op, ast.IsNot) else "is"
+                    fix_op = "!=" if isinstance(op, ast.IsNot) else "=="
+                    self._err(
+                        "LogicalError",
+                        f"identity operator '{op_word}' used with a literal value (checks memory address instead of equality; use '{fix_op}')",
+                        node,
+                    )
+            # 2. Ambiguous LogicalError: comparing a variable to itself (e.g. x == x or x != x)
+            elif isinstance(op, (ast.Eq, ast.NotEq, ast.Lt, ast.Gt, ast.LtE, ast.GtE)):
+                if isinstance(node.left, ast.Name) and isinstance(comp, ast.Name) and node.left.id == comp.id:
+                    self._err(
+                        "LogicalError",
+                        f"self-comparison on variable '{node.left.id}' always evaluates to a constant boolean (ambiguous comparison target)",
+                        node,
+                    )
+        self.generic_visit(node)
+
+    def visit_Assert(self, node):
+        # Fixable LogicalError: assert (cond, "msg") is a non-empty tuple and is ALWAYS True
+        if isinstance(node.test, ast.Tuple) and len(node.test.elts) >= 2:
+            self._err(
+                "LogicalError",
+                "assertion on a non-empty tuple 'assert (condition, message)' is always True and never fails",
+                node,
+            )
         self.generic_visit(node)
 
 

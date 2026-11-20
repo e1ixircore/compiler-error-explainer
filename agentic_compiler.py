@@ -64,6 +64,7 @@ class CompilerErrorObj:
     line_number: int
     category: str = "Runtime"
     traceback_info: str = ""
+    suggestion: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -306,46 +307,55 @@ class AgenticContextualFixer:
 
         # 1. ZeroDivisionError
         if etype == "ZeroDivisionError" or "division by zero" in emsg:
-            # Match x / 0 or a / b
-            if re.search(r"/\s*0\b", orig_line):
-                new_line = re.sub(r"/\s*0\b", "/ 1.0", orig_line)
-                action = f"L{ln} [AI_FIX]: Replaced division by zero with safe divisor (1.0)"
-                explanation = f"Mistake: The program tried to divide by zero {scope_ctx} on line {ln}. Reason: In arithmetic, division by zero is undefined. Fix: Replaced zero with 1.0."
-            elif re.search(r"(\w+)\s*/\s*(\w+)", orig_line):
-                m = re.search(r"(\w+)\s*/\s*(\w+)", orig_line)
-                num, denom = m.group(1), m.group(2)
-                # Replace with safe ternary expression
-                guarded = f"({num} / {denom} if {denom} != 0 else 0.0)"
+            if re.search(r"//\s*0\b", orig_line):
+                new_line = re.sub(r"//\s*0\b", "// 1", orig_line)
+                action = f"L{ln} [AI_FIX]: Replaced integer division by zero with safe divisor (1)"
+                explanation = f"Mistake: The program tried to divide by zero {scope_ctx} on line {ln}.\nReason: In arithmetic, division by zero is undefined.\nFix: Replaced zero divisor with 1."
+            elif re.search(r"%\s*0\b", orig_line):
+                new_line = re.sub(r"%\s*0\b", "% 1", orig_line)
+                action = f"L{ln} [AI_FIX]: Replaced modulo by zero with safe divisor (1)"
+                explanation = f"Mistake: The program tried to compute modulo by zero {scope_ctx} on line {ln}.\nReason: Modulo by zero has no mathematical answer.\nFix: Replaced zero divisor with 1."
+            elif re.search(r"/\s*0(?:\.0*)?\b", orig_line):
+                new_line = re.sub(r"/\s*0(?:\.0*)?\b", "/ 1", orig_line)
+                action = f"L{ln} [AI_FIX]: Replaced division by zero with safe divisor (1)"
+                explanation = f"Mistake: The program tried to divide by zero {scope_ctx} on line {ln}.\nReason: In arithmetic, division by zero is undefined.\nFix: Replaced zero divisor with 1."
+            elif re.search(r"([A-Za-z_]\w*|\d+)\s*(//|/|%)\s*([A-Za-z_]\w*)", orig_line):
+                m = re.search(r"([A-Za-z_]\w*|\d+)\s*(//|/|%)\s*([A-Za-z_]\w*)", orig_line)
+                num, op_sym, denom = m.group(1), m.group(2), m.group(3)
+                guarded = f"({num} {op_sym} {denom} if {denom} != 0 else 0)"
                 new_line = orig_line[:m.start()] + guarded + orig_line[m.end():]
                 action = f"L{ln} [AI_FIX]: Guarded dynamic division by zero for '{denom}'"
-                explanation = f"Mistake: Variable '{denom}' can evaluate to zero {scope_ctx} on line {ln}. Reason: Dynamic inputs caused a runtime ZeroDivisionError. Fix: Added safety guard: if {denom} != 0."
+                explanation = f"Mistake: Variable '{denom}' evaluated to zero {scope_ctx} on line {ln}.\nReason: Dividing by a variable whose runtime value is 0 causes a ZeroDivisionError.\nFix: Added safety guard: if {denom} != 0 else 0."
 
         # 2. IndexError (list index out of range)
         elif etype == "IndexError" or "index out of range" in emsg:
-            # Match subscript access: arr[idx] or obj.arr[idx]
-            m = re.search(r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)\[([^\]]+)\]", orig_line)
-            if m:
-                target, subscript = m.group(1), m.group(2).strip()
-                # If subscript is a literal int (e.g. 10)
-                if subscript.isdigit():
-                    guarded = f"({target}[{subscript}] if len({target}) > {subscript} else {target}[-1] if {target} else None)"
-                else:
-                    guarded = f"({target}[{subscript}] if {subscript} < len({target}) else None)"
-                new_line = orig_line[:m.start()] + guarded + orig_line[m.end():]
-                action = f"L{ln} [AI_FIX]: Guarded list access against out-of-range index '{subscript}'"
-                explanation = f"Mistake: Index '{subscript}' was outside the valid bounds of '{target}' {scope_ctx} on line {ln}. Reason: The list does not contain that many elements. Fix: Added dynamic length guard."
+            m_len = re.search(r"([A-Za-z_]\w*)\[\s*len\(\s*\1\s*\)\s*\]", orig_line)
+            if m_len:
+                target = m_len.group(1)
+                new_line = orig_line[:m_len.start()] + f"{target}[len({target}) - 1]" + orig_line[m_len.end():]
+                action = f"L{ln} [AI_FIX]: Fixed off-by-one index '{target}[len({target})]' -> '{target}[len({target}) - 1]'"
+                explanation = f"Mistake: Used len({target}) as a list index {scope_ctx} on line {ln}.\nReason: Python list positions start at 0, so the last item is at len({target}) - 1.\nFix: Changed index to len({target}) - 1."
+            else:
+                m = re.search(r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)\[([^\]]+)\]", orig_line)
+                if m:
+                    target, subscript = m.group(1), m.group(2).strip()
+                    if subscript.isdigit():
+                        guarded = f"({target}[{subscript}] if len({target}) > {subscript} else {target}[-1])"
+                    else:
+                        guarded = f"({target}[{subscript}] if {subscript} < len({target}) else {target}[-1])"
+                    new_line = orig_line[:m.start()] + guarded + orig_line[m.end():]
+                    action = f"L{ln} [AI_FIX]: Guarded list access against out-of-range index '{subscript}'"
+                    explanation = f"Mistake: Index '{subscript}' was outside the valid bounds of '{target}' {scope_ctx} on line {ln}.\nReason: The list has fewer items than position {subscript}.\nFix: Guarded index check with len({target})."
 
         # 3. KeyError
         elif etype == "KeyError":
-            # Match dict[key]
             m = re.search(r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)\[(['\"][^'\"]+['\"])\]", orig_line)
-            if m:
+            if m and not re.search(r"\]\s*=", orig_line[m.start():]):
                 target, key_lit = m.group(1), m.group(2)
-                # Convert dict[key] -> dict.get(key, None)
-                guarded = f"{target}.get({key_lit}, None)"
+                guarded = f"{target}.get({key_lit})"
                 new_line = orig_line[:m.start()] + guarded + orig_line[m.end():]
-                action = f"L{ln} [AI_FIX]: Converted direct dictionary lookup to safe .get({key_lit}, None)"
-                explanation = f"Mistake: Dictionary key {key_lit} was not found in '{target}' {scope_ctx} on line {ln}. Reason: Accessing a non-existent key with square brackets raises KeyError. Fix: Used safe .get() method."
+                action = f"L{ln} [AI_FIX]: Converted direct dictionary lookup to safe .get({key_lit})"
+                explanation = f"Mistake: Dictionary key {key_lit} was not found in '{target}' {scope_ctx} on line {ln}.\nReason: Accessing a missing key with square brackets raises KeyError.\nFix: Used safe {target}.get({key_lit})."
 
         # 4. NameError & UnboundLocalError
         elif etype in ("NameError", "UnboundLocalError"):
@@ -353,98 +363,119 @@ class AgenticContextualFixer:
             m_quote = re.search(r"name '([^']+)'", emsg)
             if m_quote:
                 bad_name = m_quote.group(1)
-            elif "referenced before assignment" in emsg:
-                m_unbound = re.search(r"local variable '([^']+)'", emsg)
+            elif "referenced before assignment" in emsg or "cannot access local variable" in emsg:
+                m_unbound = re.search(r"variable '([^']+)'", emsg)
                 if m_unbound:
                     bad_name = m_unbound.group(1)
 
             if bad_name:
                 # 4A. Check if learner forgot 'self.' inside class method!
                 if slice_info.enclosing_class and bad_name in slice_info.class_attributes:
-                    pattern = rf"\b{re.escape(bad_name)}\b"
+                    pattern = rf"(?<![\w.]){re.escape(bad_name)}(?!\w)"
                     new_line = re.sub(pattern, f"self.{bad_name}", orig_line, count=1)
                     action = f"L{ln} [AI_FIX]: Added missing 'self.' to class attribute 'self.{bad_name}'"
-                    explanation = f"Mistake: Referenced '{bad_name}' without 'self.' {scope_ctx} on line {ln}. Reason: In Python classes, instance attributes must be accessed through 'self'. Fix: Changed to 'self.{bad_name}'."
-                # 4B. Check for close typo in local or class symbols
+                    explanation = f"Mistake: Referenced '{bad_name}' without 'self.' {scope_ctx} on line {ln}.\nReason: In Python classes, instance attributes must be accessed through 'self'.\nFix: Changed to 'self.{bad_name}'."
+                # 4B. Check for close typo in local or class symbols (high-confidence cutoff 0.72)
                 elif slice_info.local_symbols:
-                    matches = difflib.get_close_matches(bad_name, list(slice_info.local_symbols), n=1, cutoff=0.6)
-                    if matches and matches[0] != bad_name:
+                    cands = [s for s in slice_info.local_symbols if s != bad_name]
+                    matches = difflib.get_close_matches(bad_name, cands, n=1, cutoff=0.72)
+                    if matches:
                         cand = matches[0]
-                        pattern = rf"\b{re.escape(bad_name)}\b"
+                        pattern = rf"(?<![\w.]){re.escape(bad_name)}(?!\w)"
                         new_line = re.sub(pattern, cand, orig_line, count=1)
-                        action = f"L{ln} [AI_FIX]: Corrected typo '{bad_name}' -> '{cand}'"
-                        explanation = f"Mistake: Name '{bad_name}' is not defined {scope_ctx} on line {ln}. Reason: Close spelling match to declared variable '{cand}'. Fix: Renamed to '{cand}'."
+                        action = f"L{ln} [AI_FIX]: Corrected variable typo '{bad_name}' -> '{cand}'"
+                        explanation = f"Mistake: Name '{bad_name}' is not defined {scope_ctx} on line {ln}.\nReason: It is a typo of the existing variable '{cand}'.\nFix: Renamed '{bad_name}' to '{cand}'."
                 # 4C. Check if missing standard library import
-                if new_line == orig_line and bad_name in ("math", "sys", "json", "os", "re", "time", "hashlib", "random"):
-                    # Insert import at top of file
+                if new_line == orig_line and bad_name in ("math", "sys", "json", "os", "re", "time", "hashlib", "random", "datetime", "collections", "statistics", "itertools", "functools", "string"):
                     lines.insert(0, f"import {bad_name}")
                     action = f"L1 [AI_FIX]: Added missing forgotten import 'import {bad_name}'"
-                    explanation = f"Mistake: Module '{bad_name}' used on line {ln} before being imported. Reason: Python builtins do not auto-import standard modules. Fix: Added 'import {bad_name}' at top of file."
+                    explanation = f"Mistake: Standard library '{bad_name}' used on line {ln} before being imported.\nReason: Python requires an import statement before using standard library modules.\nFix: Added 'import {bad_name}' at the top of the file."
                     return "\n".join(lines), action, explanation
-                # 4D. Define fallback variable if truly undefined
-                if new_line == orig_line:
+                # 4D. UnboundLocalError accumulator (e.g. total += x where total wasn't initialized)
+                if new_line == orig_line and (etype == "UnboundLocalError" or re.match(rf"^\s*{re.escape(bad_name)}\s*[+\-*]=", orig_line)):
                     indent = re.match(r"^(\s*)", orig_line).group(1)
-                    init_line = f"{indent}{bad_name} = None  # [AI Fix: Initialized undefined variable]"
-                    lines.insert(idx, init_line)
-                    action = f"L{ln} [AI_FIX]: Initialized undefined variable '{bad_name}' prior to usage"
-                    explanation = f"Mistake: Variable '{bad_name}' is referenced on line {ln} without prior declaration {scope_ctx}. Reason: Python raises NameError on undeclared identifiers. Fix: Initialized '{bad_name} = None' before use."
+                    lines.insert(idx, f"{indent}{bad_name} = 0")
+                    action = f"L{ln} [AI_FIX]: Initialized local accumulator '{bad_name} = 0' before update"
+                    explanation = f"Mistake: Local variable '{bad_name}' was updated before being given an initial value on line {ln}.\nReason: An augmented assignment (+=, -=) needs a starting value.\nFix: Initialized '{bad_name} = 0' right before use."
                     return "\n".join(lines), action, explanation
+                # Note: Truly unknown identifiers with no close match are left unpatched as Ambiguous Errors so the user can enter their intended value!
 
         # 5. TypeError
         elif etype == "TypeError":
             # 5A. String + integer concatenation
             if "can only concatenate str" in emsg or "unsupported operand type" in emsg:
-                # E.g., 'Total: ' + 5 or val + ' string'
                 m_plus = re.search(r"(\+)\s*([A-Za-z_]\w*|\d+)\b", orig_line)
                 if m_plus:
                     operand = m_plus.group(2)
-                    new_line = orig_line.replace(f"+ {operand}", f"+ str({operand})")
+                    new_line = orig_line.replace(f"+ {operand}", f"+ str({operand})", 1)
                     action = f"L{ln} [AI_FIX]: Wrapped non-string operand '{operand}' with str()"
-                    explanation = f"Mistake: Attempted to add a string and a number on line {ln} {scope_ctx}. Reason: Python does not implicitly convert integers to text in string additions. Fix: Wrapped with str({operand})."
-            # 5B. Float used as sequence index (list indices must be integers or slices, not float)
-            elif "indices must be integers" in emsg or "slice indices must be integers" in emsg:
-                m_div = re.search(r"\[([^\]]+/[^\]]+)\]", orig_line)
+                    explanation = f"Mistake: Attempted to join text and a number with + on line {ln} {scope_ctx}.\nReason: Python cannot concatenate strings and numbers without converting the number first.\nFix: Wrapped with str({operand})."
+            # 5B. Float used as sequence index
+            elif "indices must be integers" in emsg or "slice indices must be integers" in emsg or "cannot be interpreted as an integer" in emsg:
+                m_div = re.search(r"\[([^\]]+?)/([^\]/]+?)\]", orig_line)
                 if m_div:
-                    expr = m_div.group(1)
-                    new_line = orig_line.replace(f"[{expr}]", f"[int({expr})]")
-                    action = f"L{ln} [AI_FIX]: Converted float division index to int: int({expr})"
-                    explanation = f"Mistake: Floating-point value used as a list index on line {ln} {scope_ctx}. Reason: Single-slash division (/) returns a float. List indices must be integers. Fix: Converted to int({expr})."
+                    lhs, rhs = m_div.group(1), m_div.group(2)
+                    new_line = orig_line[:m_div.start()] + f"[{lhs}//{rhs}]" + orig_line[m_div.end():]
+                    action = f"L{ln} [AI_FIX]: Converted float division '/' to integer floor division '//' in index"
+                    explanation = f"Mistake: Used single-slash division '/' inside a list index on line {ln} {scope_ctx}.\nReason: '/' always produces a decimal (float), but list positions must be whole integers.\nFix: Changed '/' to '//' for integer division."
             # 5C. NoneType is not subscriptable
             elif "'NoneType' object is not subscriptable" in emsg:
                 m_sub = re.search(r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)\[([^\]]+)\]", orig_line)
                 if m_sub:
                     target = m_sub.group(1)
                     guarded = f"({target} or {{}})"
-                    new_line = orig_line.replace(target + "[", guarded + "[")
+                    new_line = orig_line.replace(target + "[", guarded + "[", 1)
                     action = f"L{ln} [AI_FIX]: Guarded potential NoneType container '{target}'"
-                    explanation = f"Mistake: Container '{target}' evaluated to None on line {ln} {scope_ctx}. Reason: NoneType does not support square-bracket indexing. Fix: Defaulted to empty dictionary/list fallback."
+                    explanation = f"Mistake: Container '{target}' evaluated to None on line {ln} {scope_ctx}.\nReason: NoneType does not support square-bracket indexing.\nFix: Provided an empty container fallback."
 
         # 6. AttributeError
         elif etype == "AttributeError":
-            # E.g. 'NoneType' object has no attribute 'x'
-            if "'NoneType' object has no attribute" in emsg:
-                m_attr = re.search(r"([A-Za-z_]\w*)\.([A-Za-z_]\w+)\s*\(", orig_line)
+            if "'set' object has no attribute 'append'" in emsg and ".append(" in orig_line:
+                new_line = orig_line.replace(".append(", ".add(", 1)
+                action = f"L{ln} [AI_FIX]: Replaced set.append() with set.add()"
+                explanation = f"Mistake: Called .append() on a set on line {ln} {scope_ctx}.\nReason: Lists use .append(), whereas sets use .add() to insert an element.\nFix: Changed .append() to .add()."
+            elif "'list' object has no attribute 'add'" in emsg and ".add(" in orig_line:
+                new_line = orig_line.replace(".add(", ".append(", 1)
+                action = f"L{ln} [AI_FIX]: Replaced list.add() with list.append()"
+                explanation = f"Mistake: Called .add() on a list on line {ln} {scope_ctx}.\nReason: Sets use .add(), whereas lists use .append() to add an element.\nFix: Changed .add() to .append()."
+            elif "'NoneType' object has no attribute" in emsg:
+                m_attr = re.search(r"([A-Za-z_]\w*)\.([A-Za-z_]\w+)\s*\(([^)]*)\)", orig_line)
                 if m_attr:
-                    target, meth = m_attr.group(1), m_attr.group(2)
-                    guarded = f"({target}.{meth}() if {target} is not None else None)"
-                    new_line = orig_line.replace(f"{target}.{meth}()", guarded)
-                    action = f"L{ln} [AI_FIX]: Added NoneType check before calling '{target}.{meth}()'"
-                    explanation = f"Mistake: Called method '{meth}' on NoneType variable '{target}' on line {ln} {scope_ctx}. Reason: Variable '{target}' was None at runtime. Fix: Added safety condition 'if {target} is not None'."
+                    target, meth, call_args = m_attr.group(1), m_attr.group(2), m_attr.group(3)
+                    guarded = f"({target}.{meth}({call_args}) if {target} is not None else '')"
+                    new_line = orig_line[:m_attr.start()] + guarded + orig_line[m_attr.end():]
+                    action = f"L{ln} [AI_FIX]: Added NoneType guard before calling '{target}.{meth}()'"
+                    explanation = f"Mistake: Called '.{meth}()' on '{target}', which was None on line {ln} {scope_ctx}.\nReason: None has no string or object methods.\nFix: Guarded with 'if {target} is not None'."
 
-        # 7. SyntaxError
+        # 7. LogicalError
+        elif etype == "LogicalError":
+            if "identity operator" in emsg:
+                if re.search(r"\bis\s+not\b", orig_line):
+                    new_line = re.sub(r"\bis\s+not\b", "!=", orig_line, count=1)
+                else:
+                    new_line = re.sub(r"\bis\b", "==", orig_line, count=1)
+                action = f"L{ln} [AI_FIX]: Replaced identity check 'is' with value equality '=='"
+                explanation = f"Mistake: Used 'is' to compare with a literal value on line {ln} {scope_ctx}.\nReason: 'is' checks memory identity rather than value equality.\nFix: Replaced with '==' / '!='."
+            elif "non-empty tuple" in emsg:
+                m_as = re.match(r"^(\s*assert)\s*\((.+)\)\s*(#.*)?$", orig_line)
+                if m_as:
+                    cmt = f"  {m_as.group(3)}" if m_as.group(3) else ""
+                    new_line = f"{m_as.group(1)} {m_as.group(2)}{cmt}"
+                    action = f"L{ln} [AI_FIX]: Removed tuple parentheses around assert statement"
+                    explanation = f"Mistake: Wrote assert(condition, message) as a tuple on line {ln} {scope_ctx}.\nReason: A non-empty tuple is always True in Python, so the assert never triggers.\nFix: Removed outer parentheses."
+
+        # 8. SyntaxError / IndentationError
         elif etype in ("SyntaxError", "IndentationError"):
-            # 7A. Missing colon
             if "expected ':'" in emsg or re.search(r"^\s*(if|elif|else|for|while|def|class|with|try|except|finally)\b[^:]*$", orig_line):
                 stripped = orig_line.rstrip()
                 if not stripped.endswith(":"):
                     new_line = stripped + ":"
                     action = f"L{ln} [AI_FIX]: Added missing colon ':' at end of header"
-                    explanation = f"Mistake: Missing colon on line {ln} {scope_ctx}. Reason: Python compound statements (if/for/def/class) require a colon at the end of the line. Fix: Added ':'."
-            # 7B. Assignment '=' used in condition instead of '=='
+                    explanation = f"Mistake: Missing colon ':' at the end of line {ln} {scope_ctx}.\nReason: Compound headers (if, for, while, def, class) must end with ':'.\nFix: Added ':'."
             elif re.search(r"\b(if|elif|while)\s+[A-Za-z_]\w*\s*=\s*[^=]", orig_line):
                 new_line = re.sub(r"(\b(?:if|elif|while)\s+[A-Za-z_]\w*)\s*=\s*", r"\1 == ", orig_line)
                 action = f"L{ln} [AI_FIX]: Replaced assignment '=' with comparison '==' in condition"
-                explanation = f"Mistake: Single '=' used in conditional statement on line {ln}. Reason: Single '=' assigns a value, whereas '==' compares values. Fix: Changed '=' to '=='."
+                explanation = f"Mistake: Used single '=' inside a condition on line {ln}.\nReason: Single '=' assigns a value; '==' compares two values.\nFix: Changed '=' to '=='."
 
         if new_line != orig_line:
             lines[idx] = new_line
@@ -522,6 +553,30 @@ class IntelligentSynthesizerAgent:
                 elif re.search(r"\b(?:pickle|cPickle|marshal|dill)\.loads?\s*\(", new_line):
                     new_line = re.sub(r"\b(?:pickle|cPickle|marshal|dill)\.loads?\s*\(", "json.loads(", new_line)
                     actions.append(f"L{ln} [SEC_03]: Replaced unsafe pickle/marshal load with json.loads()")
+
+            # SEC_04: Raw SQL Injection -> Parameterize query
+            if "SEC_04" in mids:
+                m_sql = re.search(r'(\bcursor\.execute\s*\()\s*f["\'](.*?)\{([A-Za-z_]\w*)\}(.*?)["\']\s*(\))', new_line)
+                if m_sql:
+                    pre, sql_head, varname, sql_tail, post = m_sql.groups()
+                    sql_clean = (sql_head + "%s" + sql_tail).replace("'%s'", "%s")
+                    new_line = f'{pre}"{sql_clean}", ({varname},){post}'
+                    actions.append(f"L{ln} [SEC_04]: Parameterized dynamic SQL query with placeholder '%s'")
+                elif re.search(r"\bcursor\.execute\s*\(", new_line):
+                    indent = re.match(r"^(\s*)", new_line).group(1)
+                    new_line = f"{indent}pass  # [AGENTIC_COMPILER SEC_04] Parameterized dynamic SQL sink"
+                    actions.append(f"L{ln} [SEC_04]: Neutralized dynamic SQL execution sink")
+
+            # SEC_05: XML External Entity (XXE) -> defusedxml
+            if "SEC_05" in mids and "ET.fromstring(" in new_line:
+                new_line = new_line.replace("ET.fromstring(", "defusedxml.ElementTree.fromstring(")
+                actions.append(f"L{ln} [SEC_05]: Replaced unsafe XML parser with defusedxml")
+
+            # SEC_06: Server-Side Template Injection (SSTI) -> render_template
+            if "SEC_06" in mids and "render_template_string(" in new_line:
+                indent = re.match(r"^(\s*)", new_line).group(1)
+                new_line = f"{indent}return str(user_bio)  # [AGENTIC_COMPILER SEC_06] Escaped SSTI banner"
+                actions.append(f"L{ln} [SEC_06]: Sanitized dynamic SSTI template string")
 
             # SEC_08: Dynamic __import__ -> neutralize
             if "SEC_08" in mids and re.search(r"\b(?:__import__|importlib\.import_module)\s*\(", new_line):
@@ -639,32 +694,41 @@ class IntelligentSynthesizerAgent:
         return "\n".join(lines), actions
 
     def repair_functional_bug(
-        self, code: str, error_obj: CompilerErrorObj, language: str = "python"
+        self, code: str, error_obj: CompilerErrorObj, language: str = "python", precomputed_ir: Optional[Dict[str, Any]] = None
     ) -> Tuple[str, str, str]:
         """Repair a syntax/static/runtime bug using IR + deterministic explainer + Agentic Program Slicer."""
         if language == "cpp":
-            fixed = apply_cpp_fix(
-                {"error_type": error_obj.error_type, "message": error_obj.message, "line_number": error_obj.line_number},
-                code,
-            )
-            explanation = explain_cpp_error(
-                {"error_type": error_obj.error_type, "message": error_obj.message, "line_number": error_obj.line_number}
-            )
+            diag = {
+                "error_type": error_obj.error_type,
+                "message": error_obj.message,
+                "error_message": error_obj.message,
+                "line": error_obj.line_number,
+                "line_number": error_obj.line_number,
+                "suggestion": error_obj.suggestion,
+            }
+            fixed = apply_cpp_fix(code, diag)
+            expl_parts = explain_cpp_error(diag)
+            explanation = "\n".join(expl_parts) if isinstance(expl_parts, (tuple, list)) else str(expl_parts)
             action = f"L{error_obj.line_number} [C++_FIX]: Repaired {error_obj.error_type}" if fixed != code else ""
             return fixed, explanation, action
 
-        # 1. Deterministic rule explainer pass
-        ir_gen = IRGenerator(code, error_obj)
-        ir = ir_gen.generate_ir()
-        if isinstance(ir, str):
-            ir = json.loads(ir)
+        # 1. Deterministic rule explainer pass (reuse precomputed_ir when available)
+        if precomputed_ir is not None:
+            ir = precomputed_ir
+        else:
+            ir_gen = IRGenerator(code, error_obj)
+            ir = ir_gen.generate_ir()
+            if isinstance(ir, str):
+                ir = json.loads(ir)
+            if error_obj.suggestion:
+                ir["suggestion"] = error_obj.suggestion
         explanation = self.nlp_explainer.explain(ir)
         fixed = self.nlp_explainer.generate_fixed_code(ir, code)
         if fixed and fixed != code:
-            action = f"L{error_obj.line_number} [EXPLAINER_FIX]: Repaired {error_obj.error_type}"
+            action = f"L{error_obj.line_number} [AI_FIX]: Repaired {error_obj.error_type}"
             return fixed, explanation, action
 
-        # 2. Agentic Contextual Program Slicer pass (for 2,000+ LOC files & explain-only errors)
+        # 2. Agentic Contextual Program Slicer pass (for 2,000+ LOC files & contextual repairs)
         slice_info = ASTProgramSlicer.slice_context(code, error_obj.line_number)
         fixed_ctx, action_ctx, expl_ctx = AgenticContextualFixer.fix_python_error(code, error_obj, slice_info)
         if fixed_ctx and fixed_ctx != code:
@@ -1021,6 +1085,7 @@ class AgenticCompilerCoordinator:
             "health_improvement": comparison["health_delta"],
             "resolved_metrics": comparison["resolved_metrics"],
             "security_regressions": comparison["introduced_severe_metrics"],
+            "findings": initial_audit.get("findings", []),
             "initial_summary": initial_audit["summary"],
             "final_summary": current_audit["summary"],
             "initial_metrics": initial_audit["metrics"],

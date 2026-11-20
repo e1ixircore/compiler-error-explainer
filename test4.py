@@ -1,151 +1,32 @@
-# test4.py - Target: 150 lines
-import sys
+# test4.py - Bounds, Conversions & Assertion Logic Errors (4 Fixable Errors)
 import math
 
-def helper_func_0(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
+def read_sensor_window():
+    my_list = [12, 24, 36]
+    # ERROR 1 (IndexError - fixable): index 10 is out of range for a 3-item list
+    x = my_list[10]
+    return x
 
-def process_data_0(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_0(item))
-    return temp
+def count_identifier_digits():
+    serial_number = 54321
+    # ERROR 2 (TypeError - fixable): len() cannot be called directly on an integer
+    return len(serial_number)
 
-def helper_func_1(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
+def parse_step_count():
+    # ERROR 3 (ValueError - fixable): '3.5' is a decimal string and cannot be passed directly to int()
+    steps = int("3.5")
+    return steps
 
-def process_data_1(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_1(item))
-    return temp
-
-def helper_func_2(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_2(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_2(item))
-    return temp
-
-def helper_func_3(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_3(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_3(item))
-    return temp
-
-def helper_func_4(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_4(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_4(item))
-    return temp
-
-def helper_func_5(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_5(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_5(item))
-    return temp
-
-def helper_func_6(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_6(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_6(item))
-    return temp
-
-def helper_func_7(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_7(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_7(item))
-    return temp
-
-def helper_func_8(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_8(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_8(item))
-    return temp
-
-def helper_func_9(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_9(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_9(item))
-    return temp
-
-def helper_func_10(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_10(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_10(item))
-    return temp
+def validate_positive_batch(batch_size):
+    # ERROR 4 (LogicalError - fixable): assert(cond, msg) tests a 2-tuple which is always True!
+    assert (batch_size > 0, "batch_size must be positive")
+    return batch_size
 
 def main():
-    print('Running main...')
-    lst = [1, 2, 3]
-    print(lst[10]) # ERROR: index out of bounds
-    pass # padding
-    pass # padding
-    pass # padding
-    pass # padding
-    pass # padding
-    pass # padding
-    pass # padding
-    pass # padding
+    print("Sensor:", read_sensor_window())
+    print("Digits:", count_identifier_digits())
+    print("Steps:", parse_step_count())
+    print("Validated:", validate_positive_batch(5))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

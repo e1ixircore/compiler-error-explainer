@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntelliFix — Comprehensive Test Suites &amp; Error Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f6f4f0;
+      --panel: #ffffff;
+      --panel2: #f0ede6;
+      --ink: #1c1917;
+      --mute: #6b665e;
+      --line: #e2ddd4;
+      --accent: #1b4332;
+      --accent-soft: #e6f0ec;
+      --sec: #991b1b;
+      --ok: #15803d;
+      --warn: #d97706;
+      --head: 'Instrument Sans', system-ui, sans-serif;
+      --body: 'Inter', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.55 var(--body);
+      min-height: 100vh;
+    }
+    #appHeader {
+      height: 50px;
+      background: #14281f;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      border-bottom: 1px solid #0d1b14;
+      position: sticky;
+      top: 0;
+      z-index: 25;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font: 700 16px/1 var(--head); }
+    .brand-badge { font: 700 11px/1 var(--mono); background: #2d6a4f; color: #d8f3dc; padding: 4px 8px; border-radius: 999px; }
+    .nav-links { display: flex; align-items: center; gap: 6px; }
+    .nav-link { color: #d1fae5; text-decoration: none; font: 600 13px/1 var(--head); padding: 8px 13px; border-radius: 7px; }
+    .nav-link:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .nav-link.active { background: #2d6a4f; color: #fff; }
+
+    .container { max-width: 1280px; margin: 0 auto; padding: 26px 24px 60px; }
+    .page-title h1 { font: 700 24px/1.25 var(--head); margin-bottom: 6px; }
+    .page-title p { color: var(--mute); font-size: 14px; margin-bottom: 20px; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 15px 18px;
+    }
+    .kpi-card .k { font: 700 11.5px var(--head); text-transform: uppercase; color: var(--mute); letter-spacing: 0.04em; }
+    .kpi-card .v { font: 800 24px/1.2 var(--head); color: var(--ink); margin: 6px 0 4px; }
+    .kpi-card .sub { font-size: 12.5px; color: var(--mute); }
+
+    .section-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }
+    .section-card h2 {
+      font: 700 17px var(--head);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .section-card p.desc { font-size: 13px; color: var(--mute); margin-bottom: 14px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      text-align: left;
+      padding: 9px 11px;
+      border-bottom: 1px solid var(--line);
+    }
+    th {
+      font: 700 11.5px var(--head);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--mute);
+      background: #faf9f6;
+    }
+    tr:hover td { background: #fcfbf9; }
+    .mono { font-family: var(--mono); font-size: 12.5px; }
+    .pill {
+      display: inline-block;
+      font: 700 11px/1 var(--head);
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .pill.sec { background: #fee2e2; color: #991b1b; }
+    .pill.warn { background: #fef3c7; color: #92400e; }
+    .open-btn {
+      display: inline-block;
+      text-decoration: none;
+      font: 600 12px var(--head);
+      padding: 5px 10px;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+    }
+    .open-btn:hover { filter: brightness(1.1); }
+  </style>
+</head>
+<body>
+  <header id="appHeader">
+    <div class="brand">
+      <span>IntelliFix Studio</span>
+      <span class="brand-badge">Secure Agentic AI Compiler</span>
+    </div>
+    <nav class="nav-links">
+      <a href="/" class="nav-link">1. Compiler &amp; Error Studio</a>
+      <a href="/suite-report" class="nav-link active">2. Test Suites &amp; Error Report</a>
+      <a href="/analytics" class="nav-link">3. 52-Metric Security &amp; Eco Dashboard</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <div class="page-title">
+      <h1>Comprehensive Test Suites &amp; Error Diagnosis Report</h1>
+      <p>Cleanly separates the <strong>Normal Error Diagnosis Test Suites</strong> (Static, Runtime &amp; Logical bugs — 0 Security Blocks) from the <strong>Dedicated Security Guardrail Test Suites</strong> (Stage 1 Security Gate &amp; 52 Security Metrics).</p>
+    </div>
+
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- Part 1: Normal Error Diagnosis Test Suites -->
+    <div class="section-card">
+      <h2>
+        <span>Part 1A — Standard Error Test Files (Beginner &amp; Multi-Error Suite)</span>
+        <span class="pill" id="cntStdErr">Loading...</span>
+      </h2>
+      <p class="desc">Zero blocking security issues. Passes Stage 1 Security Gate and tests Stage 2 Static, Runtime, and Logical error explanations &amp; Agentic AI repairs.</p>
+      <div style="overflow-x:auto;">
+        <table id="tblStdErr">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Lang</th>
+              <th>LOC</th>
+              <th>Initial Score</th>
+              <th>Total Errors</th>
+              <th>Auto-Fixable</th>
+              <th>Ambiguous / Manual</th>
+              <th>Error Breakdown (Type &amp; Stage)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <h2>
+        <span>Part 1B — 2,000+ Line Large-Scale Error Diagnosis Benchmarks (40 Files)</span>
+        <span class="pill" id="cntLrgErr">Loading...</span>
+      </h2>
+      <p class="desc">Every benchmark file exceeds 2,000 lines of code, has ZERO security blocks, and contains 5–6 static, runtime, and logical errors (mainly unambiguous fixable errors + occasional ambiguous error).</p>
+      <div style="overflow-x:auto;">
+        <table id="tblLrgErr">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Lang</th>
+              <th>LOC</th>
+              <th>Initial Score</th>
+              <th>Total Errors</th>
+              <th>Auto-Fixable</th>
+              <th>Ambiguous / Manual</th>
+              <th>Error Breakdown (Type &amp; Stage)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Part 2: Dedicated Security Guardrail Test Suites -->
+    <div class="section-card">
+      <h2>
+        <span>Part 2 — Dedicated Security Guardrail Test Suites (Standard &amp; 2,000+ Line Security Benchmarks)</span>
+        <span class="pill sec" id="cntSec">Loading...</span>
+      </h2>
+      <p class="desc">Separated from the normal error test files. Specifically tests Stage 1 Security Gate interception (halting before static/runtime analysis on Critical/High threats) across all 52 security metrics.</p>
+      <div style="overflow-x:auto;">
+        <table id="tblSec">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Suite Type</th>
+              <th>Lang</th>
+              <th>LOC</th>
+              <th>Stage 1 Gate Status</th>
+              <th>Security Findings</th>
+              <th>Triggered Metrics &amp; Severities</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadReport() {
+      const r = await fetch('/api/suite-report');
+      const d = await r.json();
+      const s = d.summary || {};
+
+      const kpi = document.getElementById('kpiGrid');
+      [
+        ['Normal Error Test Files', `${s.total_error_files || 0} Files`, `${s.total_errors_detected || 0} total errors (${s.total_fixable_errors || 0} fixable, ${s.total_ambiguous_errors || 0} ambiguous)`],
+        ['Auto-Fixable Error Rate', `${s.fixable_pct || 0}%`, `${s.total_fixable_errors || 0} unambiguous errors auto-patched by Agentic AI`],
+        ['Dedicated Security Files', `${s.total_security_files || 0} Files`, `${s.total_security_findings || 0} security findings across 52 metrics`],
+        ['Total Corpus Scale', `${(s.total_corpus_loc || 0).toLocaleString()} LOC`, `${s.files_over_2000_loc || 0} benchmark files >= 2,000 lines each`],
+      ].forEach(([k, v, sub]) => {
+        const c = document.createElement('div');
+        c.className = 'kpi-card';
+        c.innerHTML = `<div class="k">${k}</div><div class="v">${v}</div><div class="sub">${sub}</div>`;
+        kpi.append(c);
+      });
+
+      function fillErrTable(tblId, badgeId, rows) {
+        document.getElementById(badgeId).textContent = `${rows.length} Files · ${rows.reduce((a, b) => a + b.total_errors, 0)} Errors`;
+        const tb = document.querySelector(`#${tblId} tbody`);
+        tb.innerHTML = '';
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          const proj = r.projected_score ? ` → ${r.projected_score} (${r.projected_grade})` : '';
+          tr.innerHTML = `
+            <td class="mono"><strong>${r.filename}</strong></td>
+            <td>${r.language.toUpperCase()}</td>
+            <td class="mono">${r.loc.toLocaleString()}</td>
+            <td class="mono">${r.initial_score}/100 (${r.initial_grade})${proj}</td>
+            <td class="mono"><strong>${r.total_errors}</strong></td>
+            <td class="mono" style="color:var(--ok);font-weight:700;">${r.fixable_errors}</td>
+            <td class="mono" style="color:${r.ambiguous_errors ? 'var(--warn)' : 'var(--mute)'};font-weight:700;">${r.ambiguous_errors}</td>
+            <td class="mono" style="font-size:11.5px;">${r.error_details.join(', ') || '0 errors (clean)'}</td>
+            <td><a class="open-btn" href="/?file=${encodeURIComponent(r.filename)}">Open in Studio →</a></td>
+          `;
+          tb.append(tr);
+        });
+      }
+
+      fillErrTable('tblStdErr', 'cntStdErr', d.standard_error_files || []);
+      fillErrTable('tblLrgErr', 'cntLrgErr', d.large_error_benchmarks || []);
+
+      const secRows = d.security_files || [];
+      document.getElementById('cntSec').textContent = `${secRows.length} Security Files`;
+      const tbSec = document.querySelector('#tblSec tbody');
+      tbSec.innerHTML = '';
+      secRows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono"><strong>${r.filename}</strong></td>
+          <td>${r.is_benchmark ? '2,000+ Line Security Benchmark' : 'Standard Security Trap'}</td>
+          <td>${r.language.toUpperCase()}</td>
+          <td class="mono">${r.loc.toLocaleString()}</td>
+          <td><span class="pill ${r.blocked ? 'sec' : 'warn'}">${r.blocked ? 'BLOCKED at Stage 1 (Grade F · 0/100)' : 'Passed Stage 1 (Low/Med Notes)'}</span></td>
+          <td class="mono"><strong>${r.security_findings_count}</strong></td>
+          <td class="mono" style="font-size:11.5px;">${r.security_metrics.join(', ')}</td>
+          <td><a class="open-btn" href="/?file=${encodeURIComponent(r.filename)}">Open in Studio →</a></td>
+        `;
+        tbSec.append(tr);
+      });
+    }
+    window.addEventListener('DOMContentLoaded', loadReport);
+  </script>
+</body>
+</html>

@@ -15,7 +15,7 @@ from nlp_explainer import NLPExplainer
 from ir_generator import IRGenerator
 from security_analyzer import SecurityAnalyzer
 from security_metrics_engine import SecurityMetricsEngine, METRICS_REGISTRY
-from agentic_compiler import AgenticCompilerCoordinator
+from agentic_compiler import AgenticCompilerCoordinator, CompilerErrorObj
 from static_analyzer import static_check
 from cpp_explainer import (
     apply_fix as apply_cpp_fix,
@@ -50,16 +50,41 @@ class CompilerError:
         self.traceback_info = traceback_info
 
 
+def _classify_test_file(fname: str) -> dict:
+    base = os.path.basename(fname)
+    is_bench = fname.startswith("benchmarks/")
+    is_cpp = is_cpp_name(fname)
+    is_sec = (
+        base.startswith("test_sec")
+        or base == "test_security.py"
+        or base == "test_cpp_security.cpp"
+        or base.startswith("sec_bench_")
+    )
+    if is_sec:
+        group = "large_security" if is_bench else "standard_security"
+    else:
+        group = "large_error" if is_bench else "standard_error"
+    return {
+        "filename": fname,
+        "is_fixed": "_fixed." in fname,
+        "is_benchmark": is_bench,
+        "is_security": is_sec,
+        "suite_group": group,
+        "language": "cpp" if is_cpp else "python",
+    }
+
+
 def _available_test_files():
     files = []
     for extension in (".py",) + CPP_EXTENSIONS:
         files.extend(glob.glob(f"test*{extension}"))
         files.extend(glob.glob(f"*_fixed{extension}"))
+    for extension in (".py",) + CPP_EXTENSIONS:
+        files.extend([f"benchmarks/{os.path.basename(p)}" for p in glob.glob(f"benchmarks/*{extension}")])
     all_files = sorted(set(files))
-    all_files = [f for f in all_files
-                 if f not in ["test_ir.py", "test_nlp.py", "sample_input.py", "sample_input_fixed.py"]]
-    return [{"filename": f, "is_fixed": "_fixed." in f, "language": "cpp" if is_cpp_name(f) else "python"}
-            for f in all_files]
+    excluded = {"test_ir.py", "test_nlp.py", "sample_input.py", "sample_input_fixed.py"}
+    all_files = [f for f in all_files if f not in excluded]
+    return [_classify_test_file(f) for f in all_files]
 
 
 def detect_language(filename=None, code="", explicit=None):
@@ -86,12 +111,12 @@ def detect_language(filename=None, code="", explicit=None):
 
 
 def safe_name(name):
-    """Single whitelist check used by every endpoint.
-    A name is valid only if it is a bare filename (no path parts) that appears
-    in the list /api/files shows. This blocks path traversal like ../../x."""
-    if not name or os.path.basename(name) != name:
+    """Whitelist check used by endpoints.
+    Allows root test files and allowed benchmarks/ files."""
+    if not name:
         return None
-    return name if name in {i["filename"] for i in _available_test_files()} else None
+    allowed = {i["filename"] for i in _available_test_files()}
+    return name if name in allowed else None
 
 
 def read_source(filename):
@@ -103,19 +128,239 @@ def read_source(filename):
             return f.read()
 
 
+_security_engine = SecurityMetricsEngine()
+
 def scan(code, language="python"):
-    """Returns (vulns, formatted log lines, is_blocked)."""
-    vulns = SecurityAnalyzer().scan_code(code, language=language)
-    log = [f"[{v['severity']}] Line {v['line']}: {v['message']}" for v in vulns]
-    return vulns, log, any(v["severity"] in BLOCKING for v in vulns)
+    """Returns (vulns, formatted log lines, is_blocked) using the 52-metric Security Engine."""
+    rep = _security_engine.analyze(code, language=language)
+    findings = rep.get("findings", [])
+    vulns = [
+        {
+            "line": f.get("line", 1),
+            "severity": f.get("severity", "MEDIUM"),
+            "type": f.get("type", "Security Finding"),
+            "metric_id": f.get("metric_id", ""),
+            "cwe": f.get("cwe", ""),
+            "message": f.get("message", ""),
+        }
+        for f in findings
+    ]
+    log = [f"[{v['severity']}] Line {v['line']} ({v['metric_id']}): {v['message']}" for v in vulns]
+    blocked = rep.get("summary", {}).get("blocked", False) or any(v["severity"] in BLOCKING for v in vulns)
+    return vulns, log, blocked
+
+
+def build_security_solution(code, language="python"):
+    """When Stage 1 Security Gate blocks execution, synthesize a hardened version of the code
+    so the user can either apply the security solution or stop diagnosis."""
+    audit_rep = _security_engine.analyze(code, language=language)
+    synth = AgenticCompilerCoordinator().synthesizer
+    if language == "cpp":
+        hardened, actions = synth.harden_cpp_security(code, audit_rep)
+    else:
+        hardened, actions = synth.harden_python_security(code, audit_rep)
+    after_rep = _security_engine.analyze(hardened, language=language)
+    still_blocked = after_rep.get("summary", {}).get("blocked", False)
+    orig_lines = code.splitlines()
+    hard_lines = hardened.splitlines()
+    line_fixes = {}
+    if len(orig_lines) == len(hard_lines):
+        for idx, (o_ln, h_ln) in enumerate(zip(orig_lines, hard_lines), start=1):
+            if o_ln != h_ln:
+                line_fixes[idx] = h_ln.strip()
+    return {
+        "can_sanitize": (hardened != code) and not still_blocked,
+        "has_partial_fix": (hardened != code),
+        "hardened_code": hardened if hardened != code else "",
+        "actions": actions,
+        "line_fixes": line_fixes,
+        "remaining_blocking": after_rep.get("severity_counts", {}).get("CRITICAL", 0)
+        + after_rep.get("severity_counts", {}).get("HIGH", 0),
+    }
+
+
+def _measure_efficiency(code, language="python", run_ms=0.0):
+    """Evaluate AST complexity and loop nesting depth when code is executable."""
+    import ast as _ast
+    avg_cc = 1.0
+    max_loop_depth = 0
+    if language == "python":
+        try:
+            tree = _ast.parse(code)
+            funcs = [n for n in _ast.walk(tree) if isinstance(n, (_ast.FunctionDef, _ast.AsyncFunctionDef))]
+            if funcs:
+                ccs = []
+                for fn in funcs:
+                    cc = 1
+                    for sub in _ast.walk(fn):
+                        if isinstance(sub, (_ast.If, _ast.For, _ast.AsyncFor, _ast.While, _ast.ExceptHandler, _ast.IfExp)):
+                            cc += 1
+                    ccs.append(cc)
+                avg_cc = round(sum(ccs) / len(ccs), 1)
+
+            def _depth(node, cur=0):
+                nonlocal max_loop_depth
+                if isinstance(node, (_ast.For, _ast.AsyncFor, _ast.While)):
+                    cur += 1
+                    if cur > max_loop_depth:
+                        max_loop_depth = cur
+                for ch in _ast.iter_child_nodes(node):
+                    _depth(ch, cur)
+
+            _depth(tree, 0)
+        except Exception:
+            pass
+    pts = 15
+    notes = []
+    if max_loop_depth >= 3:
+        pts -= 3
+        notes.append(f"nested loops (depth {max_loop_depth})")
+    elif max_loop_depth == 2:
+        pts -= 1
+    if avg_cc > 12:
+        pts -= 3
+        notes.append(f"high avg branch complexity ({avg_cc})")
+    elif avg_cc > 8:
+        pts -= 1
+    if run_ms and run_ms > 500:
+        pts -= 2
+        notes.append(f"runtime {run_ms:.0f} ms")
+    pts = max(5, min(15, pts))
+    detail = f"Executable ({pts}/15 pts · avg complexity {avg_cc}, loop depth {max_loop_depth})"
+    if notes:
+        detail += " — " + ", ".join(notes)
+    return {
+        "score": pts,
+        "max": 15,
+        "evaluated": True,
+        "avg_cyclomatic": avg_cc,
+        "max_loop_depth": max_loop_depth,
+        "run_ms": run_ms,
+        "status": detail,
+    }
+
+
+def compute_code_score(code, language, vulns, blocked, issues, executable=False, run_ms=0.0, fixed_code=None):
+    """
+    Transparent 3-Pillar Compiler Score on the CURRENT code in the editor:
+      1. Security (0 - 40 pts)      : Stage 1 gate. If CRITICAL/HIGH -> 0/40 and total score = 0 (Grade F - Blocked).
+      2. Errors   (0 - 45 pts)      : Stage 2 diagnosis. Deducts by error count and severity (Syntax, Runtime, Static, Logical).
+      3. Efficiency (0 - 15 pts)    : Stage 3 quality. Evaluated ONLY when the current code is executable (0 errors & not blocked).
+    """
+    if blocked:
+        n_crit = sum(1 for v in vulns if v.get("severity") == "CRITICAL")
+        n_high = sum(1 for v in vulns if v.get("severity") == "HIGH")
+        return {
+            "total_score": 0,
+            "grade": "F",
+            "grade_label": "Grade F · Blocked by Security",
+            "blocked": True,
+            "security": {
+                "score": 0,
+                "max": 40,
+                "status": f"BLOCKED ({n_crit} Critical, {n_high} High threat(s)) — Diagnosis halted at Stage 1",
+            },
+            "errors": {
+                "score": 0,
+                "max": 45,
+                "count": 0,
+                "status": "Stopped — Resolve security threat first before static/runtime diagnosis",
+            },
+            "efficiency": {
+                "score": 0,
+                "max": 15,
+                "evaluated": False,
+                "status": "Not executed (blocked by Security Gate)",
+            },
+            "projected": None,
+        }
+
+    # 1. Security Pillar (40 pts)
+    n_med = sum(1 for v in vulns if v.get("severity") == "MEDIUM")
+    n_low = sum(1 for v in vulns if v.get("severity") in ("LOW", "INFO"))
+    sec_pts = max(16, 40 - 6 * n_med - 3 * n_low)
+    sec_status = "Passed (40/40 · No security threats)" if not vulns else f"Passed ({sec_pts}/40 · {len(vulns)} non-blocking security note(s))"
+
+    # 2. Errors / Correctness Pillar (45 pts)
+    n_issues = len(issues)
+    if n_issues == 0:
+        err_pts = 45
+        err_status = "Clean (45/45 · 0 errors found)"
+    else:
+        deduction = 0
+        for iss in issues:
+            et = iss.get("type", "")
+            st = iss.get("stage", "")
+            if et in ("SyntaxError", "IndentationError") or st == "parser":
+                deduction += 10
+            elif st == "runtime":
+                deduction += 8
+            elif et == "LogicalError":
+                deduction += 5
+            else:
+                deduction += 7
+        err_pts = max(0, 45 - deduction)
+        err_status = f"{n_issues} error(s) in current code ({err_pts}/45 pts · -{min(45, deduction)} pts)"
+
+    # 3. Efficiency Pillar (15 pts) — only evaluated when current code is executable (0 errors)
+    if n_issues == 0 and executable:
+        eff_obj = _measure_efficiency(code, language=language, run_ms=run_ms)
+    else:
+        eff_obj = {
+            "score": 0,
+            "max": 15,
+            "evaluated": False,
+            "status": "Not executable yet (fix the errors above to run & measure efficiency)",
+        }
+
+    total_score = sec_pts + err_pts + eff_obj["score"]
+    if n_issues > 0:
+        # A file that still has unapplied errors in the editor cannot receive Grade A
+        total_score = min(total_score, 84)
+
+    if total_score >= 90 and n_issues == 0:
+        grade = "A"
+    elif total_score >= 75:
+        grade = "B"
+    elif total_score >= 60:
+        grade = "C"
+    elif total_score >= 40:
+        grade = "D"
+    else:
+        grade = "F"
+
+    projected = None
+    if fixed_code and fixed_code != code and n_issues > 0:
+        n_unfixed = sum(1 for iss in issues if not iss.get("patched"))
+        if n_unfixed == 0:
+            proj_eff = _measure_efficiency(fixed_code, language=language, run_ms=run_ms)["score"]
+            proj_total = sec_pts + 45 + proj_eff
+            proj_grade = "A" if proj_total >= 90 else "B"
+        else:
+            proj_total = min(84, sec_pts + max(0, 45 - 6 * n_unfixed))
+            proj_grade = "B" if proj_total >= 75 else ("C" if proj_total >= 60 else "D")
+        projected = {
+            "score": proj_total,
+            "grade": proj_grade,
+            "unfixed_remaining": n_unfixed,
+        }
+
+    return {
+        "total_score": total_score,
+        "grade": grade,
+        "grade_label": f"Grade {grade} · {total_score}/100",
+        "blocked": False,
+        "security": {"score": sec_pts, "max": 40, "status": sec_status},
+        "errors": {"score": err_pts, "max": 45, "count": n_issues, "status": err_status},
+        "efficiency": eff_obj,
+        "projected": projected,
+    }
 
 
 def fix_is_safe(original, fixed, language="python"):
     """A patch may never ADD a vulnerability class that the original didn't have."""
-    sa = SecurityAnalyzer()
-    before = Counter(v["type"] for v in sa.scan_code(original, language=language))
-    after = Counter(v["type"] for v in sa.scan_code(fixed, language=language))
-    return all(after[t] <= before[t] for t in after)
+    cmp_res = _security_engine.compare(original, fixed, language=language)
+    return bool(cmp_res.get("patch_safe", True))
 
 def verify_fix(original, fixed):
     """Closed-loop check: feed the patch back through the same pipeline.
@@ -227,6 +472,7 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
     skipped_static = set()               # unfixable static error keys (type, msg, orig_line)
     t_start = time.perf_counter()
     origin = list(range(1, len(code.split("\n")) + 1))   # line i of `current` came from original line origin[i]
+    synthesizer = AgenticCompilerCoordinator().synthesizer
     for i in range(max_iters):
         if time.perf_counter() - t_start > time_budget:
             history.append({"step": "final",
@@ -244,21 +490,46 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
         # If static analysis found multiple errors and earlier ones were unfixable, advance to
         # the next unskipped static error so EVERY error is explained and fixable ones are patched.
         active = ir_dict
-        if stage == "static" and ir_dict.get("all_errors"):
+        if stage == "static":
+            all_static = ir_dict.get("all_errors") or [ir_dict]
             picked = None
-            for cand in ir_dict["all_errors"]:
+            for cand in all_static:
                 key = (cand["error_type"], cand.get("error_message"), _orig_line(origin, cand.get("line_number")))
                 if key not in skipped_static:
                     picked = cand
                     break
             if picked is None:
-                break                    # every remaining static error was already reported as unfixable
-            active = dict(ir_dict,
-                          error_type=picked["error_type"],
-                          error_message=picked.get("error_message"),
-                          line_number=picked.get("line_number"),
-                          column=picked.get("column"),
-                          suggestion=picked.get("suggestion"))
+                # All static/logical errors in `current` have already been reported.
+                # Now run `current` in the isolated sandbox so any runtime errors are ALSO discovered and patched!
+                try:
+                    run_res = run_code(current)
+                except Exception:
+                    break
+                if not run_res.get("error_type"):
+                    break
+                r_orig_ln = _orig_line(origin, run_res.get("line_number"))
+                if any(sk[2] == r_orig_ln for sk in skipped_static):
+                    break
+                active = dict(
+                    ir_dict,
+                    error_type=run_res["error_type"],
+                    error_message=run_res.get("error_message"),
+                    line_number=run_res.get("line_number"),
+                    column=None,
+                    suggestion=None,
+                    traceback=run_res.get("traceback") or "",
+                )
+                tb = active["traceback"]
+                stage = "runtime"
+            else:
+                active = dict(
+                    ir_dict,
+                    error_type=picked["error_type"],
+                    error_message=picked.get("error_message"),
+                    line_number=picked.get("line_number"),
+                    column=picked.get("column"),
+                    suggestion=picked.get("suggestion"),
+                )
 
         err = CompilerError(active["error_type"], active.get("error_message"),
                             active.get("line_number"), stage, tb)
@@ -292,32 +563,47 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
         sig = (ir["error_type"], ir.get("error_message"), ln)
         static_key = (ir["error_type"], ir.get("error_message"), orig_ln)
         repeats[sig] += 1
-        fixed = explainer.generate_fixed_code(ir, current)    # decide + act
-        has_more_static = (
-            stage == "static"
-            and bool(ir_dict.get("all_errors"))
-            and any(
-                (c["error_type"], c.get("error_message"), _orig_line(origin, c.get("line_number")))
-                not in (skipped_static | {static_key})
-                for c in ir_dict["all_errors"]
-            )
+
+        # Use Agentic AI Compiler Contextual Synthesizer as primary fix generator
+        err_obj = CompilerErrorObj(
+            ir["error_type"],
+            ir.get("error_message") or "",
+            ln or 1,
+            stage,
+            tb,
+            suggestion=active.get("suggestion"),
         )
-        if fixed == current or not fix_is_safe(current, fixed):
+        fixed, ai_expl, ai_action = synthesizer.repair_functional_bug(
+            current, err_obj, language="python", precomputed_ir=ir
+        )
+        if ai_expl and not explanation:
+            explanation = ai_expl
+            entry["explanation"] = ai_expl
+
+        # Fallback to rule generator if agentic pass produced identical code
+        if fixed == current:
+            fixed = explainer.generate_fixed_code(ir, current)
+
+        diff_lines = _changed_lines(current, fixed) if fixed != current else []
+        added_snip = "\n".join(t for s_, t in diff_lines if s_ == "+")
+        step_safe = (fixed != current) and (not added_snip or not scan(added_snip, "python")[2])
+
+        if fixed == current or not step_safe:
             entry["result"] = "explanation only (manual fix needed)"
             history.append(entry)
-            if has_more_static:
+            if stage == "static":
                 skipped_static.add(static_key)
                 continue
             break
         if fixed in seen_states or repeats[sig] >= 3:         # patching in circles
             entry["result"] = "stuck (patch is not making progress)"
             history.append(entry)
-            if has_more_static:
+            if stage == "static":
                 skipped_static.add(static_key)
                 continue
             break
         seen_states.add(fixed)
-        entry["patch"] = _changed_lines(current, fixed)
+        entry["patch"] = diff_lines
         entry["result"] = "patched"
         history.append(entry)
         origin = _remap_origin(origin, current, fixed)        # keep the line map in step with the patch
@@ -475,6 +761,13 @@ def analyze_cpp(code, sec_struct=None, sec_log=None, first_ir=None, scan_start=N
     compiler = final_ir.get("compiler") or (first_ir or {}).get("compiler")
     warnings = final_ir.get("warnings") or []
     summary = build_summary(issues, verdict)
+    mdata = build_metrics_data(scan_ms, final_ir)
+    score_data = compute_code_score(
+        code, "cpp", sec_struct or [], False, issues,
+        executable=(len(issues) == 0 and not errors_remain),
+        run_ms=mdata.get("run_ms", 0.0),
+        fixed_code=fixed_code,
+    )
     raw_lines = [
         f"[C++ COMPILER] {compiler or 'g++/clang++'} (-fsyntax-only -Wall -Wextra -std=c++17)",
         f"[VERDICT] {verdict['verdict']}: {verdict['detail']}",
@@ -496,8 +789,9 @@ def analyze_cpp(code, sec_struct=None, sec_log=None, first_ir=None, scan_start=N
         "diagnostics": [entry["ir"] for entry in history if entry.get("error")],
         "verdict": verdict,
         "summary": summary,
+        "score_data": score_data,
         "metrics": build_metrics(final_ir),
-        "metrics_data": build_metrics_data(scan_ms, final_ir),
+        "metrics_data": mdata,
         "blocked": False,
         "security": sec_struct or [],
         "security_alerts": sec_log or [],
@@ -530,6 +824,7 @@ def build_issues(original_code, history):
         ir = h["ir"]
         patched = h["result"] == "patched"
         hides = patched and _hides_crash(h["error"], h.get("patch", []))
+        plus_lines = [t for s_, t in h.get("patch", []) if s_ == "+"]
         issues.append({
             "id": len(issues) + 1,
             "line": line,                                         # highlight THIS line in the code panel
@@ -543,6 +838,8 @@ def build_issues(original_code, history):
             "how_to_fix": parts.get("Fix", ""),
             "suggestion": ir.get("suggestion"),                   # "did you mean ...?"
             "patched": patched,
+            "is_ambiguous": not patched,
+            "ai_fix_line": plus_lines[-1] if plus_lines else "",
             "status": h["result"],
             "patch": [{"sign": s_, "text": t} for s_, t in h.get("patch", [])],
             "hides_crash": hides,
@@ -702,26 +999,49 @@ def analyze_code():
 
     lang = detect_language(filename=filename or data.get('filename'), code=code, explicit=explicit_lang)
 
-    # ---- STAGE 0: security gate. Runs BEFORE anything compiles or executes. ----
+    # ---- STAGE 1: SECURITY GATE. Runs FIRST before any static, runtime, or logical analysis. ----
+    # If any CRITICAL or HIGH threat is found, STOP HERE! Do NOT look for static/runtime errors until
+    # the security problem is either sanitized or the user chooses to stop diagnosis.
     vulns, sec_log, blocked = scan(code, language=lang)
-    sec_struct = [{"line": v["line"], "severity": v["severity"], "type": v["type"], "message": v["message"]}
-                  for v in vulns]
+    sec_struct = [
+        {
+            "line": v["line"],
+            "severity": v["severity"],
+            "type": v["type"],
+            "metric_id": v.get("metric_id", ""),
+            "cwe": v.get("cwe", ""),
+            "message": v["message"],
+        }
+        for v in vulns
+    ]
     if blocked:
+        sec_solution = build_security_solution(code, language=lang)
+        score_data = compute_code_score(code, lang, vulns, True, [], executable=False)
         return jsonify({
             "status": "blocked",
             "language": lang,
             "original_code": code,
-            "raw_text": "[SECURITY] Execution BLOCKED. Critical/High findings:\n  " + "\n  ".join(sec_log),
-            "metrics": "Not executed (blocked by security scan).",
+            "raw_text": "[STAGE 1 SECURITY GATE] Execution & Error Diagnosis BLOCKED. Critical/High findings:\n  " + "\n  ".join(sec_log),
+            "metrics": "Stopped at Stage 1 Security Gate.",
             "metrics_data": build_metrics_data((time.perf_counter() - t_req) * 1000),
             "blocked": True,
-            "security": sec_struct,          # UI: red banner + highlight these lines
-            "issues": [], "by_line": {},
-            "summary": {"total": 0, "fixed": 0, "unfixed": 0, "by_type": {}, "by_stage": {},
-                        "verdict": "BLOCKED", "detail": "Not run: security scan found critical/high risks."},
+            "security": sec_struct,
+            "security_solution": sec_solution,
+            "score_data": score_data,
+            "issues": [],
+            "by_line": {},
+            "summary": {
+                "total": 0,
+                "fixed": 0,
+                "unfixed": 0,
+                "by_type": {},
+                "by_stage": {},
+                "verdict": "BLOCKED",
+                "detail": f"Stage 1 Security Gate intercepted {len(sec_struct)} critical/high security threat(s). Error diagnosis halted until resolved.",
+            },
         })
 
-    # ---- C++ PIPELINE ----
+    # ---- STAGE 2A: C++ PIPELINE (Only reached when Stage 1 Security Gate passes) ----
     if lang == "cpp":
         try:
             first_ir = extract_cpp_error(code)
@@ -731,7 +1051,7 @@ def analyze_code():
             return jsonify({"status": "error", "error": str(e)}), 503
         return jsonify(result)
 
-    # ---- PYTHON PIPELINE: static analysis, then sandboxed run (inside extract_error) ----
+    # ---- STAGE 2B: PYTHON PIPELINE (Static, Logical & Sandboxed Runtime Error Discovery) ----
     try:
         ir_dict = extract_error(code)
     except RuntimeError as e:          # sandbox child died unexpectedly
@@ -740,7 +1060,6 @@ def analyze_code():
     if ir_dict and ir_dict.get("error_type"):
         error_type = ir_dict["error_type"]
         tb = ir_dict.get("traceback") or ""
-        # Category = which compiler stage found it. Useful field for your IR diagram.
         category = "static" if tb.startswith("(static") else "runtime"
 
         fixed_code, repair_history = repair_loop(code, first_ir=ir_dict)   # agent: explain + patch each issue
@@ -751,6 +1070,13 @@ def analyze_code():
         verdict = verify_fix(code, fixed_code)
         issues = build_issues(code, repair_history)
         scan_ms = (time.perf_counter() - t_req) * 1000
+        mdata = build_metrics_data(scan_ms, ir_dict)
+        score_data = compute_code_score(
+            code, "python", vulns, False, issues,
+            executable=False,
+            run_ms=mdata.get("run_ms", 0.0),
+            fixed_code=fixed_code,
+        )
 
         log_text = format_pipeline(sec_log, ir_dict, repair_history, verdict)
         log_text += "\n" + format_diagnosis(repair_history)
@@ -768,8 +1094,9 @@ def analyze_code():
             "diagnostics": [h["ir"] for h in repair_history if h.get("error")],   # full IR JSON, one per issue
             "fixed_code": fixed_code,
             "metrics": build_metrics(ir_dict),
-            "metrics_data": build_metrics_data(scan_ms, ir_dict),
-            # ---- structured data for the new UI ----
+            "metrics_data": mdata,
+            "score_data": score_data,
+            # ---- structured data for the UI ----
             "blocked": False,
             "security": sec_struct,
             "issues": issues,
@@ -779,8 +1106,15 @@ def analyze_code():
             "notes": [h["result"] for h in repair_history if not h.get("error") and h["result"] != "clean"],
         })
 
-    # No error found
+    # No error found — code executed cleanly!
     scan_ms = (time.perf_counter() - t_req) * 1000
+    mdata = build_metrics_data(scan_ms, ir_dict)
+    score_data = compute_code_score(
+        code, "python", vulns, False, [],
+        executable=True,
+        run_ms=mdata.get("run_ms", 0.0),
+        fixed_code=code,
+    )
     out_msg = "Execution completed normally. No compilation or runtime errors intercepted."
     captured = (ir_dict or {}).get("stdout", "")
     if captured and captured.strip():
@@ -793,10 +1127,11 @@ def analyze_code():
         "fixed_code": code,
         "security_alerts": sec_log,
         "metrics": build_metrics(ir_dict),
-        "metrics_data": build_metrics_data(scan_ms, ir_dict),
+        "metrics_data": mdata,
+        "score_data": score_data,
         "blocked": False, "security": sec_struct, "issues": [], "by_line": {},
         "summary": {"total": 0, "fixed": 0, "unfixed": 0, "by_type": {}, "by_stage": {},
-                    "verdict": "CLEAN", "detail": "No errors found."},
+                    "verdict": "CLEAN", "detail": "No errors found. Code executed cleanly in sandbox."},
     })
 
 
@@ -948,6 +1283,25 @@ def upload_file():
 @app.route('/analytics')
 def analytics():
     return render_template('analytics.html')
+
+
+@app.route('/suite-report')
+def suite_report_page():
+    return render_template('suite_report.html')
+
+
+@app.route('/api/suite-report', methods=['GET'])
+def api_suite_report():
+    """Returns the precomputed or live comprehensive test-suite report separating
+    Normal Error Diagnosis Test Files from Security Test Files."""
+    report_path = os.path.join("report_assets", "comprehensive_suite_report.json")
+    if os.path.exists(report_path):
+        try:
+            with open(report_path, "r", encoding="utf-8") as f:
+                return jsonify(json.load(f))
+        except Exception:
+            pass
+    return jsonify({"error": "Report not yet generated"}), 404
 
 
 @app.route('/api/security-metrics', methods=['POST'])

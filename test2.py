@@ -1,86 +1,28 @@
-# test2.py - Target: 85 lines
-import sys
+# test2.py - Syntax Rules & List Indexing Errors (4 Fixable Errors)
 import math
 
-def helper_func_0(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
+def compute_step_bonus(score):
+    # ERROR 1 (SyntaxError - fixable): assignment '=' used instead of '==' in if condition
+    if score = 100:
+        return 50
+    return 10
 
-def process_data_0(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_0(item))
-    return temp
+def verify_threshold(val)
+    # ERROR 2 (SyntaxError - fixable): missing colon ':' at end of function definition above
+    return val * 2
 
-def helper_func_1(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_1(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_1(item))
-    return temp
-
-def helper_func_2(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_2(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_2(item))
-    return temp
-
-def helper_func_3(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_3(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_3(item))
-    return temp
-
-def helper_func_4(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_4(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_4(item))
-    return temp
-
-def helper_func_5(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_5(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_5(item))
-    return temp
+def pick_middle_element():
+    samples = [10, 20, 30, 40, 50]
+    # ERROR 3 (TypeError - fixable): single-slash division '/' produces a float index (2.0)
+    mid = samples[4 / 2]
+    # ERROR 4 (IndexError - fixable): off-by-one index len(samples) is past the end of the list
+    last = samples[len(samples)]
+    return mid, last
 
 def main():
-    print('Running main...')
-    if True # ERROR: missing colon
-        print('True')
-    pass # padding
-    pass # padding
-    pass # padding
+    print("Bonus:", compute_step_bonus(100))
+    print("Threshold:", verify_threshold(12))
+    print("Elements:", pick_middle_element())
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

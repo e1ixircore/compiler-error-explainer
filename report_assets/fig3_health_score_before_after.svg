@@ -18,10 +18,10 @@
 <text x="70" y="157.0" text-anchor="end" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#334155">92</text>
 <line x1="80" y1="80.0" x2="920" y2="80.0" stroke="#e2e8f0"/>
 <text x="70" y="84.0" text-anchor="end" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#334155">115</text>
-<rect x="190.0" y="194.9" width="28.0" height="250.1" fill="#f97316" rx="2"/>
-<text x="204.0" y="189.9" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#334155">78.8</text>
-<rect x="222.0" y="162.3" width="28.0" height="282.7" fill="#2563eb" rx="2"/>
-<text x="236.0" y="157.3" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#334155">89.1</text>
+<rect x="190.0" y="193.3" width="28.0" height="251.7" fill="#f97316" rx="2"/>
+<text x="204.0" y="188.3" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#334155">79.3</text>
+<rect x="222.0" y="157.1" width="28.0" height="287.9" fill="#2563eb" rx="2"/>
+<text x="236.0" y="152.1" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#334155">90.7</text>
 <text x="220.0" y="467" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#1e293b">Python &gt;=2000 LOC (n=45)</text>
 <rect x="470.0" y="244.5" width="28.0" height="200.5" fill="#f97316" rx="2"/>
 <text x="484.0" y="239.5" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="10" fill="#334155">63.2</text>

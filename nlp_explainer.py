@@ -530,6 +530,8 @@ class NLPExplainer:
         "ValueError": "A value has the right type but its content is not acceptable.",
         "AttributeError": "An object was asked for a property or action (method) that it does not have.",
         "ModuleNotFoundError": "Python could not find the library you tried to import.",
+        "LogicalError": "The code is valid Python, but its logic does something different from what you intended.",
+        "UnboundLocalError": "A local variable inside a function was read before a value was assigned to it.",
         "TimeoutError": "The program ran too long and was stopped.",
         "NestingError": "The code is stacked too deeply for the tool to analyse safely.",
     }
@@ -585,11 +587,38 @@ class NLPExplainer:
                 f"len() was called on a value that has no length{where}.",
                 f"len() only works on collections or text (such as lists, strings, or dicts), not single numbers or None ({msg}).",
                 "Pass a list or string to len(), or convert the number with str(...) if you want its digit count.")
+        elif "missing" in msg and "positional argument" in msg or "takes" in msg and "positional argument" in msg:
+            type_rule = (
+                f"A function was called with the wrong number of arguments{where}.",
+                f"The function definition expects a specific number of inputs, but the call did not match ({msg}).",
+                "Pass the required argument(s) inside the parentheses when calling the function (edit the line in the manual patch box below).")
         else:
             type_rule = (
                 f"Two different kinds of data are being combined{where}.",
                 f"Python does not allow this operation on these data types. Python said: {msg}",
                 "Convert one of the values so both are the same kind, e.g. str(5) or int('5').")
+
+        # ---- LogicalError: identity 'is' with literal / tuple assert / self-comparison ----
+        if "identity operator" in msg:
+            logic_rule = (
+                f"You used 'is' (or 'is not') to compare a value with a literal{where}.",
+                "In Python, 'is' checks whether two objects live at the exact same memory address, not whether their values are equal. For numbers and text, 'is' can produce the wrong answer.",
+                "Use '==' (or '!=') to compare values instead of 'is'.")
+        elif "non-empty tuple" in msg:
+            logic_rule = (
+                f"An assert statement was written with outer parentheses like assert(condition, message){where}.",
+                "In Python, assert(a, b) tests whether the 2-item tuple (a, b) is non-empty. Because a 2-item tuple is ALWAYS truthy, this assertion never triggers even when the condition is False!",
+                "Remove the outer parentheses so it reads: assert condition, message")
+        elif "self-comparison" in msg:
+            logic_rule = (
+                f"The variable '{name}' is being compared to itself{where}.",
+                "Comparing a variable to itself (such as x == x or x != x) always evaluates to the same True/False constant no matter what value the variable holds. Usually you meant to compare it against another variable.",
+                "Edit the right-hand side of the comparison in the manual patch box below to use the intended variable or threshold.")
+        else:
+            logic_rule = (
+                f"A logical flaw was detected{where}.",
+                msg or "The code runs without crashing, but its condition or operation always produces an unintended result.",
+                "Review the condition or expression on this line and update it to match your intended logic.")
 
         # ---- NameError: forgotten import / other-language literal / typo / never created ----
         if name in IMPORTABLE:
@@ -656,6 +685,11 @@ class NLPExplainer:
                 + (f" Did you mean '{near}'?" if near else ""),
                 (f"Change the name to '{near}' if that was your intention, otherwise install it" if near
                  else "Check the spelling, or install it") + f" with: pip install {name}"),
+            "LogicalError": logic_rule,
+            "UnboundLocalError": (
+                f"The local variable '{name}'{where} is used before a value is assigned to it inside this function.",
+                "Because this function assigns to '" + (name or "x") + "' later on, Python treats it as a local variable for the whole function, so reading it before that assignment fails.",
+                f"Give '{name or 'x'}' an initial value at the start of the function, or fix the variable spelling."),
             "TimeoutError": (
                 "The program ran for more than 5 seconds and was stopped.",
                 "This usually means a loop that never ends, such as while True without a way to break out.",
@@ -987,3 +1021,23 @@ class NLPExplainer:
         new = _apply(line, edits)
         if new != line:
             lines[i] = new
+
+    # ---- LogicalError --------------------------------------------------
+    def _fix_LogicalError(self, ir, lines, i):
+        msg = ir.get("error_message") or ""
+        line = lines[i]
+        code_part, comment = _split_comment(line)
+        if "identity operator" in msg:
+            # Replace ' is not ' with ' != ' or ' is ' with ' == '
+            if re.search(r"\bis\s+not\b", code_part):
+                new_code = re.sub(r"\bis\s+not\b", "!=", code_part, count=1)
+            else:
+                new_code = re.sub(r"\bis\b", "==", code_part, count=1)
+            if new_code != code_part:
+                lines[i] = new_code + comment
+        elif "non-empty tuple" in msg:
+            # assert (a, b) -> assert a, b
+            m = re.match(r"^(\s*assert)\s*\((.+)\)\s*$", code_part)
+            if m:
+                lines[i] = f"{m.group(1)} {m.group(2)}{comment}"
+        # Note: 'self-comparison' (x == x) is intentionally left as ambiguous / manual patch.

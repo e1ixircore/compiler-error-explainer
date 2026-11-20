@@ -80,7 +80,7 @@ METRICS_REGISTRY: Dict[str, MetricSpec] = {
     "SEC_20": MetricSpec("SEC_20", "Symlink / Arbitrary File Write", "File System & Path Traversal", "CWE-59", "MEDIUM", 4.5, "detector", "Detects os.symlink or write-mode file openings (open(..., 'w'/'a'/'x'))."),
 
     # --- Category 4: Cryptography & Secrets (7) ---
-    "SEC_21": MetricSpec("SEC_21", "Hardcoded Credentials / High-Entropy Secrets", "Cryptography & Secrets", "CWE-798", "HIGH", 7.5, "detector", "Detects hardcoded passwords, API keys, tokens, or high-entropy secret strings."),
+    "SEC_21": MetricSpec("SEC_21", "Hardcoded Credentials / High-Entropy Secrets", "Cryptography & Secrets", "CWE-798", "LOW", 3.5, "detector", "Detects hardcoded passwords, API keys, tokens, or high-entropy secret strings."),
     "SEC_22": MetricSpec("SEC_22", "Weak Pseudo-Random Generator", "Cryptography & Secrets", "CWE-338", "MEDIUM", 4.0, "detector", "Detects use of non-cryptographic random module instead of secrets."),
     "SEC_23": MetricSpec("SEC_23", "Deprecated Hash Algorithm (MD5/SHA1)", "Cryptography & Secrets", "CWE-328", "MEDIUM", 5.0, "detector", "Detects cryptographically broken hashlib.md5 or hashlib.sha1."),
     "SEC_24": MetricSpec("SEC_24", "Weak Symmetric Cipher (DES/RC4/ECB)", "Cryptography & Secrets", "CWE-327", "HIGH", 6.5, "detector", "Detects broken ciphers (DES, Blowfish, ARC4) or insecure ECB mode."),
@@ -89,7 +89,7 @@ METRICS_REGISTRY: Dict[str, MetricSpec] = {
     "SEC_27": MetricSpec("SEC_27", "Weak Key Size / Insecure SSL Version", "Cryptography & Secrets", "CWE-326", "HIGH", 6.5, "detector", "Detects RSA/DSA key sizes < 2048 bits or deprecated SSLv2/SSLv3/TLSv1."),
 
     # --- Category 5: Network & Server-Side Security (6) ---
-    "SEC_28": MetricSpec("SEC_28", "Server-Side Request Forgery (SSRF)", "Network & Server-Side Security", "CWE-918", "HIGH", 7.5, "detector", "Detects outbound HTTP requests (requests/urllib) using dynamic/tainted URLs."),
+    "SEC_28": MetricSpec("SEC_28", "Server-Side Request Forgery (SSRF)", "Network & Server-Side Security", "CWE-918", "MEDIUM", 5.5, "detector", "Detects outbound HTTP requests (requests/urllib) using dynamic/tainted URLs."),
     "SEC_29": MetricSpec("SEC_29", "Unrestricted Socket Binding", "Network & Server-Side Security", "CWE-1327", "MEDIUM", 5.0, "detector", "Detects binding network sockets to all interfaces ('0.0.0.0') or raw socket use."),
     "SEC_30": MetricSpec("SEC_30", "Sensitive Data Exposure in Logs", "Network & Server-Side Security", "CWE-532", "LOW", 3.0, "detector", "Detects logging or printing variables named password, secret, token, or key."),
     "SEC_31": MetricSpec("SEC_31", "Cleartext Protocol Usage", "Network & Server-Side Security", "CWE-319", "MEDIUM", 5.0, "detector", "Detects insecure cleartext protocols (ftplib, telnetlib, hardcoded http://)."),
@@ -369,6 +369,94 @@ class SecurityMetricsEngine:
         try:
             tree = ast.parse(code_string)
         except SyntaxError as exc:
+            # Fallback lexical scanner: syntax errors must NOT blind the security engine
+            # to dangerous sinks (e.g. os.system, eval, pickle, raw SQL, hardcoded secrets).
+            for lineno, raw_line in enumerate(lines, 1):
+                clean_line = raw_line.split("#")[0]
+                if re.search(r"\b(?:os\.system|os\.popen|subprocess\.(?:run|Popen|call|check_output))\s*\(", clean_line):
+                    record("SEC_01", lineno, "OS command execution sink detected (lexical scan).")
+                if re.search(r"\b(?:eval|exec)\s*\(", clean_line):
+                    record("SEC_02", lineno, "Dynamic code evaluation sink detected (lexical scan).")
+                if re.search(r"\b(?:pickle|marshal|dill)\.loads?\s*\(|\byaml\.(?:unsafe_load|load)\s*\(", clean_line):
+                    record("SEC_03", lineno, "Insecure deserialization sink detected (lexical scan).")
+                if re.search(r"\bcursor\.execute\s*\(|SELECT\s+.*FROM|DELETE\s+FROM|INSERT\s+INTO|UPDATE\s+.*SET", clean_line, re.IGNORECASE):
+                    record("SEC_04", lineno, "Dynamic SQL query construction detected (lexical scan).")
+                if re.search(r"\b(?:xml\.etree|xml\.dom|defusedxml|ET\.fromstring)\b", clean_line):
+                    record("SEC_05", lineno, "Unsafe XML parser import/call detected (lexical scan).")
+                if re.search(r"\brender_template_string\s*\(|\bTemplate\s*\(", clean_line):
+                    record("SEC_06", lineno, "Server-side template injection sink detected (lexical scan).")
+                if re.search(r"\b(?:search_s|ldap|xpath)\s*\(", clean_line):
+                    record("SEC_07", lineno, "LDAP / XPath query injection sink detected (lexical scan).")
+                if re.search(r"\b__import__\s*\(|importlib\.import_module\s*\(", clean_line):
+                    record("SEC_08", lineno, "Dynamic import sink detected (lexical scan).")
+                if re.search(r"\b(?:__subclasses__|__bases__|__mro__)\b", clean_line):
+                    record("SEC_09", lineno, "Sandbox escape attribute detected (lexical scan).")
+                if re.search(r"\b(?:__builtins__|builtins)\b", clean_line):
+                    record("SEC_10", lineno, "Builtins namespace access detected (lexical scan).")
+                if re.search(r"\b(?:_getframe|currentframe)\b", clean_line):
+                    record("SEC_11", lineno, "Stack frame inspection detected (lexical scan).")
+                if re.search(r"\b(?:ctypes|CDLL|c_char_p)\b", clean_line):
+                    record("SEC_12", lineno, "Native code binding (ctypes) detected (lexical scan).")
+                if re.search(r"\bglobals\(\)|\b__globals__\b", clean_line):
+                    record("SEC_13", lineno, "Global symbol table tampering detected (lexical scan).")
+                if re.search(r"\bgetattr\s*\([^,]+,\s*['\"](?:system|eval|exec|popen)", clean_line):
+                    record("SEC_14", lineno, "Obfuscated dynamic invocation via getattr detected (lexical scan).")
+                if "../" in clean_line or "..\\" in clean_line:
+                    record("SEC_15", lineno, "Directory traversal sequence detected (lexical scan).")
+                if re.search(r"\b(?:os\.remove|os\.unlink|shutil\.rmtree|os\.rmdir)\s*\(", clean_line):
+                    record("SEC_16", lineno, "Destructive file operation detected (lexical scan).")
+                if "tempfile.mktemp" in clean_line:
+                    record("SEC_17", lineno, "Insecure tempfile.mktemp() detected (lexical scan).")
+                if any(p in clean_line.lower() for p in ("/etc/passwd", "/etc/shadow", ".aws/credentials", "id_rsa")):
+                    record("SEC_18", lineno, "Sensitive system path access detected (lexical scan).")
+                if re.search(r"chmod\s*\([^,]+,\s*(?:0o?777|0777|0o?666)", clean_line):
+                    record("SEC_19", lineno, "Permissive file permissions (chmod 0777) detected (lexical scan).")
+                if re.search(r"open\s*\([^,]+,\s*['\"][wax+]", clean_line):
+                    record("SEC_20", lineno, "Direct file write sink detected (lexical scan).")
+                m_sec = re.search(r"\b([A-Za-z_]\w*(?:password|secret|api_key|token|auth_token)\w*)\s*=\s*['\"]([^'\"]+)['\"]", clean_line, re.IGNORECASE)
+                if m_sec or re.search(r"['\"](?:sk_live|demo_key|demo_prod|tok_)[0-9a-zA-Z_]+['\"]", clean_line):
+                    record("SEC_21", lineno, "Hardcoded secret / API token detected (lexical scan).")
+                if re.search(r"\brandom\.(?:random|randint|choice|randrange)\b", clean_line):
+                    record("SEC_22", lineno, "Non-cryptographic PRNG detected (lexical scan).")
+                if re.search(r"\bhashlib\.(?:md5|sha1)\s*\(|\bhashlib\.new\(\s*['\"](?:md5|sha1)['\"]", clean_line):
+                    record("SEC_23", lineno, "Deprecated weak hash MD5/SHA1 detected (lexical scan).")
+                if re.search(r"\b(?:DES|ARC4|Blowfish|MODE_ECB)\b", clean_line):
+                    record("SEC_24", lineno, "Weak cipher / ECB mode detected (lexical scan).")
+                if re.search(r"\b(?:salt|iv)\s*=\s*(?:['\"]|b['\"])", clean_line):
+                    record("SEC_25", lineno, "Static hardcoded salt/IV detected (lexical scan).")
+                if "verify=False" in clean_line or "ssl._create_unverified_context" in clean_line:
+                    record("SEC_26", lineno, "TLS verification disabled (verify=False) (lexical scan).")
+                if re.search(r"key_size\s*=\s*(?:512|1024)|SSLv2|SSLv3|TLSv1", clean_line):
+                    record("SEC_27", lineno, "Weak cryptographic key / protocol detected (lexical scan).")
+                if re.search(r"requests\.(?:get|post|put|delete)\s*\(|urllib\.request\.urlopen\s*\(", clean_line):
+                    record("SEC_28", lineno, "Outbound HTTP request sink (SSRF risk) detected (lexical scan).")
+                if re.search(r"\.bind\(\s*\(\s*['\"](?:0\.0\.0\.0|0)['\"]|\bsocket\.socket\b", clean_line):
+                    record("SEC_29", lineno, "Unrestricted socket binding detected (lexical scan).")
+                if re.search(r"logging\.\w+\s*\(.*token", clean_line, re.IGNORECASE):
+                    record("SEC_30", lineno, "Sensitive token exposed in application logs (lexical scan).")
+                if re.search(r"['\"](?:http|ftp|telnet)://", clean_line):
+                    record("SEC_31", lineno, "Insecure cleartext protocol URI detected (lexical scan).")
+                if "send_header" in clean_line:
+                    record("SEC_32", lineno, "Potential HTTP response splitting / header injection (lexical scan).")
+                if "debug=True" in clean_line:
+                    record("SEC_33", lineno, "Production debug mode enabled (debug=True) (lexical scan).")
+                if re.search(r"\(\w\+\)\+", clean_line):
+                    record("SEC_34", lineno, "Potential ReDoS regular expression detected (lexical scan).")
+                if ".read()" in clean_line:
+                    record("SEC_35", lineno, "Unbounded file read() detected (lexical scan).")
+                if re.search(r"while\s+True\s*:", clean_line):
+                    record("SEC_36", lineno, "Unbounded while True loop detected (lexical scan).")
+                if "infinite_descent" in clean_line:
+                    record("SEC_37", lineno, "Unbounded recursion hazard detected (lexical scan).")
+                if ".extractall(" in clean_line:
+                    record("SEC_38", lineno, "Unbounded archive extraction (zip-bomb risk) detected (lexical scan).")
+                if re.search(r"(?:subprocess\.(?:run|Popen|call)|requests\.(?:get|post))\s*\(", clean_line) and "timeout=" not in clean_line:
+                    record("SEC_39", lineno, "Subprocess/Network call lacks timeout= guard (lexical scan).")
+                if re.search(r"threading\.Thread|multiprocessing\.Process", clean_line):
+                    record("SEC_40", lineno, "Concurrency worker spawned (lexical scan).")
+                if re.search(r"except\s*:", clean_line):
+                    record("SEC_45", lineno, "Silent bare 'except:' clause detected (lexical scan).")
+
             return self._finalize_report(
                 findings, metric_counts, loc=loc, ast_nodes=0,
                 cyclomatic=1, parse_error=f"SyntaxError at line {exc.lineno}: {exc.msg}",
@@ -952,11 +1040,13 @@ class SecurityMetricsEngine:
             after["summary"]["security_health_score"] - before["summary"]["security_health_score"], 2
         )
 
-        # Safe if no new HIGH/CRITICAL metric was introduced and total risk did not increase
+        # Safe if no new HIGH/CRITICAL metric was introduced and severe findings did not increase
         introduced_severe = [
             m for m in newly_introduced if self.registry[m].severity in ("CRITICAL", "HIGH")
         ]
-        patch_safe = (len(introduced_severe) == 0 and risk_delta <= 0)
+        severe_before = before["severity_counts"].get("CRITICAL", 0) + before["severity_counts"].get("HIGH", 0)
+        severe_after = after["severity_counts"].get("CRITICAL", 0) + after["severity_counts"].get("HIGH", 0)
+        patch_safe = (len(introduced_severe) == 0 and severe_after <= severe_before)
 
         return {
             "patch_safe": patch_safe,

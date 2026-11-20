@@ -1,301 +1,35 @@
-# test7.py - Target: 300 lines
-import sys
-import math
+# test7.py - Control Flow, Types & Runtime Division by Zero (5 Fixable Errors)
+def classify_temperature(temp):
+    if temp > 100:
+        return "boiling"
+    # ERROR 1 (SyntaxError - fixable): 'else if' instead of Python's 'elif'
+    else if temp > 50:
+        return "warm"
+    return "cool"
 
-def helper_func_0(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
+def build_age_message():
+    # ERROR 2 (TypeError - fixable): concatenating str and int
+    msg = "Age: " + 25
+    return msg
 
-def process_data_0(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_0(item))
-    return temp
+def compute_moving_average():
+    readings = [10, 20, 30]
+    # ERROR 3 (IndexError - fixable): index 6 is out of bounds for 3-element list
+    peak = readings[6]
+    # ERROR 4 (NameError - fixable): typo 'readngs' -> 'readings'
+    return peak + len(readngs)
 
-def helper_func_1(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_1(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_1(item))
-    return temp
-
-def helper_func_2(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_2(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_2(item))
-    return temp
-
-def helper_func_3(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_3(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_3(item))
-    return temp
-
-def helper_func_4(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_4(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_4(item))
-    return temp
-
-def helper_func_5(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_5(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_5(item))
-    return temp
-
-def helper_func_6(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_6(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_6(item))
-    return temp
-
-def helper_func_7(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_7(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_7(item))
-    return temp
-
-def helper_func_8(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_8(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_8(item))
-    return temp
-
-def helper_func_9(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_9(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_9(item))
-    return temp
-
-def helper_func_10(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_10(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_10(item))
-    return temp
-
-def helper_func_11(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_11(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_11(item))
-    return temp
-
-def helper_func_12(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_12(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_12(item))
-    return temp
-
-def helper_func_13(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_13(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_13(item))
-    return temp
-
-def helper_func_14(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_14(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_14(item))
-    return temp
-
-def helper_func_15(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_15(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_15(item))
-    return temp
-
-def helper_func_16(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_16(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_16(item))
-    return temp
-
-def helper_func_17(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_17(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_17(item))
-    return temp
-
-def helper_func_18(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_18(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_18(item))
-    return temp
-
-def helper_func_19(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_19(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_19(item))
-    return temp
-
-def helper_func_20(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_20(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_20(item))
-    return temp
-
-def helper_func_21(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_21(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_21(item))
-    return temp
-
-def helper_func_22(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_22(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_22(item))
-    return temp
-
-def helper_func_23(val):
-    res = val * 2
-    for i in range(3):
-        res += i
-    return res
-
-def process_data_23(data):
-    temp = []
-    for item in data:
-        temp.append(helper_func_23(item))
-    return temp
+def runtime_rate_calculation():
+    deltas = [5, -5]
+    # ERROR 5 (ZeroDivisionError - runtime fixable): divisor evaluates to 0 at runtime
+    divisor = sum(deltas)
+    return 200 / divisor
 
 def main():
-    print('Running main...')
-    res = 'string' + 5 # ERROR: type error
-    pass # padding
-    pass # padding
-    pass # padding
+    print(classify_temperature(60))
+    print(build_age_message())
+    print(compute_moving_average())
+    print(runtime_rate_calculation())
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
