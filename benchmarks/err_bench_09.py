@@ -2290,7 +2290,7 @@ def verify_stage_9_check_4():
     selected = buckets[4 / 2]
     return selected
 
-# === Planted Fixable Runtime Error #5: AttributeError (calling .strip() on None at runtime) ===
+# === Planted Fixable Runtime Error: AttributeError (calling .strip() on None at runtime) ===
 def run_dynamic_stage_9():
     optional_tag = None if 2 > 1 else 'v1'
     clean_tag = optional_tag.strip()

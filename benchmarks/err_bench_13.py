@@ -2363,7 +2363,7 @@ def verify_stage_13_check_4():
     total_metric_score = 128
     return total_metrc_score + 10
 
-# === Planted Fixable Runtime Error #5: AttributeError (calling .strip() on None at runtime) ===
+# === Planted Fixable Runtime Error: AttributeError (calling .strip() on None at runtime) ===
 def run_dynamic_stage_13():
     optional_tag = None if 2 > 1 else 'v1'
     clean_tag = optional_tag.strip()

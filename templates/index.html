@@ -636,6 +636,7 @@
             <option value="python">Python</option>
             <option value="cpp">C++</option>
           </select>
+          <button id="undoBtn" class="ghost" disabled title="Undo last edit (Cmd/Ctrl+Z)">↶ Undo</button>
           <button id="runBtn" class="ghost" disabled>Run</button>
           <button id="saveBtn" class="ghost" disabled>Save</button>
         </div>
@@ -746,9 +747,38 @@
       scoreData: null,
       blocked: false,
       patchedLines: new Set(),
+      undoStack: [],
       allFiles: [],
       menuFilter: 'all',
     };
+
+    function updateUndoBtn() {
+      const btn = $('#undoBtn');
+      if (!btn) return;
+      const n = S.undoStack.length;
+      btn.disabled = n === 0;
+      btn.textContent = n > 0 ? `↶ Undo (${n})` : '↶ Undo';
+    }
+
+    function pushUndo() {
+      S.undoStack.push({
+        code: S.code,
+        patchedLines: new Set(S.patchedLines),
+      });
+      if (S.undoStack.length > 50) S.undoStack.shift();
+      updateUndoBtn();
+    }
+
+    function performUndo() {
+      if (!S.undoStack.length) return;
+      const prev = S.undoStack.pop();
+      S.code = prev.code;
+      S.patchedLines = prev.patchedLines;
+      S.issues.forEach(i => { i._applied = false; });
+      $('#scanBtn').textContent = 'Re-analyze';
+      updateUndoBtn();
+      paintCode();
+    }
 
     const activeLang = () => S.lang === 'auto' ? null : S.lang;
     $('#langSel').onchange = e => { S.lang = e.target.value; };
@@ -841,6 +871,8 @@
       S.secSolution = null;
       S.blocked = false;
       S.patchedLines.clear();
+      S.undoStack = [];
+      updateUndoBtn();
 
       $('#fname').textContent = filename.replace('benchmarks/', '');
       $('#fname').title = filename;
@@ -968,6 +1000,7 @@
     }
 
     function insertLineAt(lineNo, initialText = null) {
+      pushUndo();
       const lines = S.code.split('\n');
       const idx = Math.max(0, Math.min(lineNo - 1, lines.length));
       // Inherit indentation from the target line (or previous line if appending at end)
@@ -1035,7 +1068,10 @@
     function commitInlineLineEdit(lineNo, newText) {
       const lines = S.code.split('\n');
       if (lineNo < 1 || lineNo > lines.length) return;
-      lines[lineNo - 1] = newText.replace(/\r?\n/g, '');
+      const cleaned = newText.replace(/\r?\n/g, '');
+      if (lines[lineNo - 1] === cleaned) { paintCode(); return; }
+      pushUndo();
+      lines[lineNo - 1] = cleaned;
       S.code = lines.join('\n');
       S.patchedLines.add(lineNo);
       $('#scanBtn').textContent = 'Re-analyze';
@@ -1120,7 +1156,13 @@
       $('#pErrVal').textContent = sc.blocked ? '—' : `${pErr.score}/${pErr.max}`;
       $('#pErrBar').style.width = sc.blocked ? '0%' : `${Math.round((pErr.score / pErr.max) * 100)}%`;
       $('#pErrBar').style.background = pErr.score === 45 ? 'var(--ok)' : (pErr.score >= 25 ? 'var(--warn)' : 'var(--runtime)');
-      $('#pErrDesc').textContent = sc.blocked ? 'Halted' : (pErr.count === 0 ? '0 errors' : `${pErr.count} found`);
+      $('#pErrDesc').textContent = sc.blocked
+        ? 'Halted'
+        : (pErr.count === 0
+            ? '0 errors'
+            : (sc.defect_density_per_100_loc != null
+                ? `${pErr.count} · ${sc.defect_density_per_100_loc}/100 LOC`
+                : `${pErr.count} found`));
 
       const pEff = sc.efficiency || { score: 0, max: 15, evaluated: false };
       $('#pEffVal').textContent = pEff.evaluated ? `${pEff.score}/${pEff.max}` : '—/15';
@@ -1188,7 +1230,7 @@
         if (sol.hardened_code) {
           const act = el('div', 'sec-gate-actions');
           const sanAll = el('button', '', 'Sanitize All & Continue');
-          sanAll.onclick = () => { S.code = sol.hardened_code; paintCode(); runCompilerPipeline(); };
+          sanAll.onclick = () => { pushUndo(); S.code = sol.hardened_code; paintCode(); runCompilerPipeline(); };
           act.append(sanAll);
           card.append(act);
         }
@@ -1340,6 +1382,7 @@
       const lines = S.code.split('\n');
       const idx = (lineNo || 1) - 1;
       if (idx < 0 || idx >= lines.length) return;
+      pushUndo();
       const origIndent = (lines[idx].match(/^\s*/) || [''])[0];
       const parts = newText.replace(/\r\n/g, '\n').split('\n').map(p => (/^\s+/.test(p) ? p : origIndent + p.trim()));
       lines.splice(idx, 1, ...parts);
@@ -1359,6 +1402,7 @@
       const plusPatches = (iss.patch || []).filter(p => p.sign === '+');
       const hasMinus = (iss.patch || []).some(p => p.sign === '-');
       if (!plusPatches.length) return;
+      pushUndo();
 
       const lines = S.code.split('\n');
       let targetLine = iss.line || 1;
@@ -1386,6 +1430,7 @@
 
     async function applyAllAiFixes() {
       if (!S.fixed) return;
+      pushUndo();
       S.code = S.fixed;
       S.issues.forEach(i => { if (i.patched && i.line) S.patchedLines.add(i.line); });
       paintCode();
@@ -1461,6 +1506,18 @@
         await loadFiles();
       } catch (e) { alert(e.message); }
     };
+
+    $('#undoBtn').onclick = performUndo;
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        const ae = document.activeElement;
+        if (ae && (ae.isContentEditable || ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+        if (S.undoStack.length) {
+          e.preventDefault();
+          performUndo();
+        }
+      }
+    });
 
     $('#menuBtn').onclick = () => { $('#menu').classList.toggle('open'); loadFiles(); };
     $('#upBtn').onclick = () => $('#upIn').click();

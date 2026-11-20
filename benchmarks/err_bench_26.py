@@ -2364,7 +2364,7 @@ def verify_stage_26_check_4():
     assert (level > 0, 'level must be positive')
     return level
 
-# === Planted Fixable Runtime Error #5: ZeroDivisionError (dynamic runtime zero divisor) ===
+# === Planted Fixable Runtime Error: ZeroDivisionError (dynamic runtime zero divisor) ===
 def run_dynamic_stage_26():
     active_steps = [4, -4]
     divisor = sum(active_steps)

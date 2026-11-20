@@ -2218,14 +2218,14 @@ def verify_stage_7_check_4():
         return 1
     return 0
 
-# === Planted Fixable Runtime Error #5: AttributeError (calling .strip() on None at runtime) ===
+# === Planted Fixable Runtime Error: AttributeError (calling .strip() on None at runtime) ===
 def run_dynamic_stage_7():
     optional_tag = None if 2 > 1 else 'v1'
     clean_tag = optional_tag.strip()
     return clean_tag
 
-# === Planted Occasional Ambiguous Error #6: LogicalError (ambiguous self-comparison tautology 'x == x') ===
-def calibrate_custom_stage_7():
+# === Planted Occasional Ambiguous Error #1: LogicalError (ambiguous self-comparison tautology 'x == x') ===
+def calibrate_custom_stage_7_1():
     target_threshold = 75
     upper_limit = 90
     if target_threshold == target_threshold:

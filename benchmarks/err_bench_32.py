@@ -2070,15 +2070,15 @@ def verify_stage_32_check_4():
     banner_label = 'Stage cycle count: ' + 42
     return banner_label
 
-# === Planted Fixable Runtime Error #5: ZeroDivisionError (dynamic runtime zero divisor) ===
+# === Planted Fixable Runtime Error: ZeroDivisionError (dynamic runtime zero divisor) ===
 def run_dynamic_stage_32():
     active_steps = [4, -4]
     divisor = sum(active_steps)
     result = 100 / divisor
     return result
 
-# === Planted Occasional Ambiguous Error #6: NameError (ambiguous undeclared external variable with no close match) ===
-def calibrate_custom_stage_32():
+# === Planted Occasional Ambiguous Error #1: NameError (ambiguous undeclared external variable with no close match) ===
+def calibrate_custom_stage_32_1():
     base_factor = 12
     adjusted = base_factor * external_calibration_constant
     return adjusted

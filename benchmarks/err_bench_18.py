@@ -2143,7 +2143,7 @@ def verify_stage_18_check_4():
     banner_label = 'Stage cycle count: ' + 42
     return banner_label
 
-# === Planted Fixable Runtime Error #5: ZeroDivisionError (dynamic runtime zero divisor) ===
+# === Planted Fixable Runtime Error: ZeroDivisionError (dynamic runtime zero divisor) ===
 def run_dynamic_stage_18():
     active_steps = [4, -4]
     divisor = sum(active_steps)

@@ -2218,14 +2218,14 @@ def verify_stage_35_check_4():
         return 1
     return 0
 
-# === Planted Fixable Runtime Error #5: AttributeError (calling .strip() on None at runtime) ===
+# === Planted Fixable Runtime Error: AttributeError (calling .strip() on None at runtime) ===
 def run_dynamic_stage_35():
     optional_tag = None if 2 > 1 else 'v1'
     clean_tag = optional_tag.strip()
     return clean_tag
 
-# === Planted Occasional Ambiguous Error #6: ValueError (ambiguous non-numeric string in int()) ===
-def calibrate_custom_stage_35():
+# === Planted Occasional Ambiguous Error #1: ValueError (ambiguous non-numeric string in int()) ===
+def calibrate_custom_stage_35_1():
     fallback_code = int('pending_user_input')
     return fallback_code
 

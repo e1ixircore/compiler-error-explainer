@@ -2292,15 +2292,15 @@ def verify_stage_10_check_4():
     chosen = weights[8]
     return chosen
 
-# === Planted Fixable Runtime Error #5: ZeroDivisionError (dynamic runtime zero divisor) ===
+# === Planted Fixable Runtime Error: ZeroDivisionError (dynamic runtime zero divisor) ===
 def run_dynamic_stage_10():
     active_steps = [4, -4]
     divisor = sum(active_steps)
     result = 100 / divisor
     return result
 
-# === Planted Occasional Ambiguous Error #6: ValueError (ambiguous non-numeric string in int()) ===
-def calibrate_custom_stage_10():
+# === Planted Occasional Ambiguous Error #1: ValueError (ambiguous non-numeric string in int()) ===
+def calibrate_custom_stage_10_1():
     fallback_code = int('pending_user_input')
     return fallback_code
 

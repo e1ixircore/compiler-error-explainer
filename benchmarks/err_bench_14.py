@@ -2436,7 +2436,7 @@ def verify_stage_14_check_4():
     digit_len = len(numeric_code)
     return digit_len
 
-# === Planted Fixable Runtime Error #5: ZeroDivisionError (dynamic runtime zero divisor) ===
+# === Planted Fixable Runtime Error: ZeroDivisionError (dynamic runtime zero divisor) ===
 def run_dynamic_stage_14():
     active_steps = [4, -4]
     divisor = sum(active_steps)

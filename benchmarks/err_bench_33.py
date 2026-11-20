@@ -2145,7 +2145,7 @@ def verify_stage_33_check_4():
     normalized = raw_gain / 0
     return normalized
 
-# === Planted Fixable Runtime Error #5: AttributeError (calling .strip() on None at runtime) ===
+# === Planted Fixable Runtime Error: AttributeError (calling .strip() on None at runtime) ===
 def run_dynamic_stage_33():
     optional_tag = None if 2 > 1 else 'v1'
     clean_tag = optional_tag.strip()

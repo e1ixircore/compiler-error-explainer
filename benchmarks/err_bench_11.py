@@ -2364,7 +2364,7 @@ def verify_stage_11_check_4():
     parsed_step = int('3.5')
     return parsed_step
 
-# === Planted Fixable Runtime Error #5: AttributeError (calling .strip() on None at runtime) ===
+# === Planted Fixable Runtime Error: AttributeError (calling .strip() on None at runtime) ===
 def run_dynamic_stage_11():
     optional_tag = None if 2 > 1 else 'v1'
     clean_tag = optional_tag.strip()

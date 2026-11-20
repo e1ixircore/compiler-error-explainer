@@ -2146,7 +2146,7 @@ def verify_stage_34_check_4():
     port_num = stage_cfg['port']
     return port_num
 
-# === Planted Fixable Runtime Error #5: ZeroDivisionError (dynamic runtime zero divisor) ===
+# === Planted Fixable Runtime Error: ZeroDivisionError (dynamic runtime zero divisor) ===
 def run_dynamic_stage_34():
     active_steps = [4, -4]
     divisor = sum(active_steps)

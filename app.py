@@ -281,26 +281,37 @@ def compute_code_score(code, language, vulns, blocked, issues, executable=False,
     sec_pts = max(16, 40 - 6 * n_med - 3 * n_low)
     sec_status = "Passed (40/40 · No security threats)" if not vulns else f"Passed ({sec_pts}/40 · {len(vulns)} non-blocking security note(s))"
 
-    # 2. Errors / Correctness Pillar (45 pts)
-    n_issues = len(issues)
-    if n_issues == 0:
-        err_pts = 45
-        err_status = "Clean (45/45 · 0 errors found)"
-    else:
-        deduction = 0
-        for iss in issues:
+    # 2. Errors / Correctness Pillar (45 pts) — Proportional to LOC & Error Severity Density
+    import math as _math
+    loc = max(1, len(code.splitlines()))
+    eff_scale = max(10.0, _math.sqrt(loc * 10.0))
+
+    def _weighted_err_score(err_list):
+        if not err_list:
+            return 45, 0.0
+        w_sum = 0.0
+        for iss in err_list:
             et = iss.get("type", "")
             st = iss.get("stage", "")
             if et in ("SyntaxError", "IndentationError") or st == "parser":
-                deduction += 10
+                w_sum += 1.5
             elif st == "runtime":
-                deduction += 8
+                w_sum += 1.2
             elif et == "LogicalError":
-                deduction += 5
+                w_sum += 0.7
             else:
-                deduction += 7
-        err_pts = max(0, 45 - deduction)
-        err_status = f"{n_issues} error(s) in current code ({err_pts}/45 pts · -{min(45, deduction)} pts)"
+                w_sum += 1.0
+        pts = min(44, int(round(45.0 * _math.exp(-3.2 * (w_sum / eff_scale)))))
+        return max(0, pts), w_sum
+
+    n_issues = len(issues)
+    density_per_100 = round((n_issues / loc) * 100.0, 2)
+    if n_issues == 0:
+        err_pts = 45
+        err_status = f"Clean (0 errors across {loc:,} LOC)"
+    else:
+        err_pts, w_sum = _weighted_err_score(issues)
+        err_status = f"{n_issues} error(s) · {density_per_100}/100 LOC ({err_pts}/45)"
 
     # 3. Efficiency Pillar (15 pts) — only evaluated when current code is executable (0 errors)
     if n_issues == 0 and executable:
@@ -331,13 +342,15 @@ def compute_code_score(code, language, vulns, blocked, issues, executable=False,
 
     projected = None
     if fixed_code and fixed_code != code and n_issues > 0:
-        n_unfixed = sum(1 for iss in issues if not iss.get("patched"))
+        unfixed_list = [iss for iss in issues if not iss.get("patched")]
+        n_unfixed = len(unfixed_list)
         if n_unfixed == 0:
             proj_eff = _measure_efficiency(fixed_code, language=language, run_ms=run_ms)["score"]
             proj_total = sec_pts + 45 + proj_eff
             proj_grade = "A" if proj_total >= 90 else "B"
         else:
-            proj_total = min(84, sec_pts + max(0, 45 - 6 * n_unfixed))
+            proj_err_pts, _ = _weighted_err_score(unfixed_list)
+            proj_total = min(84, sec_pts + proj_err_pts)
             proj_grade = "B" if proj_total >= 75 else ("C" if proj_total >= 60 else "D")
         projected = {
             "score": proj_total,
@@ -350,8 +363,10 @@ def compute_code_score(code, language, vulns, blocked, issues, executable=False,
         "grade": grade,
         "grade_label": f"Grade {grade} · {total_score}/100",
         "blocked": False,
+        "loc": loc,
+        "defect_density_per_100_loc": density_per_100,
         "security": {"score": sec_pts, "max": 40, "status": sec_status},
-        "errors": {"score": err_pts, "max": 45, "count": n_issues, "status": err_status},
+        "errors": {"score": err_pts, "max": 45, "count": n_issues, "density": density_per_100, "status": err_status},
         "efficiency": eff_obj,
         "projected": projected,
     }
@@ -417,7 +432,16 @@ def build_metrics_data(scan_ms, ir_dict=None):
 
 def _changed_lines(before, after):
     """(sign, text) pairs for lines a patch removed ('-') or added ('+'), for display."""
-    diff = list(difflib.unified_diff(before.split("\n"), after.split("\n"), lineterm="", n=0))
+    a, b = before.split("\n"), after.split("\n")
+    if len(a) == len(b):
+        diffs = [(x, y) for x, y in zip(a, b) if x != y]
+        if len(diffs) <= 6:
+            out = []
+            for x, y in diffs:
+                out.append(("-", x.strip()))
+                out.append(("+", y.strip()))
+            return out
+    diff = list(difflib.unified_diff(a, b, lineterm="", n=0))
     return [(l[0], l[1:].strip()) for l in diff[2:] if not l.startswith("@@")]
 
 
@@ -432,6 +456,8 @@ def _changed_lines(before, after):
 def _remap_origin(origin, before, after):
     """Update `origin` after a patch, using a line diff of before -> after."""
     a, b = before.split("\n"), after.split("\n")
+    if len(a) == len(b):
+        return origin
     new = []
     for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
         if tag == "equal":
@@ -470,6 +496,8 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
     seen_states = {code}                 # every program version produced so far (cycle detection)
     repeats = Counter()                  # how often the same (type, message, line) came back
     skipped_static = set()               # unfixable static error keys (type, msg, orig_line)
+    handled_static = set()               # static error keys already patched or skipped in current batch
+    cached_static_ir = None              # reuse static_check batch when patches don't shift line numbers
     t_start = time.perf_counter()
     origin = list(range(1, len(code.split("\n")) + 1))   # line i of `current` came from original line origin[i]
     synthesizer = AgenticCompilerCoordinator().synthesizer
@@ -478,7 +506,22 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
             history.append({"step": "final",
                             "result": f"stopped: {time_budget}s time budget reached; errors may remain"})
             break
-        ir_dict = first_ir if (i == 0 and first_ir is not None) else extract_error(current)   # perceive
+
+        # Reuse cached static batch if unhandled errors remain in it
+        if cached_static_ir is not None:
+            has_unhandled = any(
+                (c["error_type"], c.get("error_message"), _orig_line(origin, c.get("line_number")))
+                not in (skipped_static | handled_static)
+                for c in (cached_static_ir.get("all_errors") or [])
+            )
+            if has_unhandled:
+                ir_dict = cached_static_ir
+            else:
+                cached_static_ir = None
+                ir_dict = extract_error(current)
+        else:
+            ir_dict = first_ir if (i == 0 and first_ir is not None) else extract_error(current)
+
         if not ir_dict.get("error_type"):
             history.append({"step": i + 1, "result": "clean"})
             break
@@ -487,18 +530,20 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
         if ir_dict["error_type"] in ("SyntaxError", "IndentationError"):
             stage = "parser"             # rejected before any AST existed
 
-        # If static analysis found multiple errors and earlier ones were unfixable, advance to
-        # the next unskipped static error so EVERY error is explained and fixable ones are patched.
+        # If static analysis found multiple errors, iterate through all unhandled static errors cleanly
         active = ir_dict
         if stage == "static":
             all_static = ir_dict.get("all_errors") or [ir_dict]
+            if cached_static_ir is None and len(all_static) > 1:
+                cached_static_ir = ir_dict
             picked = None
             for cand in all_static:
                 key = (cand["error_type"], cand.get("error_message"), _orig_line(origin, cand.get("line_number")))
-                if key not in skipped_static:
+                if key not in (skipped_static | handled_static):
                     picked = cand
                     break
             if picked is None:
+                cached_static_ir = None
                 # All static/logical errors in `current` have already been reported.
                 # Now run `current` in the isolated sandbox so any runtime errors are ALSO discovered and patched!
                 try:
@@ -606,6 +651,10 @@ def repair_loop(code, max_iters=MAX_REPAIR_PASSES, time_budget=MAX_REPAIR_SECOND
         entry["patch"] = diff_lines
         entry["result"] = "patched"
         history.append(entry)
+        if stage == "static":
+            handled_static.add(static_key)
+        if fixed.count("\n") != current.count("\n"):
+            cached_static_ir = None
         origin = _remap_origin(origin, current, fixed)        # keep the line map in step with the patch
         current = fixed                                       # observe on next iteration
     else:

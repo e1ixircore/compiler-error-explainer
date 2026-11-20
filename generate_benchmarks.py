@@ -890,26 +890,31 @@ def generate_all() -> Dict[str, Any]:
 
     # -----------------------------------------------------------------------
     # PART A: 35 Large-Scale Python Error Diagnosis Benchmarks (err_bench_01..35)
-    #         ZERO security vulnerabilities! 5-6 errors per file.
+    #         ZERO security vulnerabilities!
+    #         err_bench_01..05 are High-Density Stress Tests (42-48 errors each);
+    #         err_bench_06..35 have 5-6 errors each.
     # -----------------------------------------------------------------------
     for idx in range(1, 36):
-        target_loc = 2050 + ((idx * 29) % 420)
+        is_high_density = (idx <= 5)
+        target_loc = (2250 + idx * 40) if is_high_density else (2050 + ((idx * 29) % 420))
         lines = _generate_clean_python_domain_blocks(idx, target_loc)
 
-        # Pick 4 distinct fixable static/logical bugs + 1 fixable runtime bug
+        n_fixable_static = (40 + idx) if is_high_density else 4
         picked_fixable = [
             FIXABLE_PYTHON_BUGS[(idx * 3 + k) % len(FIXABLE_PYTHON_BUGS)]
-            for k in range(4)
+            for k in range(n_fixable_static)
         ]
         rt_bug = FIXABLE_RUNTIME_BUGS[idx % len(FIXABLE_RUNTIME_BUGS)]
 
-        # Every 2nd or 3rd file (~15 files) also includes 1 occasional ambiguous error
-        has_ambiguous = (idx % 5 in (0, 2))
-        ambig_bug = AMBIGUOUS_PYTHON_BUGS[(idx // 2) % len(AMBIGUOUS_PYTHON_BUGS)] if has_ambiguous else None
+        if is_high_density:
+            ambig_list = [AMBIGUOUS_PYTHON_BUGS[(idx + a) % len(AMBIGUOUS_PYTHON_BUGS)] for a in range(3)]
+        else:
+            has_ambiguous = (idx % 5 in (0, 2))
+            ambig_list = [AMBIGUOUS_PYTHON_BUGS[(idx // 2) % len(AMBIGUOUS_PYTHON_BUGS)]] if has_ambiguous else []
 
         bug_types_planted: List[str] = []
 
-        # Plant the 4 fixable static/logical bugs in dedicated stage functions
+        # Plant the fixable static/logical bugs in dedicated stage functions
         for b_num, (b_label, b_type, b_stage, b_code) in enumerate(picked_fixable, start=1):
             bug_types_planted.append(b_type)
             lines.append(f"# === Planted Fixable Compiler Error #{b_num}: {b_label} ===")
@@ -920,17 +925,16 @@ def generate_all() -> Dict[str, Any]:
         # Plant the fixable runtime bug in a function called in __main__
         rt_label, rt_type, _, rt_code = rt_bug
         bug_types_planted.append(rt_type)
-        lines.append(f"# === Planted Fixable Runtime Error #5: {rt_label} ===")
+        lines.append(f"# === Planted Fixable Runtime Error: {rt_label} ===")
         lines.append(f"def run_dynamic_stage_{idx}():")
         lines.append(textwrap.indent(textwrap.dedent(rt_code.strip()), "    "))
         lines.append("")
 
-        # Optionally plant 1 occasional ambiguous error
-        if ambig_bug is not None:
-            a_label, a_type, _, a_code = ambig_bug
+        # Plant occasional ambiguous error(s)
+        for a_idx, (a_label, a_type, _, a_code) in enumerate(ambig_list, start=1):
             bug_types_planted.append(f"{a_type}(ambiguous)")
-            lines.append(f"# === Planted Occasional Ambiguous Error #6: {a_label} ===")
-            lines.append(f"def calibrate_custom_stage_{idx}():")
+            lines.append(f"# === Planted Occasional Ambiguous Error #{a_idx}: {a_label} ===")
+            lines.append(f"def calibrate_custom_stage_{idx}_{a_idx}():")
             lines.append(textwrap.indent(textwrap.dedent(a_code.strip()), "    "))
             lines.append("")
 

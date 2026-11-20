@@ -2049,6 +2049,152 @@ class PipelineStage_1_27:
             out.append({'avg': round(avg, 4), 'span': round(peak - trough, 4)})
         return out
 
+class PipelineStage_1_28:
+    """Deterministic IR optimization & numerical analysis stage 28."""
+
+    def __init__(self, stage_id: int, scale: float = 1.0):
+        self.stage_id = stage_id
+        self.scale = scale
+        self.metrics = defaultdict(float)
+        self.history = []
+
+    def normalize_vector(self, values):
+        if not values:
+            return []
+        mean_val = sum(values) / len(values)
+        var_val = sum((x - mean_val) ** 2 for x in values) / len(values)
+        std_val = math.sqrt(var_val) if var_val > 1e-12 else 1.0
+        return [round((x - mean_val) / std_val, 6) for x in values]
+
+    def compute_polynomial_checksum(self, tokens):
+        acc = 17
+        mod_base = 1000003
+        for idx, tok in enumerate(tokens):
+            acc = (acc * 31 + (idx + 1) * int(tok)) % mod_base
+            if acc % 7 == 0:
+                acc = (acc + self.stage_id) % mod_base
+            elif acc % 5 == 0:
+                acc = (acc ^ (idx + 3)) % mod_base
+        self.metrics['checksum'] = float(acc)
+        return acc
+
+    def evaluate_state_machine(self, transitions):
+        state = 'INIT'
+        visited = []
+        for step, sym in enumerate(transitions):
+            if state == 'INIT' and sym > 0:
+                state = 'LEXING'
+            elif state == 'LEXING' and sym % 2 == 0:
+                state = 'PARSING'
+            elif state == 'PARSING' and sym % 3 == 0:
+                state = 'IR_GEN'
+            elif state == 'IR_GEN':
+                state = 'OPTIMIZE'
+            else:
+                state = 'VERIFY'
+            visited.append((step, state))
+        self.history.extend(visited[-4:])
+        return state, len(visited)
+
+    def matrix_trace_score(self, size: int = 6):
+        total = 0.0
+        for r in range(size):
+            row_sum = 0.0
+            for col in range(size):
+                weight = math.sin((r + 1) * 0.25) + math.cos((col + 1) * 0.25)
+                if r == col:
+                    row_sum += weight * self.scale
+                else:
+                    row_sum += weight * 0.1
+            total += row_sum
+        self.metrics['trace'] = round(total, 5)
+        return self.metrics['trace']
+
+    def rolling_window_stats(self, series, window: int = 4):
+        if window <= 0 or len(series) < window:
+            return []
+        out = []
+        for i in range(len(series) - window + 1):
+            chunk = series[i : i + window]
+            avg = sum(chunk) / window
+            peak = max(chunk)
+            trough = min(chunk)
+            out.append({'avg': round(avg, 4), 'span': round(peak - trough, 4)})
+        return out
+
+class PipelineStage_1_29:
+    """Deterministic IR optimization & numerical analysis stage 29."""
+
+    def __init__(self, stage_id: int, scale: float = 1.0):
+        self.stage_id = stage_id
+        self.scale = scale
+        self.metrics = defaultdict(float)
+        self.history = []
+
+    def normalize_vector(self, values):
+        if not values:
+            return []
+        mean_val = sum(values) / len(values)
+        var_val = sum((x - mean_val) ** 2 for x in values) / len(values)
+        std_val = math.sqrt(var_val) if var_val > 1e-12 else 1.0
+        return [round((x - mean_val) / std_val, 6) for x in values]
+
+    def compute_polynomial_checksum(self, tokens):
+        acc = 17
+        mod_base = 1000003
+        for idx, tok in enumerate(tokens):
+            acc = (acc * 31 + (idx + 1) * int(tok)) % mod_base
+            if acc % 7 == 0:
+                acc = (acc + self.stage_id) % mod_base
+            elif acc % 5 == 0:
+                acc = (acc ^ (idx + 3)) % mod_base
+        self.metrics['checksum'] = float(acc)
+        return acc
+
+    def evaluate_state_machine(self, transitions):
+        state = 'INIT'
+        visited = []
+        for step, sym in enumerate(transitions):
+            if state == 'INIT' and sym > 0:
+                state = 'LEXING'
+            elif state == 'LEXING' and sym % 2 == 0:
+                state = 'PARSING'
+            elif state == 'PARSING' and sym % 3 == 0:
+                state = 'IR_GEN'
+            elif state == 'IR_GEN':
+                state = 'OPTIMIZE'
+            else:
+                state = 'VERIFY'
+            visited.append((step, state))
+        self.history.extend(visited[-4:])
+        return state, len(visited)
+
+    def matrix_trace_score(self, size: int = 6):
+        total = 0.0
+        for r in range(size):
+            row_sum = 0.0
+            for col in range(size):
+                weight = math.sin((r + 1) * 0.25) + math.cos((col + 1) * 0.25)
+                if r == col:
+                    row_sum += weight * self.scale
+                else:
+                    row_sum += weight * 0.1
+            total += row_sum
+        self.metrics['trace'] = round(total, 5)
+        return self.metrics['trace']
+
+    def rolling_window_stats(self, series, window: int = 4):
+        if window <= 0 or len(series) < window:
+            return []
+        out = []
+        for i in range(len(series) - window + 1):
+            chunk = series[i : i + window]
+            avg = sum(chunk) / window
+            peak = max(chunk)
+            trough = min(chunk)
+            out.append({'avg': round(avg, 4), 'span': round(peak - trough, 4)})
+        return out
+
 # === Planted Fixable Compiler Error #1: TypeError (len() called on integer value) ===
 def verify_stage_1_check_1():
     numeric_code = 98765
@@ -2073,11 +2219,240 @@ def verify_stage_1_check_4():
     last_val = checkpoints[len(checkpoints)]
     return last_val
 
-# === Planted Fixable Runtime Error #5: AttributeError (calling .strip() on None at runtime) ===
+# === Planted Fixable Compiler Error #5: KeyError (missing dictionary key lookup) ===
+def verify_stage_1_check_5():
+    stage_cfg = {'host': '127.0.0.1', 'retries': 3}
+    port_num = stage_cfg['port']
+    return port_num
+
+# === Planted Fixable Compiler Error #6: ValueError (decimal string passed to int()) ===
+def verify_stage_1_check_6():
+    parsed_step = int('3.5')
+    return parsed_step
+
+# === Planted Fixable Compiler Error #7: ValueError (number word passed to int()) ===
+def verify_stage_1_check_7():
+    word_count = int('seventeen')
+    return word_count
+
+# === Planted Fixable Compiler Error #8: LogicalError (identity 'is' used with string literal) ===
+def verify_stage_1_check_8():
+    mode_name = 'active'
+    if mode_name is 'active':
+        return 1
+    return 0
+
+# === Planted Fixable Compiler Error #9: LogicalError (assert statement wrapped in tuple parentheses) ===
+def verify_stage_1_check_9():
+    level = 5
+    assert (level > 0, 'level must be positive')
+    return level
+
+# === Planted Fixable Compiler Error #10: NameError (foreign lowercase boolean literal 'true') ===
+def verify_stage_1_check_10():
+    is_ready = true
+    return is_ready
+
+# === Planted Fixable Compiler Error #11: AttributeError (calling .append() on a set) ===
+def verify_stage_1_check_11():
+    visited_ids = {101, 102, 103}
+    visited_ids.append(104)
+    return len(visited_ids)
+
+# === Planted Fixable Compiler Error #12: NameError (variable typo in local scope) ===
+def verify_stage_1_check_12():
+    total_metric_score = 128
+    return total_metrc_score + 10
+
+# === Planted Fixable Compiler Error #13: TypeError (string + integer concatenation) ===
+def verify_stage_1_check_13():
+    banner_label = 'Stage cycle count: ' + 42
+    return banner_label
+
+# === Planted Fixable Compiler Error #14: TypeError (float division '/' used as list index) ===
+def verify_stage_1_check_14():
+    buckets = [10, 20, 30, 40, 50]
+    selected = buckets[4 / 2]
+    return selected
+
+# === Planted Fixable Compiler Error #15: TypeError (len() called on integer value) ===
+def verify_stage_1_check_15():
+    numeric_code = 98765
+    digit_len = len(numeric_code)
+    return digit_len
+
+# === Planted Fixable Compiler Error #16: ZeroDivisionError (static literal zero divisor) ===
+def verify_stage_1_check_16():
+    raw_gain = 250
+    normalized = raw_gain / 0
+    return normalized
+
+# === Planted Fixable Compiler Error #17: IndexError (static out-of-bounds list index) ===
+def verify_stage_1_check_17():
+    weights = [1.5, 2.5, 3.5]
+    chosen = weights[8]
+    return chosen
+
+# === Planted Fixable Compiler Error #18: IndexError (off-by-one list[len(list)] access) ===
+def verify_stage_1_check_18():
+    checkpoints = [100, 200, 300, 400]
+    last_val = checkpoints[len(checkpoints)]
+    return last_val
+
+# === Planted Fixable Compiler Error #19: KeyError (missing dictionary key lookup) ===
+def verify_stage_1_check_19():
+    stage_cfg = {'host': '127.0.0.1', 'retries': 3}
+    port_num = stage_cfg['port']
+    return port_num
+
+# === Planted Fixable Compiler Error #20: ValueError (decimal string passed to int()) ===
+def verify_stage_1_check_20():
+    parsed_step = int('3.5')
+    return parsed_step
+
+# === Planted Fixable Compiler Error #21: ValueError (number word passed to int()) ===
+def verify_stage_1_check_21():
+    word_count = int('seventeen')
+    return word_count
+
+# === Planted Fixable Compiler Error #22: LogicalError (identity 'is' used with string literal) ===
+def verify_stage_1_check_22():
+    mode_name = 'active'
+    if mode_name is 'active':
+        return 1
+    return 0
+
+# === Planted Fixable Compiler Error #23: LogicalError (assert statement wrapped in tuple parentheses) ===
+def verify_stage_1_check_23():
+    level = 5
+    assert (level > 0, 'level must be positive')
+    return level
+
+# === Planted Fixable Compiler Error #24: NameError (foreign lowercase boolean literal 'true') ===
+def verify_stage_1_check_24():
+    is_ready = true
+    return is_ready
+
+# === Planted Fixable Compiler Error #25: AttributeError (calling .append() on a set) ===
+def verify_stage_1_check_25():
+    visited_ids = {101, 102, 103}
+    visited_ids.append(104)
+    return len(visited_ids)
+
+# === Planted Fixable Compiler Error #26: NameError (variable typo in local scope) ===
+def verify_stage_1_check_26():
+    total_metric_score = 128
+    return total_metrc_score + 10
+
+# === Planted Fixable Compiler Error #27: TypeError (string + integer concatenation) ===
+def verify_stage_1_check_27():
+    banner_label = 'Stage cycle count: ' + 42
+    return banner_label
+
+# === Planted Fixable Compiler Error #28: TypeError (float division '/' used as list index) ===
+def verify_stage_1_check_28():
+    buckets = [10, 20, 30, 40, 50]
+    selected = buckets[4 / 2]
+    return selected
+
+# === Planted Fixable Compiler Error #29: TypeError (len() called on integer value) ===
+def verify_stage_1_check_29():
+    numeric_code = 98765
+    digit_len = len(numeric_code)
+    return digit_len
+
+# === Planted Fixable Compiler Error #30: ZeroDivisionError (static literal zero divisor) ===
+def verify_stage_1_check_30():
+    raw_gain = 250
+    normalized = raw_gain / 0
+    return normalized
+
+# === Planted Fixable Compiler Error #31: IndexError (static out-of-bounds list index) ===
+def verify_stage_1_check_31():
+    weights = [1.5, 2.5, 3.5]
+    chosen = weights[8]
+    return chosen
+
+# === Planted Fixable Compiler Error #32: IndexError (off-by-one list[len(list)] access) ===
+def verify_stage_1_check_32():
+    checkpoints = [100, 200, 300, 400]
+    last_val = checkpoints[len(checkpoints)]
+    return last_val
+
+# === Planted Fixable Compiler Error #33: KeyError (missing dictionary key lookup) ===
+def verify_stage_1_check_33():
+    stage_cfg = {'host': '127.0.0.1', 'retries': 3}
+    port_num = stage_cfg['port']
+    return port_num
+
+# === Planted Fixable Compiler Error #34: ValueError (decimal string passed to int()) ===
+def verify_stage_1_check_34():
+    parsed_step = int('3.5')
+    return parsed_step
+
+# === Planted Fixable Compiler Error #35: ValueError (number word passed to int()) ===
+def verify_stage_1_check_35():
+    word_count = int('seventeen')
+    return word_count
+
+# === Planted Fixable Compiler Error #36: LogicalError (identity 'is' used with string literal) ===
+def verify_stage_1_check_36():
+    mode_name = 'active'
+    if mode_name is 'active':
+        return 1
+    return 0
+
+# === Planted Fixable Compiler Error #37: LogicalError (assert statement wrapped in tuple parentheses) ===
+def verify_stage_1_check_37():
+    level = 5
+    assert (level > 0, 'level must be positive')
+    return level
+
+# === Planted Fixable Compiler Error #38: NameError (foreign lowercase boolean literal 'true') ===
+def verify_stage_1_check_38():
+    is_ready = true
+    return is_ready
+
+# === Planted Fixable Compiler Error #39: AttributeError (calling .append() on a set) ===
+def verify_stage_1_check_39():
+    visited_ids = {101, 102, 103}
+    visited_ids.append(104)
+    return len(visited_ids)
+
+# === Planted Fixable Compiler Error #40: NameError (variable typo in local scope) ===
+def verify_stage_1_check_40():
+    total_metric_score = 128
+    return total_metrc_score + 10
+
+# === Planted Fixable Compiler Error #41: TypeError (string + integer concatenation) ===
+def verify_stage_1_check_41():
+    banner_label = 'Stage cycle count: ' + 42
+    return banner_label
+
+# === Planted Fixable Runtime Error: AttributeError (calling .strip() on None at runtime) ===
 def run_dynamic_stage_1():
     optional_tag = None if 2 > 1 else 'v1'
     clean_tag = optional_tag.strip()
     return clean_tag
+
+# === Planted Occasional Ambiguous Error #1: NameError (ambiguous undeclared external variable with no close match) ===
+def calibrate_custom_stage_1_1():
+    base_factor = 12
+    adjusted = base_factor * external_calibration_constant
+    return adjusted
+
+# === Planted Occasional Ambiguous Error #2: ValueError (ambiguous non-numeric string in int()) ===
+def calibrate_custom_stage_1_2():
+    fallback_code = int('pending_user_input')
+    return fallback_code
+
+# === Planted Occasional Ambiguous Error #3: LogicalError (ambiguous self-comparison tautology 'x == x') ===
+def calibrate_custom_stage_1_3():
+    target_threshold = 75
+    upper_limit = 90
+    if target_threshold == target_threshold:
+        return upper_limit
+    return 0
 
 if __name__ == '__main__':
     stage = PipelineStage_1_0(1, 1.5)

@@ -2364,15 +2364,15 @@ def verify_stage_12_check_4():
     assert (level > 0, 'level must be positive')
     return level
 
-# === Planted Fixable Runtime Error #5: ZeroDivisionError (dynamic runtime zero divisor) ===
+# === Planted Fixable Runtime Error: ZeroDivisionError (dynamic runtime zero divisor) ===
 def run_dynamic_stage_12():
     active_steps = [4, -4]
     divisor = sum(active_steps)
     result = 100 / divisor
     return result
 
-# === Planted Occasional Ambiguous Error #6: LogicalError (ambiguous self-comparison tautology 'x == x') ===
-def calibrate_custom_stage_12():
+# === Planted Occasional Ambiguous Error #1: LogicalError (ambiguous self-comparison tautology 'x == x') ===
+def calibrate_custom_stage_12_1():
     target_threshold = 75
     upper_limit = 90
     if target_threshold == target_threshold:

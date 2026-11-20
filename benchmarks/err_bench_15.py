@@ -2000,14 +2000,14 @@ def verify_stage_15_check_4():
     last_val = checkpoints[len(checkpoints)]
     return last_val
 
-# === Planted Fixable Runtime Error #5: AttributeError (calling .strip() on None at runtime) ===
+# === Planted Fixable Runtime Error: AttributeError (calling .strip() on None at runtime) ===
 def run_dynamic_stage_15():
     optional_tag = None if 2 > 1 else 'v1'
     clean_tag = optional_tag.strip()
     return clean_tag
 
-# === Planted Occasional Ambiguous Error #6: NameError (ambiguous undeclared external variable with no close match) ===
-def calibrate_custom_stage_15():
+# === Planted Occasional Ambiguous Error #1: NameError (ambiguous undeclared external variable with no close match) ===
+def calibrate_custom_stage_15_1():
     base_factor = 12
     adjusted = base_factor * external_calibration_constant
     return adjusted
