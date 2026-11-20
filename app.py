@@ -14,6 +14,8 @@ from error_extractor import extract_error, run_code   # run_code = your sandbox
 from nlp_explainer import NLPExplainer
 from ir_generator import IRGenerator
 from security_analyzer import SecurityAnalyzer
+from security_metrics_engine import SecurityMetricsEngine, METRICS_REGISTRY
+from agentic_compiler import AgenticCompilerCoordinator
 from static_analyzer import static_check
 from cpp_explainer import (
     apply_fix as apply_cpp_fix,
@@ -946,6 +948,53 @@ def upload_file():
 @app.route('/analytics')
 def analytics():
     return render_template('analytics.html')
+
+
+@app.route('/api/security-metrics', methods=['POST'])
+def api_security_metrics():
+    """Run the 52-metric AST/static security engine on submitted source code."""
+    data = request.json or {}
+    code = data.get('code', '')
+    filename = data.get('filename')
+    if not code and filename:
+        safe = safe_name(filename)
+        if not safe:
+            return jsonify({"error": "Invalid filename"}), 400
+        code = read_source(safe)
+    if not isinstance(code, str) or not code.strip():
+        return jsonify({"error": "No code provided"}), 400
+    if len(code.encode("utf-8", "ignore")) > 2_000_000:
+        return jsonify({"error": "Code exceeds 2 MB limit"}), 413
+
+    language = detect_language(filename=filename, code=code, explicit=data.get('language'))
+    report = SecurityMetricsEngine().analyze(code, language=language)
+    return jsonify(report)
+
+
+@app.route('/api/agentic-compile', methods=['POST'])
+def api_agentic_compile():
+    """Run the 5-agent Secure Agentic AI Compiler pipeline on submitted source code."""
+    data = request.json or {}
+    code = data.get('code', '')
+    filename = data.get('filename')
+    if not code and filename:
+        safe = safe_name(filename)
+        if not safe:
+            return jsonify({"error": "Invalid filename"}), 400
+        code = read_source(safe)
+    if not isinstance(code, str) or not code.strip():
+        return jsonify({"error": "No code provided"}), 400
+    if len(code.encode("utf-8", "ignore")) > 2_000_000:
+        return jsonify({"error": "Code exceeds 2 MB limit"}), 413
+
+    language = detect_language(filename=filename, code=code, explicit=data.get('language'))
+    max_iters = min(max(int(data.get('max_iterations', 5)), 1), 15)
+    execute_sandbox = bool(data.get('execute_sandbox', True))
+    use_llm = bool(data.get('use_llm', False))
+
+    coordinator = AgenticCompilerCoordinator(max_iterations=max_iters, use_llm=use_llm)
+    result = coordinator.compile_and_harden(code, language=language, execute_sandbox=execute_sandbox)
+    return jsonify(result)
 
 
 if __name__ == '__main__':
