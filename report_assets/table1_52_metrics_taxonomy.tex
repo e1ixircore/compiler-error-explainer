@@ -1,0 +1,63 @@
+\begin{table}[htbp]
+\centering
+\caption{52-Metric Security Taxonomy Evaluated by the Agentic Compiler}
+\label{tab:metrics_taxonomy}
+\begin{tabular}{lrrrrr}
+\hline
+\textbf{ID} & \textbf{Name} & \textbf{Category} & \textbf{CWE} & \textbf{Severity} & \textbf{Weight} \\
+\hline
+SEC\_01 & OS Command Injection & Injection \& Execution & CWE-78 & CRITICAL & 10.0 \\
+SEC\_02 & Dynamic Code Evaluation & Injection \& Execution & CWE-95 & CRITICAL & 9.5 \\
+SEC\_03 & Insecure Deserialization & Injection \& Execution & CWE-502 & CRITICAL & 9.0 \\
+SEC\_04 & Raw SQL Injection & Injection \& Execution & CWE-89 & CRITICAL & 9.0 \\
+SEC\_05 & XML External Entity (XXE) & Injection \& Execution & CWE-611 & HIGH & 7.0 \\
+SEC\_06 & Server-Side Template Injection & Injection \& Execution & CWE-1336 & HIGH & 7.5 \\
+SEC\_07 & LDAP / XPath Injection & Injection \& Execution & CWE-90 & HIGH & 7.0 \\
+SEC\_08 & Unsafe Dynamic Import & Injection \& Execution & CWE-470 & HIGH & 7.0 \\
+SEC\_09 & MRO Class Traversal & Sandbox Escape \& Reflection & CWE-269 & CRITICAL & 9.0 \\
+SEC\_10 & Builtins Namespace Poisoning & Sandbox Escape \& Reflection & CWE-668 & CRITICAL & 9.0 \\
+SEC\_11 & Frame Inspection / Stack Walking & Sandbox Escape \& Reflection & CWE-489 & HIGH & 7.5 \\
+SEC\_12 & Native Code Binding & Sandbox Escape \& Reflection & CWE-111 & HIGH & 8.0 \\
+SEC\_13 & Global Symbol Table Tampering & Sandbox Escape \& Reflection & CWE-471 & MEDIUM & 5.0 \\
+SEC\_14 & Reflection Obfuscation & Sandbox Escape \& Reflection & CWE-912 & HIGH & 7.5 \\
+SEC\_15 & Directory / Path Traversal & File System \& Path Traversal & CWE-22 & HIGH & 7.5 \\
+SEC\_16 & Destructive File Operations & File System \& Path Traversal & CWE-73 & HIGH & 8.0 \\
+SEC\_17 & Insecure Temporary File & File System \& Path Traversal & CWE-377 & MEDIUM & 5.0 \\
+SEC\_18 & Sensitive System Path Access & File System \& Path Traversal & CWE-552 & HIGH & 7.0 \\
+SEC\_19 & Overly Permissive File Permissions & File System \& Path Traversal & CWE-732 & MEDIUM & 5.5 \\
+SEC\_20 & Symlink / Arbitrary File Write & File System \& Path Traversal & CWE-59 & MEDIUM & 4.5 \\
+SEC\_21 & Hardcoded Credentials / High-Entropy Secrets & Cryptography \& Secrets & CWE-798 & HIGH & 7.5 \\
+SEC\_22 & Weak Pseudo-Random Generator & Cryptography \& Secrets & CWE-338 & MEDIUM & 4.0 \\
+SEC\_23 & Deprecated Hash Algorithm (MD5/SHA1) & Cryptography \& Secrets & CWE-328 & MEDIUM & 5.0 \\
+SEC\_24 & Weak Symmetric Cipher (DES/RC4/ECB) & Cryptography \& Secrets & CWE-327 & HIGH & 6.5 \\
+SEC\_25 & Static IV / Hardcoded Salt & Cryptography \& Secrets & CWE-329 & MEDIUM & 5.5 \\
+SEC\_26 & Disabled TLS Certificate Verification & Cryptography \& Secrets & CWE-295 & HIGH & 7.5 \\
+SEC\_27 & Weak Key Size / Insecure SSL Version & Cryptography \& Secrets & CWE-326 & HIGH & 6.5 \\
+SEC\_28 & Server-Side Request Forgery (SSRF) & Network \& Server-Side Security & CWE-918 & HIGH & 7.5 \\
+SEC\_29 & Unrestricted Socket Binding & Network \& Server-Side Security & CWE-1327 & MEDIUM & 5.0 \\
+SEC\_30 & Sensitive Data Exposure in Logs & Network \& Server-Side Security & CWE-532 & LOW & 3.0 \\
+SEC\_31 & Cleartext Protocol Usage & Network \& Server-Side Security & CWE-319 & MEDIUM & 5.0 \\
+SEC\_32 & HTTP Header / CRLF Injection & Network \& Server-Side Security & CWE-113 & MEDIUM & 5.5 \\
+SEC\_33 & Debug Mode / Open Redirect Exposure & Network \& Server-Side Security & CWE-601 & MEDIUM & 5.0 \\
+SEC\_34 & Regular Expression DoS (ReDoS) & DoS \& Resource Control & CWE-1333 & MEDIUM & 5.5 \\
+SEC\_35 & Unbounded File / Stream Read & DoS \& Resource Control & CWE-400 & LOW & 2.5 \\
+SEC\_36 & Unbounded Loop Hazard & DoS \& Resource Control & CWE-835 & MEDIUM & 4.5 \\
+SEC\_37 & Unbounded Recursion Hazard & DoS \& Resource Control & CWE-674 & MEDIUM & 4.5 \\
+SEC\_38 & Archive / Decompression Bomb & DoS \& Resource Control & CWE-409 & HIGH & 6.5 \\
+SEC\_39 & Subprocess / Request Missing Timeout & DoS \& Resource Control & CWE-400 & LOW & 3.0 \\
+SEC\_40 & Unbounded Thread / Process Spawning & DoS \& Resource Control & CWE-410 & MEDIUM & 4.5 \\
+SEC\_41 & Buffer Overflow / Unsafe C String & Low-Level \& Memory Safety & CWE-120 & CRITICAL & 9.0 \\
+SEC\_42 & Use-After-Free / Raw Pointer Risk & Low-Level \& Memory Safety & CWE-416 & HIGH & 8.0 \\
+SEC\_43 & Double Free Hazard & Low-Level \& Memory Safety & CWE-415 & HIGH & 8.0 \\
+SEC\_44 & Format String Vulnerability & Low-Level \& Memory Safety & CWE-134 & HIGH & 7.0 \\
+SEC\_45 & Unchecked Allocation / Bare Assert-Except & Low-Level \& Memory Safety & CWE-252 & LOW & 3.0 \\
+SEC\_46 & Taint Flow Count & Quantitative Attack Surface & METRIC & INFO & 0.0 \\
+SEC\_47 & Dangerous Sink Density (\%) & Quantitative Attack Surface & METRIC & INFO & 0.0 \\
+SEC\_48 & Security Cyclomatic Density & Quantitative Attack Surface & METRIC & INFO & 0.0 \\
+SEC\_49 & Unsanitized Parameter Index & Quantitative Attack Surface & METRIC & INFO & 0.0 \\
+SEC\_50 & Privilege Exposure Score & Quantitative Attack Surface & METRIC & INFO & 0.0 \\
+SEC\_51 & Peak String Secret Entropy & Quantitative Attack Surface & METRIC & INFO & 0.0 \\
+SEC\_52 & Overall Security Health Score & Quantitative Attack Surface & METRIC & INFO & 0.0 \\
+\hline
+\end{tabular}
+\end{table}

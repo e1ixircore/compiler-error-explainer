@@ -1,0 +1,15 @@
+{
+  "total_files": 55,
+  "files_over_2000_loc": 50,
+  "total_loc": 119456,
+  "metrics_evaluated": 52,
+  "planted_metric_recall_pct": 98.57,
+  "clean_control_specificity_pct": 100.0,
+  "zero_regression_rate_pct": 100.0,
+  "mean_risk_reduction_pct": 42.06,
+  "mean_init_health_vuln": 77.24,
+  "mean_final_health_vuln": 87.16,
+  "mean_latency_ms": 5108.52,
+  "total_suite_runtime_sec": 348.15,
+  "matplotlib_png_exported": false
+}

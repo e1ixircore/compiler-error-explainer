@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="480" viewBox="0 0 900 480">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="450.0" y="32" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="18" font-weight="bold" fill="#0f172a">Secure Agentic AI Compiler: Overall Evaluation KPIs</text>
+<text x="450.0" y="52" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="12" fill="#475569">55 Test Cases (50 files &gt;= 2,000 LOC) | 52 Security Metrics | Runtime: 348.15s</text>
+<line x1="85" y1="395.0" x2="860" y2="395.0" stroke="#e2e8f0"/>
+<text x="75" y="399.0" text-anchor="end" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#334155">0%</text>
+<line x1="85" y1="331.0" x2="860" y2="331.0" stroke="#e2e8f0"/>
+<text x="75" y="335.0" text-anchor="end" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#334155">21%</text>
+<line x1="85" y1="267.0" x2="860" y2="267.0" stroke="#e2e8f0"/>
+<text x="75" y="271.0" text-anchor="end" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#334155">42%</text>
+<line x1="85" y1="203.0" x2="860" y2="203.0" stroke="#e2e8f0"/>
+<text x="75" y="207.0" text-anchor="end" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#334155">63%</text>
+<line x1="85" y1="139.0" x2="860" y2="139.0" stroke="#e2e8f0"/>
+<text x="75" y="143.0" text-anchor="end" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#334155">84%</text>
+<line x1="85" y1="75.0" x2="860" y2="75.0" stroke="#e2e8f0"/>
+<text x="75" y="79.0" text-anchor="end" font-family="Helvetica,Arial,sans-serif" font-size="11" fill="#334155">105%</text>
+<rect x="145.9" y="94.6" width="72.0" height="300.4" fill="#2563eb" rx="4"/>
+<text x="181.9" y="86.6" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#0f172a">98.6%</text>
+<text x="181.9" y="419" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="12" fill="#1e293b">Planted Metric Recall</text>
+<rect x="339.6" y="90.2" width="72.0" height="304.8" fill="#16a34a" rx="4"/>
+<text x="375.6" y="82.2" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#0f172a">100.0%</text>
+<text x="375.6" y="419" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="12" fill="#1e293b">Clean Control Specificity</text>
+<rect x="533.4" y="90.2" width="72.0" height="304.8" fill="#0d9488" rx="4"/>
+<text x="569.4" y="82.2" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#0f172a">100.0%</text>
+<text x="569.4" y="419" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="12" fill="#1e293b">Zero-Regression Safety</text>
+<rect x="727.1" y="266.8" width="72.0" height="128.2" fill="#7c3aed" rx="4"/>
+<text x="763.1" y="258.8" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#0f172a">42.1%</text>
+<text x="763.1" y="419" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="12" fill="#1e293b">Mean Risk Reduction</text>
+<line x1="85" y1="75" x2="85" y2="395" stroke="#334155" stroke-width="1.5"/>
+<line x1="85" y1="395" x2="860" y2="395" stroke="#334155" stroke-width="1.5"/>
+<text x="24" y="235.0" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="13" font-weight="bold" fill="#1e293b" transform="rotate(-90 24 235.0)">Percentage (%)</text>
+</svg>
