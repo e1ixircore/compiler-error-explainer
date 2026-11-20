@@ -11,7 +11,10 @@ MEANINGS = {
     "MissingInclude": "A C++ standard library feature was used without including its header.",
     "MissingStdPrefix": "A standard library name was written without its std:: prefix.",
     "UndeclaredIdentifier": "The compiler encountered a variable or function name it has not seen declared.",
+    "UnknownType": "The compiler does not recognize this type or template name.",
+    "MissingTemplateArgs": "A C++ template class (like std::vector) was used without specifying its type in <...>.",
     "MissingSemicolon": "A C++ statement or declaration is missing its terminating semicolon (;).",
+    "MissingClassSemicolon": "A struct, class, or enum definition is missing its required semicolon after '}'.",
     "MissingBrace": "An opening curly brace '{' was never closed with '}'.",
     "ExtraBrace": "There is an extra closing curly brace '}' that does not match any open block.",
     "MissingParen": "An opening parenthesis '(' was never closed with ')'.",
@@ -21,14 +24,28 @@ MEANINGS = {
     "DivisionByZero": "A number is divided by zero, which is undefined behaviour in C++.",
     "ArrayOutOfBounds": "An array was accessed at an index past the end of its allocated size.",
     "MissingReturn": "A non-void function reaches its end without returning a value.",
+    "VoidReturnValue": "A void function tried to return a value.",
     "AssignmentInCondition": "A single '=' (assignment) was used in a condition where '==' (comparison) was likely meant.",
     "UninitializedVariable": "A variable is read before it has been given an initial value.",
+    "PointerMemberAccess": "Dot '.' was used on a pointer instead of the arrow '->' operator.",
+    "ValueMemberAccess": "Arrow '->' was used on a plain object instead of the dot '.' operator.",
+    "ConstModification": "The code tried to modify a variable declared as const (read-only).",
+    "ConstUninitialized": "A const variable was declared without giving it an initial value.",
+    "InvalidDereference": "The dereference operator '*' was applied to a non-pointer value.",
+    "InvalidSubscript": "Array indexing '[...]' was used on a variable that is not an array, pointer, or vector.",
+    "NotCallable": "Function call parentheses '(...)' were used on something that is not a function.",
+    "WrongArgumentCount": "A function was called with too few or too many arguments.",
+    "MisplacedLoopControl": "'break' or 'continue' was used outside of any loop (or switch for break).",
+    "NotAssignable": "The left side of '=' is not a variable that can be assigned to.",
+    "IncompleteType": "A type was used before its full definition or header was included.",
+    "ReferenceBinding": "A non-const reference (&) cannot bind to a temporary value or incompatible type.",
+    "DuplicateCase": "Two case labels in the same switch statement have the same value.",
     "NoMatchingFunction": "No function overload matches the argument types or count passed in the call.",
     "NoSuchMember": "An object or struct was asked for a field or method that it does not have.",
     "Redefinition": "The same variable or function name was defined more than once in the same scope.",
     "SyntaxError": "The line violates C++ syntax rules so the compiler cannot parse it.",
     "CompileTimeout": "Compilation took too long and was stopped.",
-    "CompileError": "The C++ compiler rejected the code.",
+    "CompileError": "The C++ compiler rejected this statement.",
 }
 
 
@@ -126,7 +143,7 @@ def _indent(line):
 # Explanations (beginner-friendly Mistake / Reason / Fix)
 # ----------------------------------------------------------------------
 def explain(diagnostic):
-    """Return (mistake, reason, fix) tuple for a C++ diagnostic."""
+    """Return (mistake, reason, fix) tuple for a C++ diagnostic with actionable change instructions."""
     etype = diagnostic.get("error_type") or "CompileError"
     msg = diagnostic.get("error_message") or diagnostic.get("message") or ""
     line = diagnostic.get("line_number") or diagnostic.get("line")
@@ -134,35 +151,77 @@ def explain(diagnostic):
     name = diagnostic.get("name") or ""
     header = diagnostic.get("header") or ""
     sug = diagnostic.get("suggestion") or ""
+    exp_t = diagnostic.get("expected_type") or ""
+    act_t = diagnostic.get("actual_type") or ""
+    notes = diagnostic.get("notes") or []
+    snippet = (diagnostic.get("snippet") or "").strip()
+
+    # Build a concrete TypeMismatch explanation using exact types from the compiler message
+    tm_detail = f" (expected '{exp_t}', got '{act_t}')" if (exp_t and act_t) else ""
+    tm_fix = (
+        f"Change the value on line {line} so it has type '{exp_t}' instead of '{act_t}', or change the variable/function type to '{act_t}'."
+        if (exp_t and act_t)
+        else "Change the value to match the declared type, or convert explicitly (e.g. std::to_string(num) for int→string, std::stoi(str) for string→int)."
+    )
+    if exp_t in ("int", "double", "float", "long") and "char" in act_t:
+        art = "an" if exp_t.startswith(("i", "a", "e", "o", "u")) else "a"
+        tm_fix = f"Replace the quoted text with {art} {exp_t} number (e.g. 0 or 42), or change the variable/return type from '{exp_t}' to 'std::string'."
+    elif "string" in exp_t and act_t in ("int", "double", "float", "long"):
+        tm_fix = f"Wrap the number in std::to_string(...) so it becomes a std::string, or change the variable type to '{act_t}'."
+
+    # Parse expected vs actual argument counts for WrongArgumentCount
+    arg_m = re.search(r"expected (?:at least |at most )?(\d+), have (\d+)", msg)
+    arg_detail = f" (expected {arg_m.group(1)} argument(s), but {arg_m.group(2)} were given)" if arg_m else ""
+    arg_fix = (
+        f"Pass exactly {arg_m.group(1)} argument(s) inside the parentheses instead of {arg_m.group(2)}."
+        if arg_m
+        else "Check the function definition above and pass the exact number of arguments it declares."
+    )
 
     rules = {
         "MissingHeaderFile": (
             f"The header file '{name}' could not be found{where}." if name else f"A header file could not be found{where}.",
             f"The compiler looked for <{name}> and could not locate it."
             + (f" Did you mean <{sug}>?" if sug else " The header name may be misspelled or not installed."),
-            f"Change the include to #include <{sug}>." if sug else "Check the spelling of the header file name and include paths.",
+            f"Change '#include <{name}>' to '#include <{sug}>'." if sug else "Fix the spelling of the header file name inside #include <...>.",
         ),
         "MissingInclude": (
             f"'{name}' is used{where}, but its standard header <{header}> is not included." if name and header
             else f"A standard library name is used{where} without its required #include.",
-            "In C++, standard library features live in separate headers (such as <iostream>, <vector>, <string>) that must be included at the top of the file.",
-            f"Add #include <{header}> at the top of the file." if header else "Include the standard library header that defines this name.",
+            "In C++, standard library features live in separate headers (such as <iostream>, <vector>, <string>, <algorithm>, <cmath>) that must be included at the top of the file.",
+            f"Add '#include <{header}>' at the top of the file." if header else "Add the required #include <...> header at the top of the file.",
         ),
         "MissingStdPrefix": (
-            f"'{name}' is used{where} without the std:: namespace prefix.",
-            "Standard C++ names like cout, cin, endl, string, and vector live inside namespace std.",
-            f"Write {sug or ('std::' + name)} instead of {name} (or add using std::{name};).",
+            f"'{name}' is used{where} without the 'std::' namespace prefix.",
+            f"Standard C++ names like '{name}' live inside the 'std' namespace, so the compiler does not recognize '{name}' by itself.",
+            f"Replace '{name}' with '{sug or ('std::' + name)}' on line {line} (e.g. std::{name}).",
+        ),
+        "UnknownType": (
+            f"The type name '{name}'{where} is not recognized by the compiler." if name else f"An unknown type name was used{where}.",
+            f"C++ does not have a built-in type called '{name}'."
+            + (f" It looks like a typo for '{sug}'." if sug else " It may be misspelled, missing 'std::', or missing its #include/struct definition."),
+            (f"Replace '{name}' with '{sug}' on line {line}." if sug else f"Check the spelling of '{name}', add 'std::' if it is a standard library type, or define the struct/class above."),
+        ),
+        "MissingTemplateArgs": (
+            f"The template class '{name}'{where} is missing its type argument in '<...>'." if name else f"A template class is missing its '<Type>' arguments{where}.",
+            "C++ containers like std::vector, std::array, and std::map need to know what type of elements they hold inside angle brackets.",
+            f"Specify the element type in angle brackets, e.g. change '{name or 'std::vector'}' to '{name or 'std::vector'}<int>'.",
         ),
         "UndeclaredIdentifier": (
             f"The name '{name}'{where} has not been declared.",
             "C++ requires every variable and function to be declared with a type before it is used. Either it was never declared or it is misspelled."
             + (f" Did you mean '{sug}'?" if sug else ""),
-            (f"Rename '{name}' to '{sug}'." if sug else f"Declare '{name}' with its type before this line, e.g. int {name or 'x'} = 0;."),
+            (f"Rename '{name}' to '{sug}' on line {line}." if sug else f"Click '+ Line above L{line}' and declare '{name}' with its type first, e.g. 'int {name or 'x'} = 0;'."),
         ),
         "MissingSemicolon": (
             f"A semicolon (;) is missing{where}.",
-            "Almost every statement and declaration in C++ must end with a semicolon.",
-            "Add ';' at the end of the statement (or on the line right above if the error appeared at the start of this line).",
+            "Every C++ statement and variable declaration must end with a semicolon (;).",
+            f"Add ';' at the end of line {line} (or at the end of the previous statement if the error points to the start of line {line}).",
+        ),
+        "MissingClassSemicolon": (
+            f"A semicolon (;) is missing after the closing '}}' of a struct/class/enum{where}.",
+            "Unlike functions and if-blocks, C++ requires a semicolon immediately after the closing brace '}' of every struct, class, or enum definition.",
+            f"Change '}}' to '}};' on line {line}.",
         ),
         "MissingBrace": (
             f"A closing curly brace '}}' is missing{where}.",
@@ -172,72 +231,144 @@ def explain(diagnostic):
         "ExtraBrace": (
             f"There is an extra closing curly brace '}}'{where}.",
             "This '}' does not match any open '{' block.",
-            "Remove the extra '}' or check if an opening '{' is missing above.",
+            f"Delete the extra '}}' on line {line}, or add the missing opening '{{' earlier in the block.",
         ),
         "MissingParen": (
             f"A closing parenthesis ')' is missing{where}.",
             "An opening '(' in a condition, expression, or function call was not closed.",
-            "Add the missing ')' to close the expression.",
+            f"Add the missing ')' on line {line} to close the expression.",
         ),
         "TypeMismatch": (
-            f"Incompatible types are being combined or assigned{where}.",
-            f"C++ is strictly typed and cannot automatically convert between these types. Compiler said: {msg}",
-            "Use a matching type for the variable/return value, or convert explicitly (e.g. std::to_string(...) or std::stoi(...)).",
+            f"Type mismatch{where}{tm_detail}.",
+            f"C++ is strictly typed and cannot automatically convert between these types. Compiler detail: {msg}",
+            tm_fix,
         ),
         "WrongStreamOperator": (
             f"The stream arrows (<< or >>) are facing the wrong way{where}.",
-            "std::cout uses << (inserting into output), whereas std::cin uses >> (extracting from input).",
-            "Use << with std::cout/std::cerr and >> with std::cin.",
+            "std::cout uses '<<' (sending data out to the screen), whereas std::cin uses '>>' (reading data in from the keyboard).",
+            f"On line {line}, change '>>' to '<<' for std::cout/std::cerr, or change '<<' to '>>' for std::cin.",
         ),
         "InvalidMainSignature": (
             f"main() has an invalid return type{where}.",
-            "Standard C++ requires main() to return int so the operating system receives an exit status.",
-            "Change the signature to 'int main()' and return 0 at the end.",
+            "Standard C++ requires main() to return 'int' so the operating system receives an exit status (0 for success).",
+            f"Change the declaration on line {line} to 'int main()' and make sure it ends with 'return 0;'.",
         ),
         "DivisionByZero": (
             f"The expression divides by zero{where}.",
             "Division or modulo by 0 is undefined behaviour in C++ and will crash the program at runtime (SIGFPE).",
-            "Check that the divisor is not 0 before dividing, e.g. (d != 0 ? a / d : 0).",
+            f"Change the divisor on line {line} to a non-zero value, or guard it with 'if (d != 0)' before dividing.",
         ),
         "ArrayOutOfBounds": (
             f"An array index is out of bounds{where}.",
-            f"Accessing past the end of a fixed-size C++ array causes undefined behaviour or a crash. Compiler said: {msg}",
-            "Keep array indices strictly between 0 and size - 1 (or use std::vector::at() for bounds checking).",
+            f"C++ arrays are 0-indexed (valid indices for size N are 0 to N-1). Compiler detail: {msg}",
+            f"Reduce the index on line {line} so it is strictly less than the array's length, or use std::vector::at() for bounds checking.",
         ),
         "MissingReturn": (
-            f"A non-void function reaches its end without a return statement{where}.",
-            "Every path through a function declared with a return type (like int or double) must return a value.",
-            "Add a return statement with a value of the declared return type before the closing '}'.",
+            f"A non-void function reaches its end without returning a value{where}.",
+            "Every code path in a function declared with a return type (like int, double, or std::string) must execute a 'return <value>;' statement.",
+            f"Add a 'return <value>;' statement matching the function's return type before the closing '}}' on line {line}.",
+        ),
+        "VoidReturnValue": (
+            f"A 'void' function tried to return a value{where}.",
+            "Functions declared with return type 'void' do not return data to their caller.",
+            f"Either remove the value on line {line} (write just 'return;'), or change the function's return type from 'void' to the type being returned (e.g. 'int').",
         ),
         "AssignmentInCondition": (
-            f"A single '=' was used inside a condition{where}.",
-            "Single '=' assigns a value instead of comparing two values. You almost certainly meant '=='.",
-            "Replace '=' with '==' inside the if/while condition.",
+            f"A single '=' (assignment) was used inside a condition{where}.",
+            "Single '=' overwrites the variable instead of comparing values. Conditions almost always need '==' (equality check).",
+            f"Replace '=' with '==' inside the condition on line {line}.",
         ),
         "UninitializedVariable": (
-            f"Variable '{name}' is used before being initialized{where}." if name else f"A variable is used before being initialized{where}.",
-            "Reading an uninitialized local variable in C++ yields garbage memory (undefined behaviour).",
-            f"Give '{name or 'the variable'}' an initial value when declaring it, e.g. int {name or 'x'} = 0;.",
+            f"Variable '{name}' is read before being initialized{where}." if name else f"A variable is read before being initialized{where}.",
+            "Unlike Python, C++ does NOT automatically set local variables to 0 — reading an uninitialized variable produces unpredictable garbage values.",
+            f"Give '{name or 'the variable'}' an initial value where it is declared, e.g. 'int {name or 'x'} = 0;'.",
+        ),
+        "PointerMemberAccess": (
+            f"Dot '.' was used on a pointer{where} instead of '->'.",
+            f"In C++, pointers to structs/objects (type '{name or 'T*'}') must use the arrow operator '->' to access members, while plain objects use '.'.",
+            f"Replace '.' with '->' on line {line} (e.g. change 'ptr.field' to 'ptr->field').",
+        ),
+        "ValueMemberAccess": (
+            f"Arrow '->' was used on a non-pointer object{where} instead of '.'.",
+            f"The variable on line {line} is a direct object (type '{name or 'T'}'), not a pointer, so it uses the dot '.' operator.",
+            f"Replace '->' with '.' on line {line} (e.g. change 'obj->field' to 'obj.field').",
+        ),
+        "ConstModification": (
+            f"Code tried to modify the 'const' variable '{name}'{where}." if name else f"Code tried to modify a 'const' (read-only) variable{where}.",
+            "Variables marked 'const' cannot be reassigned after initialization.",
+            f"Either remove the 'const' keyword from '{name or 'the variable'}'s declaration if it is meant to change, or delete the reassignment on line {line}.",
+        ),
+        "ConstUninitialized": (
+            f"A 'const' variable was declared without an initial value{where}.",
+            "Because a 'const' variable can never be assigned later, C++ requires you to give it a value right when you declare it.",
+            f"Add '= <value>' to the declaration on line {line} (e.g. 'const int limit = 10;').",
+        ),
+        "InvalidDereference": (
+            f"The dereference operator '*' was used on a non-pointer{where} (type '{act_t or 'non-pointer'}').",
+            "The unary '*' operator reads the value a pointer points to, so it only works on pointer types like 'int*'.",
+            f"Remove the leading '*' on line {line} to use the value directly, or declare the variable as a pointer (e.g. 'int* ptr = &x;').",
+        ),
+        "InvalidSubscript": (
+            f"Bracket indexing '[...]' was used on a non-array variable{where}.",
+            "Only arrays, pointers, std::vector, std::string, or std::map support '[index]' lookup.",
+            f"Remove '[...]' on line {line} if the variable is a single number, or change its declaration to an array or std::vector.",
+        ),
+        "NotCallable": (
+            f"Tried to call a non-function value of type '{act_t or 'unknown'}' using '(...)'{where}.",
+            "Parentheses '(...)' after a name tell C++ to call a function, but this name refers to a plain variable (or a variable shadowing a function).",
+            f"Remove the '(...)' call on line {line}, use '*' if you meant multiplication (e.g. 'a * (b + c)'), or rename the variable if it hides a function.",
+        ),
+        "WrongArgumentCount": (
+            f"Function called with the wrong number of arguments{where}{arg_detail}.",
+            f"The number of arguments passed in the call does not match the function's parameter list. Compiler detail: {msg}",
+            arg_fix,
+        ),
+        "MisplacedLoopControl": (
+            f"'break' or 'continue' was used outside of a loop{where}.",
+            "'continue' can only be used inside a for/while/do-while loop, and 'break' can only be used inside a loop or switch statement.",
+            f"Move the statement on line {line} inside a loop, or replace it with 'return;' if you meant to exit the function.",
+        ),
+        "NotAssignable": (
+            f"The left side of '=' on line {line} cannot be assigned to.",
+            "Only a modifiable variable (an lvalue) can appear on the left side of '=' — not a literal like '5' or a temporary expression like 'a + b'.",
+            f"Put the variable name on the left of '=' (e.g. 'x = 5;'), or change '=' to '==' if you meant to compare values.",
+        ),
+        "IncompleteType": (
+            f"An incomplete type was used{where}.",
+            f"The compiler knows the name exists (forward-declared), but hasn't seen its full definition or #include header yet. Compiler detail: {msg}",
+            "Include the header that defines this type (such as <fstream>, <sstream>, or <string>) or move the full struct/class definition above this line.",
+        ),
+        "ReferenceBinding": (
+            f"A non-const reference cannot bind to this value{where}.",
+            f"In C++, a non-const reference ('T&') must bind to a real variable of the exact same type, not a literal or temporary value. Compiler detail: {msg}",
+            f"Pass a declared variable instead of a literal/expression on line {line}, or change the reference parameter to 'const {exp_t or 'auto'}&'.",
+        ),
+        "DuplicateCase": (
+            f"Duplicate 'case' value in switch statement{where}.",
+            "Every 'case' label inside the same switch block must have a unique constant value.",
+            f"Change or remove the duplicate 'case' label on line {line}.",
         ),
         "NoMatchingFunction": (
-            f"No matching function call was found{where}.",
-            f"The arguments passed do not match any available function signature. Compiler said: {msg}",
-            "Check the number and types of arguments passed to the function.",
+            f"No matching function call for '{name}'{where}." if name else f"No matching function call was found{where}.",
+            f"The arguments passed do not match any available overload of this function. Compiler detail: {msg}"
+            + (f" Note: {notes[0]}" if notes else ""),
+            (f"Did you mean '{sug}'? Replace '{name}' with '{sug}'." if sug else f"Check the number and types of arguments passed on line {line} against the function's parameter list."),
         ),
         "NoSuchMember": (
             f"The object has no member named '{name}'{where}." if name else f"A nonexistent member was accessed{where}.",
-            f"The struct or class does not define this field or method. Compiler said: {msg}",
-            "Check the spelling of the member name and the type of the object.",
+            f"The struct or class does not define a field or method named '{name}'."
+            + (f" Did you mean '{sug}'?" if sug else f" Compiler detail: {msg}"),
+            (f"Rename '.{name}' to '.{sug}' on line {line}." if sug else f"Check the exact spelling of '{name}' in the struct/class definition (e.g. std::vector uses '.push_back()' and '.size()')."),
         ),
         "Redefinition": (
             f"'{name}' is defined more than once{where}." if name else f"A name is redefined in the same scope{where}.",
-            "C++ does not allow two variables with the same name in the same block.",
-            "Remove the duplicate declaration or rename one of the variables.",
+            "C++ does not allow two variables or functions with the same name and signature in the same block.",
+            f"Remove the type keyword on line {line} if you meant to reassign '{name}' (e.g. '{name} = ...;' instead of 'int {name} = ...;'), or rename the variable.",
         ),
         "SyntaxError": (
-            f"The compiler could not parse C++ syntax{where}.",
-            f"Compiler said: {msg}",
-            "Check this line and the line directly above for missing punctuation, operators, or brackets.",
+            f"C++ syntax error{where}: {msg}",
+            f"The compiler could not parse '{snippet}' as valid C++." if snippet else f"Compiler detail: {msg}",
+            f"Check line {line} (and the line right above it) for a missing semicolon ';', unmatched parenthesis/brace, or misplaced operator.",
         ),
         "CompileTimeout": (
             "Compilation exceeded the time limit.",
@@ -245,13 +376,27 @@ def explain(diagnostic):
             "Simplify templates or constexpr loops.",
         ),
     }
-    return rules.get(
-        etype,
-        (
-            f"The C++ compiler reported an error{where}.",
-            msg or "The compiler rejected this line.",
-            "Review the compiler diagnostic and adjust the code.",
-        ),
+    if etype in rules:
+        return rules[etype]
+
+    # Smart fallback for any remaining unrecognized C++ compiler error:
+    # Never give a generic "Review the compiler diagnostic" — extract the exact token and note!
+    quoted = re.findall(r"['\u2018]([^'\u2019]+)['\u2019]", msg)
+    tok_hint = f" around '{quoted[0]}'" if quoted else ""
+    note_hint = f" ({notes[0]})" if notes else ""
+    fix_hint = (
+        f"Replace '{quoted[0]}' with '{sug}' on line {line}."
+        if (quoted and sug)
+        else (
+            f"Check '{quoted[0]}' on line {line}: verify its type, declaration, and syntax against the compiler detail above."
+            if quoted
+            else f"Inspect '{snippet}' on line {line} and fix the syntax or type issue noted by the compiler."
+        )
+    )
+    return (
+        f"C++ compiler error{tok_hint}{where}: {msg}",
+        f"The compiler rejected '{snippet}'{note_hint}." if snippet else (msg or "The compiler rejected this line."),
+        fix_hint,
     )
 
 
@@ -561,5 +706,67 @@ def apply_fix(code, diagnostic):
                 lines[line_index] = new_code + comment_part
                 _insert_include(lines, "string")
                 return "\n".join(lines)
+
+    # 17. PointerMemberAccess (`ptr.field` -> `ptr->field`)
+    if error_type == "PointerMemberAccess":
+        code_part, comment_part = _split_cpp_comment(line)
+        if isinstance(col, int) and 1 <= col <= len(code_part):
+            # Find '.' near col
+            dot_pos = code_part.find(".", max(0, col - 3))
+            if dot_pos < 0:
+                dot_pos = code_part.rfind(".", 0, col + 2)
+            if dot_pos >= 0:
+                lines[line_index] = code_part[:dot_pos] + "->" + code_part[dot_pos + 1:] + comment_part
+                return "\n".join(lines)
+        new_code = _sub_masked(code_part, r"(?<=\w)\.(?=[A-Za-z_])", lambda m, g: "->", count=1)
+        if new_code != code_part:
+            lines[line_index] = new_code + comment_part
+            return "\n".join(lines)
+
+    # 18. ValueMemberAccess (`obj->field` -> `obj.field`)
+    if error_type == "ValueMemberAccess":
+        code_part, comment_part = _split_cpp_comment(line)
+        if isinstance(col, int) and 1 <= col <= len(code_part):
+            arr_pos = code_part.find("->", max(0, col - 3))
+            if arr_pos < 0:
+                arr_pos = code_part.rfind("->", 0, col + 3)
+            if arr_pos >= 0:
+                lines[line_index] = code_part[:arr_pos] + "." + code_part[arr_pos + 2:] + comment_part
+                return "\n".join(lines)
+        new_code = _sub_masked(code_part, r"->", lambda m, g: ".", count=1)
+        if new_code != code_part:
+            lines[line_index] = new_code + comment_part
+            return "\n".join(lines)
+
+    # 19. MissingClassSemicolon (`}` -> `};` after struct/class/enum)
+    if error_type == "MissingClassSemicolon":
+        code_part, comment_part = _split_cpp_comment(line)
+        pos = code_part.rfind("}")
+        if pos >= 0 and not code_part[pos + 1:].strip().startswith(";"):
+            lines[line_index] = code_part[:pos + 1] + ";" + code_part[pos + 1:] + comment_part
+            return "\n".join(lines)
+
+    # 20. UnknownType with clear typo suggestion (e.g. `strng` -> `std::string`)
+    if error_type == "UnknownType" and name and suggestion:
+        replacement = _replace_identifier(line, name, suggestion, count=0)
+        if replacement is not None:
+            lines[line_index] = replacement
+            bare = suggestion.replace("std::", "")
+            if suggestion.startswith("std::") and bare in STD_SYMBOL_HEADERS:
+                _insert_include(lines, STD_SYMBOL_HEADERS[bare])
+            return "\n".join(lines)
+
+    # 21. NoSuchMember with clear typo suggestion (e.g. `v.push_bak(1)` -> `v.push_back(1)`)
+    if error_type == "NoSuchMember" and name and suggestion:
+        code_part, comment_part = _split_cpp_comment(line)
+        new_code = _sub_masked(
+            code_part,
+            rf"(\.|->)\s*{re.escape(name)}(?!\w)",
+            lambda m, g: f"{g(1)}{suggestion}",
+            count=1,
+        )
+        if new_code != code_part:
+            lines[line_index] = new_code + comment_part
+            return "\n".join(lines)
 
     return code

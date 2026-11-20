@@ -341,10 +341,15 @@ def _std_symbol_after_col(line, col):
     return m2.group(1) if m2 else None
 
 
+def _all_quoted(text):
+    return re.findall(_Q + r"([^\u2018\u2019']+)" + _Q, text or "")
+
+
 def _classify(d, lines=None, included=None):
     msg = d["message"]
     blob = " | ".join([msg] + d["notes"])
-    name = _first_quoted(msg)
+    quoted = _all_quoted(msg)
+    name = quoted[0] if quoted else None
     included = included or set()
     line_text = ""
     if lines and 1 <= d.get("line", 0) <= len(lines):
@@ -360,19 +365,22 @@ def _classify(d, lines=None, included=None):
     sm = re.search(r"did you mean " + _Q + r"([^\u2018\u2019']+)" + _Q, blob)
     suggestion = sm.group(1) if sm else None
     etype = "CompileError"
+    expected_type = None
+    actual_type = None
 
     # ---- High-value warning classifications (checked first so warnings classify accurately) ----
     if re.search(r"division by zero", msg, re.IGNORECASE):
         etype = "DivisionByZero"
     elif re.search(r"array index .+ is past the end|above array bounds|out of bounds", msg, re.IGNORECASE):
         etype = "ArrayOutOfBounds"
-    elif re.search(r"non-void function does not return a value|control reaches end of non-void function", msg):
+    elif re.search(r"non-void function (?:does not|'.+' should) return a value|control reaches end of non-void function", msg):
         etype = "MissingReturn"
     elif re.search(r"using the result of an assignment as a condition|suggest parentheses around assignment", msg):
         etype = "AssignmentInCondition"
     elif re.search(r"is uninitialized when used here|may be used uninitialized", msg):
         etype = "UninitializedVariable"
-    # ---- Standard compiler error classifications ----
+
+    # ---- Standard & Extended C++ compiler error classifications ----
     elif re.search(r"No such file or directory|file not found", msg):
         m = re.match(r"(.+?): No such file or directory", msg)
         name = m.group(1) if m else name
@@ -383,11 +391,79 @@ def _classify(d, lines=None, included=None):
                 suggestion = close[0]
     elif re.search(r"'main' must return 'int'|::main.*must return 'int'", msg):
         etype = "InvalidMainSignature"
+    elif re.search(r"expected ';' after (?:struct|class|enum|union)", msg):
+        etype = "MissingClassSemicolon"
     elif re.search(r"is not a member of " + _Q + r"std" + _Q, msg) or \
             re.search(r"no (?:member|template) named " + _Q + r"[^\u2018\u2019']+" + _Q + r" in namespace " + _Q + r"std" + _Q, msg):
         etype = "MissingInclude"
         if not header and name in STD_SYMBOL_HEADERS:
             header = STD_SYMBOL_HEADERS[name]
+    elif re.search(r"unknown type name|no template named|unknown template name|does not name a type", msg):
+        # e.g. `unknown type name 'string'; did you mean 'std::string'?`
+        # or   `no template named 'vector'; did you mean 'std::vector'?`
+        if name in STD_SYMBOL_HEADERS:
+            hdr = STD_SYMBOL_HEADERS[name]
+            if hdr not in included:
+                etype = "MissingInclude"
+                header = hdr
+            else:
+                etype = "MissingStdPrefix"
+                suggestion = suggestion or f"std::{name}"
+        elif suggestion and suggestion.startswith("std::"):
+            etype = "MissingStdPrefix"
+        else:
+            etype = "UnknownType"
+            if name and not suggestion:
+                candidates = list(STD_SYMBOL_HEADERS.keys()) + ["int", "double", "float", "bool", "char", "void", "size_t", "auto"]
+                close = difflib.get_close_matches(name, candidates, n=1, cutoff=0.72)
+                if close:
+                    suggestion = f"std::{close[0]}" if close[0] in STD_SYMBOL_HEADERS else close[0]
+    elif re.search(r"use of class template .+ requires template arguments|missing template arguments|deduction of template arguments", msg):
+        etype = "MissingTemplateArgs"
+    elif re.search(r"member reference type .+ is a pointer|which is of pointer type", msg):
+        etype = "PointerMemberAccess"
+    elif re.search(r"member reference type .+ is not a pointer|base operand of '->' has non-pointer type", msg):
+        etype = "ValueMemberAccess"
+    elif re.search(r"cannot assign to variable .+ with const-qualified type|assignment of read-only", msg):
+        etype = "ConstModification"
+    elif re.search(r"default initialization of an object of const type|uninitialized 'const", msg):
+        etype = "ConstUninitialized"
+    elif re.search(r"indirection requires pointer operand|invalid type argument of unary '\*'", msg):
+        etype = "InvalidDereference"
+        if quoted:
+            actual_type = quoted[0]
+    elif re.search(r"subscripted value is not an array, pointer, or vector|invalid types .+ for array subscript", msg):
+        etype = "InvalidSubscript"
+    elif re.search(r"called object type .+ is not a function|cannot be used as a function", msg):
+        etype = "NotCallable"
+        if quoted:
+            actual_type = quoted[0]
+    elif re.search(r"too (?:few|many) arguments to function call|too (?:few|many) arguments to function", msg):
+        etype = "WrongArgumentCount"
+    elif re.search(r"void function .+ should not return a value|return-statement with a value, in function returning 'void'", msg):
+        etype = "VoidReturnValue"
+    elif re.search(r"(?:break|continue) statement not in loop", msg):
+        etype = "MisplacedLoopControl"
+    elif re.search(r"expression is not assignable|lvalue required as left operand", msg):
+        etype = "NotAssignable"
+    elif re.search(r"implicit instantiation of undefined template|incomplete type", msg):
+        # Often caused by missing <sstream> or <fstream> or <string>
+        for sym, hdr in (("ifstream", "fstream"), ("ofstream", "fstream"), ("fstream", "fstream"),
+                         ("stringstream", "sstream"), ("istringstream", "sstream"), ("ostringstream", "sstream"),
+                         ("basic_string", "string"), ("vector", "vector"), ("array", "array")):
+            if sym in msg and hdr not in included:
+                etype = "MissingInclude"
+                name = sym
+                header = hdr
+                break
+        else:
+            etype = "IncompleteType"
+    elif re.search(r"non-const lvalue reference to type .+ cannot bind to|cannot bind non-const lvalue reference", msg):
+        etype = "ReferenceBinding"
+        if len(quoted) >= 2:
+            expected_type, actual_type = quoted[0], quoted[1]
+    elif re.search(r"duplicate case value", msg):
+        etype = "DuplicateCase"
     elif re.search(r"was not declared in this scope|use of undeclared identifier", msg):
         # Apple Clang reports `use of undeclared identifier 'std'` when no std header is included at all!
         if name == "std":
@@ -427,8 +503,11 @@ def _classify(d, lines=None, included=None):
             or re.search(r"\b(?:cout|cerr|clog)\b.*>>|\bcin\b.*<<", line_text)):
         etype = "WrongStreamOperator"
     elif re.search(r"invalid conversion from|cannot convert|cannot initialize|no viable conversion|"
-                   r"invalid operands to binary|incompatible|assigning to .+ from incompatible type", msg):
+                   r"invalid operands to binary|incompatible|assigning to .+ from incompatible type|"
+                   r"no viable overloaded '='", msg):
         etype = "TypeMismatch"
+        if len(quoted) >= 2:
+            expected_type, actual_type = quoted[0], quoted[1]
     elif re.search(r"no matching function for call|no matching member function|no viable function|"
                    r"no matching constructor", msg):
         etype = "NoMatchingFunction"
@@ -438,7 +517,14 @@ def _classify(d, lines=None, included=None):
         etype = "Redefinition"
     elif re.search(r"expected (?:unqualified-id|primary-expression|declaration|expression|identifier)", msg):
         etype = "SyntaxError"
-    d.update(error_type=etype, name=name, header=header, suggestion=suggestion)
+    d.update(
+        error_type=etype,
+        name=name,
+        header=header,
+        suggestion=suggestion,
+        expected_type=expected_type,
+        actual_type=actual_type,
+    )
 
 
 # ----------------------------------------------------------------------
@@ -452,6 +538,7 @@ def diag_to_ir(d, code, compiler=None):
         "error_type": d["error_type"], "error_message": d["message"], "line_number": ln,
         "column": d.get("column"), "error_variable": d.get("name"), "name": d.get("name"),
         "header": d.get("header"), "suggestion": d.get("suggestion"), "notes": d.get("notes", []),
+        "expected_type": d.get("expected_type"), "actual_type": d.get("actual_type"),
         "phase": "compiler", "language": "cpp", "compiler": compiler, "snippet": snippet,
         "error_category": "compiler",
         "traceback": "(compiler diagnostics: code was not executed)",
