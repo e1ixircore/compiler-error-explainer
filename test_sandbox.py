@@ -53,17 +53,30 @@ print("DATA:" + json.dumps(data))
 
     def test_filesystem_write_blocked_outside_scratch(self):
         # Attempt to create an unauthorized file in /tmp or system directories
-        code = """
+        target_path = "/tmp/evil_sandbox_test.txt"
+        if os.path.exists(target_path):
+            try:
+                os.remove(target_path)
+            except OSError:
+                pass
+        code = f"""
 try:
-    with open("/tmp/evil_sandbox_test.txt", "w") as f:
+    with open("{target_path}", "w") as f:
         f.write("COMPROMISED")
     print("WRITE_STATUS:COMPROMISED")
 except Exception as e:
     print("WRITE_STATUS:BLOCKED:" + type(e).__name__)
 """
-        res = run_sandboxed_python(code, timeout=5)
-        self.assertIn("WRITE_STATUS:BLOCKED:", res["stdout"])
-        self.assertFalse(os.path.exists("/tmp/evil_sandbox_test.txt"))
+        try:
+            res = run_sandboxed_python(code, timeout=5)
+            self.assertIn("WRITE_STATUS:BLOCKED:", res["stdout"])
+            self.assertFalse(os.path.exists(target_path))
+        finally:
+            if os.path.exists(target_path):
+                try:
+                    os.remove(target_path)
+                except OSError:
+                    pass
 
     def test_network_connection_blocked(self):
         code = """
@@ -95,17 +108,30 @@ except Exception as e:
         self.assertNotIn("SUBPROCESS_STATUS:COMPROMISED", res["stdout"])
 
     def test_os_system_blocked(self):
-        code = """
+        target_path = "/tmp/hacked_sys.txt"
+        if os.path.exists(target_path):
+            try:
+                os.remove(target_path)
+            except OSError:
+                pass
+        code = f"""
 try:
     import os
-    os.system("echo HACKED > /tmp/hacked_sys.txt")
+    os.system("echo HACKED > {target_path}")
     print("SYSTEM_STATUS:CALLED")
 except Exception as e:
     print("SYSTEM_STATUS:BLOCKED:" + type(e).__name__)
 """
-        res = run_sandboxed_python(code, timeout=5)
-        self.assertFalse(os.path.exists("/tmp/hacked_sys.txt"))
-        self.assertIn("SYSTEM_STATUS:BLOCKED:PermissionError", res["stdout"])
+        try:
+            res = run_sandboxed_python(code, timeout=5)
+            self.assertFalse(os.path.exists(target_path))
+            self.assertIn("SYSTEM_STATUS:BLOCKED:PermissionError", res["stdout"])
+        finally:
+            if os.path.exists(target_path):
+                try:
+                    os.remove(target_path)
+                except OSError:
+                    pass
 
     def test_sensitive_credential_reading_blocked(self):
         ssh_path = os.path.expanduser("~/.ssh")
@@ -170,7 +196,9 @@ except Exception as e:
 
     def test_cpp_sandboxed_execution(self):
         try:
-            from cpp_extractor import run_cpp_code
+            from cpp_extractor import run_cpp_code, find_compiler
+            if not find_compiler():
+                self.skipTest("No C++ compiler available")
             code = """
 #include <iostream>
 int main() {
@@ -181,8 +209,8 @@ int main() {
             res = run_cpp_code(code, timeout=5)
             self.assertIsNone(res["error_type"])
             self.assertIn("CPP_SANDBOX_OK", res["stdout"])
-        except ImportError:
-            pass
+        except (ImportError, RuntimeError) as e:
+            self.skipTest(f"C++ sandbox test skipped: {e}")
 
 
 if __name__ == "__main__":

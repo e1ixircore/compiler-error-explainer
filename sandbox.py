@@ -62,6 +62,7 @@ import time
 import traceback
 
 # 1. POSIX Resource Limits (Defense-in-Depth)
+sys.dont_write_bytecode = True
 try:
     import resource
     # Hard CPU limit (5s soft, 6s hard)
@@ -69,14 +70,19 @@ try:
         resource.setrlimit(resource.RLIMIT_CPU, (5, 6))
     except Exception:
         pass
-    # Virtual memory limit (512 MB)
+    # Virtual address space limit (4 GB to safely bound 64-bit runtimes like Python 3.11/3.12 without premature OOM)
     try:
-        resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+        resource.setrlimit(resource.RLIMIT_AS, (4 * 1024 * 1024 * 1024, 4 * 1024 * 1024 * 1024))
+    except Exception:
+        pass
+    # File size limit (50 MB prevents filling disk while allowing standard outputs/logs)
+    try:
+        resource.setrlimit(resource.RLIMIT_FSIZE, (50 * 1024 * 1024, 50 * 1024 * 1024))
     except Exception:
         pass
     # File descriptor limit
     try:
-        resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+        resource.setrlimit(resource.RLIMIT_NOFILE, (128, 128))
     except Exception:
         pass
     # Disable core dumps
@@ -395,6 +401,7 @@ class SeatbeltSandboxEngine(BaseSandboxEngine):
                 "-p",
                 profile,
                 sys.executable,
+                "-B",
                 "-c",
                 SANDBOX_PYTHON_RUNNER,
             ]
@@ -657,7 +664,7 @@ class AuditHookSandboxEngine(BaseSandboxEngine):
             env["TOACD_SANDBOX_SCRATCH"] = os.path.realpath(scratch_dir)
 
             proc = subprocess.run(
-                [sys.executable, "-c", SANDBOX_PYTHON_RUNNER],
+                [sys.executable, "-B", "-c", SANDBOX_PYTHON_RUNNER],
                 input=code,
                 capture_output=True,
                 text=True,
@@ -708,11 +715,11 @@ class AuditHookSandboxEngine(BaseSandboxEngine):
             except Exception:
                 pass
             try:
-                resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
+                resource.setrlimit(resource.RLIMIT_AS, (2 * 1024 * 1024 * 1024, 2 * 1024 * 1024 * 1024))
             except Exception:
                 pass
             try:
-                resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))
+                resource.setrlimit(resource.RLIMIT_FSIZE, (50 * 1024 * 1024, 50 * 1024 * 1024))
             except Exception:
                 pass
             try:
