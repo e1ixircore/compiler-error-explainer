@@ -10,6 +10,8 @@ jobs:
   test:
     name: Unit, Security Metrics & AST Regression Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-24.04
+    env:
+      TOACD_SANDBOX_ENGINE: audithook
     strategy:
       fail-fast: false
       matrix:

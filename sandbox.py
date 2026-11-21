@@ -783,11 +783,13 @@ class SandboxManager:
         if override == "audithook":
             return self._audithook
 
-        # Auto-selection
+        # Auto-selection:
+        # On macOS, prioritize native Seatbelt if permitted.
+        # On other POSIX / Linux / CI systems, default to AuditHook engine
+        # (runs directly against the active Python runtime without external daemon dependencies).
+        # Docker / gVisor container isolation can be explicitly chosen via TOACD_SANDBOX_ENGINE=docker.
         if sys.platform == "darwin" and self._seatbelt.is_available():
             return self._seatbelt
-        if self._docker.is_available():
-            return self._docker
         return self._audithook
 
     def run_python(
