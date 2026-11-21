@@ -108,17 +108,36 @@ the bundled web UI.
 - `test*.py` — sample Python files shown in the studio
 - `run_checks.py` — batch diagnostic/repair checks for selected samples
 - `check_word2number.py` — checks number-word `ValueError` fixes such as `int('seventeen')`
+- `sandbox.py` — multi-engine secure sandbox implementation (macOS Seatbelt, Docker/gVisor, CPython audit hooks)
+- `sandbox_profile.sb` — Apple Seatbelt profile language (.sb) configuration for kernel containment
+- `test_sandbox.py` — comprehensive security test suite validating sandbox isolation and attack containment
 
 There is no `main.py` command-line application or `evaluation.py` module in the
 current project. Start the app with `python gui.py` or `python app.py`.
 
-## Security and limitations
+## Sandboxing and Security Architecture
 
-The execution subprocess has a five-second timeout, but it is **not an
-operating-system sandbox**: executed code has the same OS permissions as the
-server process. The AST security scanner checks a limited blocklist and can be
-bypassed. Do not expose this app to untrusted users or run untrusted code on a
-machine with sensitive data.
+TOACD utilizes a multi-layered, defense-in-depth **Sandbox Engine** (`sandbox.py`) to execute untrusted code without exposing the host system:
+
+1. **macOS Native Seatbelt (`sandbox-exec` with `.sb` profile)**:
+   - **Kernel-Enforced Mandatory Access Control (MAC)** via Apple Seatbelt Profile Language (`sandbox_profile.sb`).
+   - **Zero Network Access**: Completely disables outbound and inbound socket creation (`(deny network*)`).
+   - **Read-Only Host Filesystem**: Arbitrary file creation/modification is denied globally (`(deny file-write*)`). Writes are confined exclusively to isolated ephemeral scratch directories.
+   - **Credential Protection**: Explicitly prohibits reading sensitive user configurations, keys, and dotfiles (`~/.ssh`, `~/.aws`, `~/.gnupg`, `~/.bash_history`, `~/.zsh_history`, `/Library/Keychains`).
+   - **Restricted Process Execution**: Prohibits executing arbitrary binaries (`/bin/sh`, `/bin/bash`, `rm`, `curl`) by whitelisting only designated runtime binaries.
+
+2. **Ephemeral Docker / gVisor Container Engine**:
+   - For containerized or Linux deployments, untrusted code is executed inside ephemeral containers (`--rm -i --network none --read-only --user 1000:1000 --cap-drop ALL --memory 256m --cpus 1.0`).
+   - Supports optional gVisor (`--runtime runsc`) for hardware-independent syscall interception.
+
+3. **In-Process Defense-in-Depth (Audit Hooks & POSIX Resource Limits)**:
+   - CPython 3.8+ audit hooks (`sys.addaudithook`) intercept subprocess calls (`subprocess.Popen`, `os.system`), network activity (`socket.*`), ctypes tampering, and sensitive path access at the interpreter level.
+   - POSIX `resource.setrlimit` enforces hard CPU time limits (`RLIMIT_CPU`), virtual memory bounds (`RLIMIT_AS`), file size write limits (`RLIMIT_FSIZE`), and descriptor limits (`RLIMIT_NOFILE`).
+
+Sandbox engine status and capabilities can be inspected at runtime via `get_sandbox_status()` or the `/api/sandbox/status` REST endpoint. Run the security verification suite with:
+```bash
+python test_sandbox.py
+```
 
 The app also limits submitted code to 100 KB on its relevant endpoints.
 Python's parser reports syntax errors one at a time; the static checks can

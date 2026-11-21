@@ -14,6 +14,7 @@ import signal
 import subprocess
 import tempfile
 import time
+from sandbox import run_sandboxed_command
 
 CPP_EXTENSIONS = (".cpp", ".cc", ".cxx")
 COMPILE_TIMEOUT = 15          # seconds, hard limit for one compiler invocation
@@ -262,18 +263,11 @@ def run_cpp_code(code, timeout=5):
             }
         try:
             run_start = time.perf_counter()
-            run_cmd = [out_bin]
-            if os.name == "posix" and shutil.which("sh"):
-                run_cmd = ["sh", "-c", 'ulimit -t 5 2>/dev/null; exec "$@"', "sh", out_bin]
-            proc = subprocess.run(
-                run_cmd,
+            proc = run_sandboxed_command(
+                [out_bin],
                 cwd=tmp,
-                capture_output=True,
-                text=True,
-                errors="replace",
                 timeout=timeout,
-                stdin=subprocess.DEVNULL,
-                start_new_session=True,
+                allowed_executables=[out_bin],
             )
             elapsed = time.perf_counter() - run_start
         except subprocess.TimeoutExpired as error:

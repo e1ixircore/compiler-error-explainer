@@ -26,7 +26,7 @@ import re
 import sys
 import time
 from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 try:
     import requests
@@ -39,7 +39,7 @@ from error_extractor import extract_error, run_code
 from ir_generator import IRGenerator
 from nlp_explainer import NLPExplainer
 from cpp_extractor import extract_cpp_error, run_cpp_code, is_cpp_name
-from cpp_explainer import apply_fix as apply_cpp_fix, explain as explain_cpp_error
+from cpp_explainer import apply_fix as apply_cpp_fix, explain as explain_cpp_error, meaning as cpp_meaning
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +203,7 @@ class PerceptionAndIRAgent:
             "bytes": len(code.encode("utf-8", errors="ignore")),
             "syntax_valid": True,
             "static_issue": None,
+            "all_static_issues": [],
             "functions": 0,
             "classes": 0,
             "imports": 0,
@@ -221,19 +222,30 @@ class PerceptionAndIRAgent:
                         ir_info["imports"] += 1
                 static_errs = static_check(code)
                 if static_errs:
-                    first = static_errs[0]
-                    ir_info["static_issue"] = {
-                        "error_type": first.get("error_type", "StaticError"),
-                        "message": first.get("error_message", "static check failed"),
-                        "line": first.get("line_number") or 1,
-                    }
+                    all_issues = [
+                        {
+                            "error_type": e.get("error_type", "StaticError"),
+                            "message": e.get("error_message", "static check failed"),
+                            "line": e.get("line_number") or 1,
+                            "column": e.get("column"),
+                            "suggestion": e.get("suggestion"),
+                        }
+                        for e in static_errs
+                    ]
+                    ir_info["all_static_issues"] = all_issues
+                    ir_info["static_issue"] = all_issues[0]
             except SyntaxError as exc:
                 ir_info["syntax_valid"] = False
-                ir_info["static_issue"] = {
-                    "error_type": "SyntaxError",
+                err_name = type(exc).__name__
+                syn_issue = {
+                    "error_type": err_name,
                     "message": exc.msg or "invalid syntax",
                     "line": exc.lineno or 1,
+                    "column": exc.offset,
+                    "suggestion": None,
                 }
+                ir_info["static_issue"] = syn_issue
+                ir_info["all_static_issues"] = [syn_issue]
         else:
             ir_info["functions"] = len(re.findall(r"\b[A-Za-z_]\w*\s+[A-Za-z_]\w*\s*\([^)]*\)\s*\{", code))
             ir_info["classes"] = len(re.findall(r"\b(?:class|struct)\s+[A-Za-z_]\w*", code))
@@ -837,6 +849,46 @@ class IntelligentSynthesizerAgent:
 # Agent 4: Sandbox Verifier & Reflection Agent
 # ---------------------------------------------------------------------------
 
+def _changed_lines(before: str, after: str) -> List[Tuple[str, str]]:
+    """Minimal line diff: only '-' and '+' lines (trimmed) for UI patch rendering."""
+    out: List[Tuple[str, str]] = []
+    for line in difflib.ndiff(before.split("\n"), after.split("\n")):
+        if line[:2] in ("- ", "+ "):
+            out.append((line[0], line[2:].strip()))
+    return out
+
+
+def _remap_origin(origin: List[Optional[int]], before: str, after: str) -> List[Optional[int]]:
+    """Carry each line's original line number across a patch."""
+    a, b = before.split("\n"), after.split("\n")
+    new: List[Optional[int]] = [None] * len(b)
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if tag == "equal":
+            new[j1:j2] = origin[i1:i2]
+        elif tag == "replace" and i1 < len(origin):
+            for k in range(j2 - j1):
+                new[j1 + k] = origin[min(i1 + k, i2 - 1)]
+    return new
+
+
+def _orig_line(origin: List[Optional[int]], lineno: Optional[int]) -> Optional[int]:
+    if not lineno or not origin:
+        return lineno
+    i = min(lineno, len(origin)) - 1
+    while i >= 0 and origin[i] is None:
+        i -= 1
+    return origin[i] if i >= 0 else None
+
+
+def _extract_frames(tb: str) -> List[str]:
+    frames: List[str] = []
+    for line in (tb or "").split("\n"):
+        m = re.match(r'\s*File "<string>", line (\d+)(?:, in (.+))?', line)
+        if m:
+            frames.append(f"line {m.group(1)}" + (f" in {m.group(2)}" if m.group(2) else ""))
+    return frames[1:]
+
+
 class SandboxVerifierAgent:
     """
     Executes candidate code in an isolated subprocess ONLY when certified safe
@@ -845,7 +897,12 @@ class SandboxVerifierAgent:
     NAME = "SandboxVerifierAgent"
 
     def verify(
-        self, code: str, audit_report: Dict[str, Any], language: str = "python", execute: bool = True
+        self,
+        code: str,
+        audit_report: Dict[str, Any],
+        language: str = "python",
+        execute: bool = True,
+        skip_static: bool = False,
     ) -> Dict[str, Any]:
         if audit_report["summary"]["blocked"]:
             return {
@@ -854,6 +911,7 @@ class SandboxVerifierAgent:
                 "blocked_by_security": True,
                 "output": "",
                 "error": None,
+                "raw": None,
                 "reflection": (
                     f"Execution refused by Security Gate: {audit_report['severity_counts']['CRITICAL']} CRITICAL "
                     f"and {audit_report['severity_counts']['HIGH']} HIGH findings remain."
@@ -869,6 +927,7 @@ class SandboxVerifierAgent:
                 "blocked_by_security": False,
                 "output": "",
                 "error": None,
+                "raw": None,
                 "reflection": "Static & security verification passed." if syntax_ok else "Syntax error remains.",
             }
 
@@ -878,7 +937,8 @@ class SandboxVerifierAgent:
             except Exception as exc:
                 return {
                     "executed": False, "passed": False, "blocked_by_security": False,
-                    "output": "", "error": None, "reflection": f"C++ compiler unavailable: {exc}",
+                    "output": "", "error": None, "raw": None,
+                    "reflection": f"C++ compiler unavailable: {exc}",
                 }
             if res.get("error_type"):
                 err_type = res["error_type"]
@@ -887,17 +947,21 @@ class SandboxVerifierAgent:
                 return {
                     "executed": True, "passed": False, "blocked_by_security": False,
                     "output": res.get("stdout", ""),
-                    "error": CompilerErrorObj(err_type, err_msg, err_line, "Compile", res.get("traceback", "")),
+                    "error": CompilerErrorObj(
+                        err_type, err_msg, err_line, "Compile", res.get("traceback", ""),
+                        suggestion=res.get("suggestion"),
+                    ),
+                    "raw": res,
                     "reflection": f"C++ compilation/runtime failed: {err_type} at line {err_line}: {err_msg}",
                 }
             return {
                 "executed": True, "passed": True, "blocked_by_security": False,
-                "output": res.get("stdout", ""), "error": None,
-                "reflection": "C++ compiled and executed cleanly in sandbox.",
+                "output": res.get("stdout", ""), "error": None, "raw": res,
+                "reflection": "C++ compiled and verified cleanly (-fsyntax-only).",
             }
 
-        # Python isolated subprocess execution via extract_error
-        res = extract_error(code)
+        # Python isolated subprocess execution via extract_error (or run_code when static errors were skipped)
+        res = run_code(code) if skip_static else extract_error(code)
         if res.get("error_type"):
             err_type = res["error_type"]
             err_msg = res.get("error_message") or ""
@@ -905,12 +969,16 @@ class SandboxVerifierAgent:
             return {
                 "executed": True, "passed": False, "blocked_by_security": False,
                 "output": res.get("stdout", ""),
-                "error": CompilerErrorObj(err_type, err_msg, err_line, "Runtime", res.get("traceback", "")),
+                "error": CompilerErrorObj(
+                    err_type, err_msg, err_line, "Runtime", res.get("traceback", ""),
+                    suggestion=res.get("suggestion"),
+                ),
+                "raw": res,
                 "reflection": f"Runtime failure: {err_type} at line {err_line}: {err_msg}",
             }
         return {
             "executed": True, "passed": True, "blocked_by_security": False,
-            "output": res.get("stdout", ""), "error": None,
+            "output": res.get("stdout", ""), "error": None, "raw": res,
             "reflection": "Executed cleanly in isolated sandbox with zero errors.",
         }
 
@@ -939,14 +1007,29 @@ class AgenticCompilerCoordinator:
         code: str,
         language: str = "python",
         execute_sandbox: bool = True,
+        on_event: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> Dict[str, Any]:
         code = code.replace("\r\n", "\n").replace("\r", "\n")
         t_start = time.perf_counter()
         trace: List[Dict[str, Any]] = []
         iteration_history: List[Dict[str, Any]] = []
+        repair_history: List[Dict[str, Any]] = []
+        origin: List[Optional[int]] = list(range(1, len(code.split("\n")) + 1))
+        seen_states: Set[str] = {code}
+        skipped_keys: Set[Tuple[Any, ...]] = set()
+        handled_keys: Set[Tuple[Any, ...]] = set()
+        first_ir: Optional[Dict[str, Any]] = None
+        final_ir: Optional[Dict[str, Any]] = None
+
+        def emit_event(event_type: str, data: Dict[str, Any]) -> None:
+            if on_event is not None:
+                try:
+                    on_event({"type": event_type, "data": data})
+                except Exception:
+                    pass
 
         def log_msg(iteration: int, sender: str, recipient: str, intent: str, summary: str, payload: Optional[Dict] = None) -> None:
-            trace.append(asdict(AgentMessage(
+            msg = asdict(AgentMessage(
                 iteration=iteration,
                 sender=sender,
                 recipient=recipient,
@@ -954,7 +1037,22 @@ class AgenticCompilerCoordinator:
                 summary=summary,
                 timestamp_ms=round((time.perf_counter() - t_start) * 1000.0, 2),
                 payload=payload or {},
-            )))
+            ))
+            trace.append(msg)
+            emit_event("agent_message", msg)
+
+        def build_py_ir(src_code: str, err_obj: CompilerErrorObj, stage: str, col: Optional[int] = None) -> Dict[str, Any]:
+            ir_gen = IRGenerator(src_code, err_obj)
+            ir = ir_gen.generate_ir()
+            if isinstance(ir, str):
+                ir = json.loads(ir)
+            ir["suggestion"] = err_obj.suggestion
+            ir["phase"] = stage
+            ir["column"] = col
+            src_lines = src_code.split("\n")
+            ln = err_obj.line_number
+            ir["snippet"] = (src_lines[ln - 1].strip() if ln and 1 <= ln <= len(src_lines) else "") or None
+            return ir
 
         # Step 0: Initial Perception & Baseline 52-Metric Audit
         ir_initial = self.perception.perceive(code, language=language)
@@ -963,13 +1061,26 @@ class AgenticCompilerCoordinator:
             0, self.perception.NAME, self.NAME, "PERCEIVE_IR",
             f"Parsed {ir_initial['loc']} LOC ({ir_initial['functions']} funcs, {ir_initial['classes']} classes); "
             f"{len(ir_initial['prompt_injections'])} prompt-injection patterns detected.",
-            {"loc": ir_initial["loc"], "prompt_injections": len(ir_initial["prompt_injections"])},
+            {
+                "loc": ir_initial["loc"],
+                "functions": ir_initial["functions"],
+                "classes": ir_initial["classes"],
+                "prompt_injections": len(ir_initial["prompt_injections"]),
+                "static_issues": len(ir_initial.get("all_static_issues", [])),
+            },
         )
         log_msg(
             0, self.auditor.NAME, self.NAME, "BASELINE_AUDIT",
             f"52-metric audit: {initial_audit['summary']['total_findings']} findings, "
             f"Risk={initial_audit['summary']['raw_risk_score']}, "
             f"Health={initial_audit['summary']['security_health_score']}/100 ({initial_audit['summary']['grade']}).",
+            {
+                "findings": initial_audit["summary"]["total_findings"],
+                "risk": initial_audit["summary"]["raw_risk_score"],
+                "health": initial_audit["summary"]["security_health_score"],
+                "grade": initial_audit["summary"]["grade"],
+                "blocked": initial_audit["summary"]["blocked"],
+            },
         )
 
         current_code = code
@@ -984,61 +1095,187 @@ class AgenticCompilerCoordinator:
 
         for it in range(1, self.max_iterations + 1):
             iter_actions: List[str] = []
+            made_progress = False
             candidate_code = current_code
 
             # 1) Security Hardening Pass if vulnerabilities exist
             if current_audit["summary"]["total_findings"] > 0:
                 if language == "cpp":
-                    candidate_code, sec_actions = self.synthesizer.harden_cpp_security(candidate_code, current_audit)
+                    sec_candidate, sec_actions = self.synthesizer.harden_cpp_security(candidate_code, current_audit)
                 else:
-                    candidate_code, sec_actions = self.synthesizer.harden_python_security(candidate_code, current_audit)
-                iter_actions.extend(sec_actions)
+                    sec_candidate, sec_actions = self.synthesizer.harden_python_security(candidate_code, current_audit)
+                if sec_candidate != candidate_code and sec_actions:
+                    log_msg(
+                        it, self.synthesizer.NAME, self.auditor.NAME, "PROPOSE_HARDENING",
+                        f"Proposed {len(sec_actions)} security hardening transform(s) for audit.",
+                        {"actions": sec_actions[:8]},
+                    )
+                    diff_check = self.auditor.verify_patch_security(current_code, sec_candidate, language=language)
+                    if diff_check["patch_safe"]:
+                        origin = _remap_origin(origin, current_code, sec_candidate)
+                        current_code = sec_candidate
+                        candidate_code = sec_candidate
+                        seen_states.add(current_code)
+                        current_audit = self.auditor.audit(current_code, language=language)
+                        iter_actions.extend(sec_actions)
+                        all_actions.extend(sec_actions)
+                        made_progress = True
+                        log_msg(
+                            it, self.auditor.NAME, self.synthesizer.NAME, "PATCH_ACCEPTED",
+                            f"Approved {len(sec_actions)} hardening transform(s); Risk delta={diff_check['risk_delta']}, "
+                            f"Health={current_audit['summary']['security_health_score']}/100.",
+                            {"actions": sec_actions[:10], "risk_delta": diff_check["risk_delta"]},
+                        )
+                    else:
+                        rejected_patches += 1
+                        log_msg(
+                            it, self.auditor.NAME, self.synthesizer.NAME, "PATCH_REJECTED",
+                            f"Zero-Regression Gate rejected hardening patch (introduced: {diff_check['introduced_severe_metrics']}).",
+                        )
 
-            # 2) Static / Syntax Bug Repair Pass
-            ir_now = self.perception.perceive(candidate_code, language=language)
-            if ir_now.get("static_issue"):
-                si = ir_now["static_issue"]
-                err_obj = CompilerErrorObj(si["error_type"], si["message"], si["line"], "Static")
-                repaired, expl_text, act_note = self.synthesizer.repair_functional_bug(candidate_code, err_obj, language=language)
-                if not learner_explanation:
-                    slice_i = ASTProgramSlicer.slice_context(candidate_code, si["line"])
-                    learner_explanation = {
-                        "error_type": si["error_type"],
+            # 2) Static / Syntax Bug Repair Pass (Python)
+            if language == "python":
+                ir_now = self.perception.perceive(current_code, language=language)
+                all_static = ir_now.get("all_static_issues") or []
+                picked = None
+                for cand in all_static:
+                    c_orig = _orig_line(origin, cand.get("line"))
+                    ckey = (cand["error_type"], cand.get("message"), c_orig)
+                    if ckey not in (skipped_keys | handled_keys):
+                        picked = (cand, c_orig, ckey)
+                        break
+
+                if picked is not None:
+                    si, orig_ln, ckey = picked
+                    stage = "parser" if si["error_type"] in ("SyntaxError", "IndentationError") else "static"
+                    err_obj = CompilerErrorObj(
+                        si["error_type"], si["message"], si["line"], stage,
+                        traceback_info="(static check)" if stage == "static" else "",
+                        suggestion=si.get("suggestion"),
+                    )
+                    ir_payload = build_py_ir(current_code, err_obj, stage, col=si.get("column"))
+                    if first_ir is None:
+                        first_ir = {
+                            "error_type": si["error_type"],
+                            "error_message": si["message"],
+                            "line_number": si["line"],
+                            "column": si.get("column"),
+                            "suggestion": si.get("suggestion"),
+                            "traceback": "(static check)" if stage == "static" else "",
+                            "all_errors": [
+                                {
+                                    "error_type": e["error_type"],
+                                    "error_message": e["message"],
+                                    "line_number": e["line"],
+                                    "column": e.get("column"),
+                                    "suggestion": e.get("suggestion"),
+                                }
+                                for e in all_static
+                            ],
+                        }
+
+                    t_ex = time.perf_counter()
+                    repaired, expl_text, act_note = self.synthesizer.repair_functional_bug(
+                        current_code, err_obj, language=language, precomputed_ir=ir_payload
+                    )
+                    explain_ms = (time.perf_counter() - t_ex) * 1000.0
+                    src_lines = current_code.split("\n")
+                    src_line = src_lines[si["line"] - 1].strip() if si["line"] and 1 <= si["line"] <= len(src_lines) else ""
+
+                    if not learner_explanation:
+                        slice_i = ASTProgramSlicer.slice_context(current_code, si["line"])
+                        learner_explanation = {
+                            "error_type": si["error_type"],
+                            "line": si["line"],
+                            "mistake": expl_text or si["message"],
+                            "reason": f"Syntax / Static checker identified an invalid AST construction at line {si['line']}.",
+                            "how_to_fix": act_note or "Apply suggested syntax correction.",
+                            "slice_context": slice_i.relevant_context,
+                        }
+
+                    entry: Dict[str, Any] = {
+                        "step": len(repair_history) + 1,
+                        "iteration": it,
+                        "error": si["error_type"],
                         "line": si["line"],
-                        "mistake": expl_text or si["message"],
-                        "reason": f"Syntax / Static checker identified an invalid AST construction at line {si['line']}.",
-                        "how_to_fix": act_note or "Apply suggested syntax correction.",
-                        "slice_context": slice_i.relevant_context,
+                        "column": si.get("column"),
+                        "stage": stage,
+                        "source": src_line,
+                        "ir": ir_payload,
+                        "trace": [],
+                        "explanation": expl_text or "",
+                        "explain_ms": explain_ms,
+                        "patch": [],
+                        "orig_line": orig_ln,
                     }
-                if repaired and repaired != candidate_code:
-                    candidate_code = repaired
-                    iter_actions.append(act_note or f"L{si['line']} [BUG_REPAIR]: Repaired {si['error_type']} ({si['message'][:60]})")
 
-            # 3) Zero-Regression Security Gate on Candidate Patch
-            if candidate_code != current_code:
-                diff_check = self.auditor.verify_patch_security(current_code, candidate_code, language=language)
-                if diff_check["patch_safe"]:
-                    current_code = candidate_code
-                    current_audit = self.auditor.audit(current_code, language=language)
-                    all_actions.extend(iter_actions)
-                    log_msg(
-                        it, self.synthesizer.NAME, self.auditor.NAME, "PATCH_ACCEPTED",
-                        f"Applied {len(iter_actions)} transforms; Risk delta={diff_check['risk_delta']}, "
-                        f"Health={current_audit['summary']['security_health_score']}/100.",
-                        {"actions": iter_actions[:10], "risk_delta": diff_check["risk_delta"]},
-                    )
-                else:
-                    rejected_patches += 1
-                    log_msg(
-                        it, self.auditor.NAME, self.synthesizer.NAME, "PATCH_REJECTED",
-                        f"Zero-Regression Gate rejected patch (introduced: {diff_check['introduced_severe_metrics']}).",
-                    )
+                    if repaired and repaired != current_code and repaired not in seen_states:
+                        diff_check = self.auditor.verify_patch_security(current_code, repaired, language=language)
+                        if diff_check["patch_safe"]:
+                            diff_lines = _changed_lines(current_code, repaired)
+                            origin = _remap_origin(origin, current_code, repaired)
+                            current_code = repaired
+                            seen_states.add(current_code)
+                            current_audit = self.auditor.audit(current_code, language=language)
+                            note = act_note or f"L{si['line']} [BUG_REPAIR]: Repaired {si['error_type']} ({si['message'][:60]})"
+                            iter_actions.append(note)
+                            all_actions.append(note)
+                            entry["patch"] = diff_lines
+                            entry["result"] = "patched"
+                            repair_history.append(entry)
+                            handled_keys.add(ckey)
+                            made_progress = True
+                            log_msg(
+                                it, self.synthesizer.NAME, self.auditor.NAME, "PATCH_ACCEPTED",
+                                f"Patched {si['error_type']} at L{orig_ln}; Risk delta={diff_check['risk_delta']}, "
+                                f"Health={current_audit['summary']['security_health_score']}/100.",
+                                {"actions": [note], "risk_delta": diff_check["risk_delta"], "line": orig_ln},
+                            )
+                        else:
+                            rejected_patches += 1
+                            entry["result"] = "explanation only (manual fix needed)"
+                            repair_history.append(entry)
+                            skipped_keys.add(ckey)
+                            log_msg(
+                                it, self.auditor.NAME, self.synthesizer.NAME, "PATCH_REJECTED",
+                                f"Zero-Regression Gate rejected {si['error_type']} patch at L{orig_ln} "
+                                f"(introduced: {diff_check['introduced_severe_metrics']}).",
+                            )
+                    else:
+                        entry["result"] = "explanation only (manual fix needed)"
+                        repair_history.append(entry)
+                        skipped_keys.add(ckey)
+                        log_msg(
+                            it, self.synthesizer.NAME, self.NAME, "MANUAL_REQUIRED",
+                            f"No safe auto-patch for {si['error_type']} at L{orig_ln} ({si['message'][:70]}); recorded guidance.",
+                            {"line": orig_ln, "error_type": si["error_type"]},
+                        )
+                        # Continue checking any remaining static issues in this file
+                        has_more_static = any(
+                            (e["error_type"], e.get("message"), _orig_line(origin, e.get("line")))
+                            not in (skipped_keys | handled_keys)
+                            for e in all_static
+                        )
+                        if has_more_static:
+                            made_progress = True
+                            continue
 
-            # 4) Sandbox Verification & Reflection Pass
-            ver = self.verifier.verify(current_code, current_audit, language=language, execute=execute_sandbox)
-            log_msg(it, self.verifier.NAME, self.NAME, "VERIFY_RESULT", ver["reflection"])
+            # 3) Sandbox Verification & Reflection Pass
+            skip_static_in_sandbox = (language == "python" and bool(skipped_keys))
+            ver = self.verifier.verify(
+                current_code, current_audit, language=language,
+                execute=execute_sandbox, skip_static=skip_static_in_sandbox,
+            )
+            if ver.get("raw") is not None:
+                final_ir = ver["raw"]
+                if first_ir is None:
+                    first_ir = ver["raw"]
+            log_msg(
+                it, self.verifier.NAME, self.NAME, "VERIFY_RESULT", ver["reflection"],
+                {"passed": ver["passed"], "executed": ver["executed"], "blocked": ver["blocked_by_security"]},
+            )
 
-            iteration_history.append({
+            iter_snapshot = {
                 "iteration": it,
                 "findings": current_audit["summary"]["total_findings"],
                 "raw_risk_score": current_audit["summary"]["raw_risk_score"],
@@ -1047,54 +1284,223 @@ class AgenticCompilerCoordinator:
                 "blocked": current_audit["summary"]["blocked"],
                 "sandbox_passed": ver["passed"],
                 "actions_applied": len(iter_actions),
-            })
+            }
+            iteration_history.append(iter_snapshot)
+            emit_event("iteration", iter_snapshot)
 
             if ver["passed"]:
                 converged = True
                 pass_at_k = it
                 execution_verified = ver["executed"]
                 execution_output = ver["output"]
+                repair_history.append({"step": len(repair_history) + 1, "result": "clean"})
+                log_msg(
+                    it, self.NAME, self.NAME, "CONVERGED",
+                    f"Pipeline converged at iteration {it} (Pass@{it}) — Health={current_audit['summary']['security_health_score']}/100, "
+                    f"{len(all_actions)} transform(s) applied.",
+                    {"pass_at_k": it, "actions": len(all_actions)},
+                )
                 break
 
-            # 5) Reflection Feedback Loop: If sandbox returned a runtime error, feed it to Synthesizer
+            # 4) Reflection Feedback Loop: If sandbox/compiler returned an error, feed it to Synthesizer
             if ver.get("error"):
-                err_obj = ver["error"]
-                repaired, expl_text, act_note = self.synthesizer.repair_functional_bug(current_code, err_obj, language=language)
-                if not learner_explanation:
-                    slice_i = ASTProgramSlicer.slice_context(current_code, err_obj.line_number)
-                    learner_explanation = {
-                        "error_type": err_obj.error_type,
-                        "line": err_obj.line_number,
-                        "mistake": expl_text or err_obj.message,
-                        "reason": f"Execution halted in sandbox with {err_obj.error_type} at line {err_obj.line_number}.",
-                        "how_to_fix": act_note or "Apply guarded runtime correction.",
-                        "slice_context": slice_i.relevant_context,
+                raw_res = ver.get("raw") or {}
+                if language == "cpp":
+                    diags = raw_res.get("all_errors") or ([raw_res] if raw_res.get("error_type") else [])
+                    picked_cpp = None
+                    for cand in diags:
+                        c_orig = _orig_line(origin, cand.get("line_number"))
+                        ckey = (cand.get("error_type"), cand.get("error_message"), c_orig)
+                        if ckey not in skipped_keys:
+                            picked_cpp = (cand, c_orig, ckey)
+                            break
+                    if picked_cpp is None:
+                        break
+                    diag, orig_ln, ckey = picked_cpp
+                    ln = diag.get("line_number") or 1
+                    err_obj = CompilerErrorObj(
+                        diag["error_type"], diag.get("error_message") or "", ln, "Compile",
+                        raw_res.get("traceback", ""), suggestion=diag.get("suggestion"),
+                    )
+                    log_msg(
+                        it, self.verifier.NAME, self.synthesizer.NAME, "REFLECT_FEEDBACK",
+                        f"Forwarding C++ {err_obj.error_type} at L{orig_ln} to Synthesizer: {err_obj.message[:80]}",
+                        {"line": orig_ln, "error_type": err_obj.error_type},
+                    )
+                    t_ex = time.perf_counter()
+                    mistake, reason, guidance = explain_cpp_error(diag)
+                    repaired = apply_cpp_fix(current_code, {
+                        "error_type": diag.get("error_type"),
+                        "message": diag.get("error_message"),
+                        "line": ln,
+                        "column": diag.get("column"),
+                        "name": diag.get("name"),
+                        "header": diag.get("header"),
+                        "suggestion": diag.get("suggestion"),
+                        "notes": diag.get("notes", []),
+                    })
+                    explain_ms = (time.perf_counter() - t_ex) * 1000.0
+                    src_lines = current_code.split("\n")
+                    src_line = src_lines[ln - 1].strip() if ln and 1 <= ln <= len(src_lines) else ""
+                    entry = {
+                        "step": len(repair_history) + 1,
+                        "iteration": it,
+                        "error": diag["error_type"],
+                        "line": ln,
+                        "column": diag.get("column"),
+                        "stage": "compiler",
+                        "source": src_line,
+                        "ir": diag,
+                        "meaning": cpp_meaning(diag["error_type"]),
+                        "mistake": mistake,
+                        "reason": reason,
+                        "guidance": guidance,
+                        "explain_ms": explain_ms,
+                        "patch": [],
+                        "orig_line": orig_ln,
                     }
-                if repaired and repaired != current_code:
-                    diff_check = self.auditor.verify_patch_security(current_code, repaired, language=language)
-                    if diff_check["patch_safe"]:
-                        current_code = repaired
-                        current_audit = self.auditor.audit(current_code, language=language)
-                        action_note = act_note or f"L{err_obj.line_number} [REFLECTION_FIX]: Repaired runtime {err_obj.error_type}"
-                        all_actions.append(action_note)
-                        log_msg(it, self.synthesizer.NAME, self.NAME, "REFLECTION_PATCH", action_note)
-                        continue
+                    if repaired and repaired != current_code and repaired not in seen_states:
+                        diff_check = self.auditor.verify_patch_security(current_code, repaired, language=language)
+                        if diff_check["patch_safe"]:
+                            diff_lines = _changed_lines(current_code, repaired)
+                            origin = _remap_origin(origin, current_code, repaired)
+                            current_code = repaired
+                            seen_states.add(current_code)
+                            current_audit = self.auditor.audit(current_code, language=language)
+                            action_note = f"L{orig_ln} [C++_REFLECTION_FIX]: Repaired {diag['error_type']}"
+                            all_actions.append(action_note)
+                            entry["patch"] = diff_lines
+                            entry["result"] = "patched"
+                            repair_history.append(entry)
+                            log_msg(it, self.synthesizer.NAME, self.NAME, "REFLECTION_PATCH", action_note, {"line": orig_ln})
+                            continue
+                        else:
+                            rejected_patches += 1
+                            entry["result"] = "explanation only (manual fix needed)"
+                            repair_history.append(entry)
+                            skipped_keys.add(ckey)
+                            log_msg(
+                                it, self.auditor.NAME, self.synthesizer.NAME, "PATCH_REJECTED",
+                                f"Zero-Regression Gate rejected C++ patch at L{orig_ln}.",
+                            )
+                            continue
+                    else:
+                        entry["result"] = "explanation only (manual fix needed)"
+                        repair_history.append(entry)
+                        skipped_keys.add(ckey)
+                        log_msg(
+                            it, self.synthesizer.NAME, self.NAME, "MANUAL_REQUIRED",
+                            f"No safe auto-patch for C++ {diag['error_type']} at L{orig_ln}; recorded guidance.",
+                            {"line": orig_ln, "error_type": diag["error_type"]},
+                        )
+                        if any(
+                            (c.get("error_type"), c.get("error_message"), _orig_line(origin, c.get("line_number")))
+                            not in skipped_keys
+                            for c in diags
+                        ):
+                            continue
+                        break
+                else:
+                    err_obj = ver["error"]
+                    orig_ln = _orig_line(origin, err_obj.line_number)
+                    rkey = (err_obj.error_type, err_obj.message, orig_ln)
+                    if rkey in skipped_keys:
+                        break
+                    tb = err_obj.traceback_info or ""
+                    stage = "parser" if err_obj.error_type in ("SyntaxError", "IndentationError") else (
+                        "static" if tb.startswith("(static") else "runtime"
+                    )
+                    log_msg(
+                        it, self.verifier.NAME, self.synthesizer.NAME, "REFLECT_FEEDBACK",
+                        f"Forwarding {stage} {err_obj.error_type} at L{orig_ln} to Synthesizer: {err_obj.message[:80]}",
+                        {"line": orig_ln, "error_type": err_obj.error_type, "stage": stage},
+                    )
+                    ir_payload = build_py_ir(current_code, err_obj, stage, col=raw_res.get("column"))
+                    t_ex = time.perf_counter()
+                    repaired, expl_text, act_note = self.synthesizer.repair_functional_bug(
+                        current_code, err_obj, language=language, precomputed_ir=ir_payload
+                    )
+                    explain_ms = (time.perf_counter() - t_ex) * 1000.0
+                    src_lines = current_code.split("\n")
+                    src_line = src_lines[err_obj.line_number - 1].strip() if err_obj.line_number and 1 <= err_obj.line_number <= len(src_lines) else ""
+                    if not learner_explanation:
+                        slice_i = ASTProgramSlicer.slice_context(current_code, err_obj.line_number)
+                        learner_explanation = {
+                            "error_type": err_obj.error_type,
+                            "line": err_obj.line_number,
+                            "mistake": expl_text or err_obj.message,
+                            "reason": f"Execution halted in sandbox with {err_obj.error_type} at line {err_obj.line_number}.",
+                            "how_to_fix": act_note or "Apply guarded runtime correction.",
+                            "slice_context": slice_i.relevant_context,
+                        }
+                    entry = {
+                        "step": len(repair_history) + 1,
+                        "iteration": it,
+                        "error": err_obj.error_type,
+                        "line": err_obj.line_number,
+                        "column": raw_res.get("column"),
+                        "stage": stage,
+                        "source": src_line,
+                        "ir": ir_payload,
+                        "trace": _extract_frames(tb),
+                        "explanation": expl_text or "",
+                        "explain_ms": explain_ms,
+                        "patch": [],
+                        "orig_line": orig_ln,
+                    }
+                    if repaired and repaired != current_code and repaired not in seen_states:
+                        diff_check = self.auditor.verify_patch_security(current_code, repaired, language=language)
+                        if diff_check["patch_safe"]:
+                            diff_lines = _changed_lines(current_code, repaired)
+                            origin = _remap_origin(origin, current_code, repaired)
+                            current_code = repaired
+                            seen_states.add(current_code)
+                            current_audit = self.auditor.audit(current_code, language=language)
+                            action_note = act_note or f"L{orig_ln} [REFLECTION_FIX]: Repaired runtime {err_obj.error_type}"
+                            all_actions.append(action_note)
+                            entry["patch"] = diff_lines
+                            entry["result"] = "patched"
+                            repair_history.append(entry)
+                            log_msg(it, self.synthesizer.NAME, self.NAME, "REFLECTION_PATCH", action_note, {"line": orig_ln})
+                            continue
+                        else:
+                            rejected_patches += 1
+                            entry["result"] = "explanation only (manual fix needed)"
+                            repair_history.append(entry)
+                            skipped_keys.add(rkey)
+                            log_msg(
+                                it, self.auditor.NAME, self.synthesizer.NAME, "PATCH_REJECTED",
+                                f"Zero-Regression Gate rejected reflection patch for {err_obj.error_type} at L{orig_ln}.",
+                            )
+                    else:
+                        entry["result"] = "explanation only (manual fix needed)"
+                        repair_history.append(entry)
+                        skipped_keys.add(rkey)
+                        log_msg(
+                            it, self.synthesizer.NAME, self.NAME, "MANUAL_REQUIRED",
+                            f"No safe auto-patch for runtime {err_obj.error_type} at L{orig_ln}; recorded guidance.",
+                            {"line": orig_ln, "error_type": err_obj.error_type},
+                        )
             elif self.synthesizer.use_llm and current_audit["summary"]["blocked"]:
                 # Optional LLM fallback on remaining blocking issues
                 sanitized = self.perception.sanitize_for_llm(current_code)
                 llm_candidate = self.synthesizer.optional_llm_patch(
                     sanitized, ver["reflection"], current_audit["findings"]
                 )
-                if llm_candidate and llm_candidate != current_code:
+                if llm_candidate and llm_candidate != current_code and llm_candidate not in seen_states:
                     diff_check = self.auditor.verify_patch_security(current_code, llm_candidate, language=language)
                     if diff_check["patch_safe"]:
+                        origin = _remap_origin(origin, current_code, llm_candidate)
                         current_code = llm_candidate
+                        seen_states.add(current_code)
                         current_audit = self.auditor.audit(current_code, language=language)
                         all_actions.append("LLM_SYNTHESIS: Applied security-verified LLM patch")
+                        log_msg(it, self.synthesizer.NAME, self.auditor.NAME, "PATCH_ACCEPTED",
+                                "Applied security-verified LLM synthesis patch.")
                         continue
 
             # If no progress was made in this iteration, stop early to avoid wasted cycles
-            if not iter_actions:
+            if not made_progress and not iter_actions:
                 break
 
         # Final comparison telemetry
@@ -1128,6 +1534,9 @@ class AgenticCompilerCoordinator:
             "final_metrics": current_audit["metrics"],
             "iteration_history": iteration_history,
             "agent_trace": trace,
+            "repair_history": repair_history,
+            "first_ir": first_ir,
+            "final_ir": final_ir,
             "compiled_code": current_code,
             "total_time_ms": total_ms,
         }

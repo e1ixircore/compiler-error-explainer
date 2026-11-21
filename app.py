@@ -4,13 +4,15 @@ import threading
 import glob
 import json
 import os
+import queue
 import time
 import re
 
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, Response, request, jsonify, render_template, stream_with_context
 from flask_cors import CORS
 
-from error_extractor import extract_error, run_code   # run_code = your sandbox
+from error_extractor import extract_error, run_code   # run_code = hardened sandbox
+from sandbox import get_sandbox_status
 from nlp_explainer import NLPExplainer
 from ir_generator import IRGenerator
 from security_analyzer import SecurityAnalyzer
@@ -1036,29 +1038,344 @@ def read_file():
     return jsonify({"original_code": read_source(filename)})
 
 
-@app.route('/api/analyze', methods=['POST'])
-def analyze_code():
-    t_req = time.perf_counter()
+def _format_sse(event_name, data):
+    """Format a single Server-Sent Event frame."""
+    return f"event: {event_name}\ndata: {json.dumps(data)}\n\n"
+
+
+def _build_agentic_analyze_payload(code, lang, coord_res, vulns, sec_struct, sec_log, blocked, t_req):
+    """Build the unified Web Studio /api/analyze payload from AgenticCompilerCoordinator.compile_and_harden()."""
+    scan_ms = (time.perf_counter() - t_req) * 1000
+    agent_trace = coord_res.get("agent_trace") or []
+    iteration_history = coord_res.get("iteration_history") or []
+    agentic_meta = {
+        "converged": coord_res.get("converged", False),
+        "pass_at_k": coord_res.get("pass_at_k"),
+        "iterations_used": coord_res.get("iterations_used", 0),
+        "execution_verified": coord_res.get("execution_verified", False),
+        "prompt_injections_detected": coord_res.get("prompt_injections_detected", 0),
+        "rejected_patches": coord_res.get("rejected_patches", 0),
+        "actions_applied": coord_res.get("actions_applied", []),
+        "risk_reduction_pct": coord_res.get("risk_reduction_pct", 0.0),
+        "health_improvement": coord_res.get("health_improvement", 0.0),
+        "resolved_metrics": coord_res.get("resolved_metrics", []),
+        "security_regressions": coord_res.get("security_regressions", []),
+        "initial_summary": coord_res.get("initial_summary", {}),
+        "final_summary": coord_res.get("final_summary", {}),
+        "total_time_ms": coord_res.get("total_time_ms", round(scan_ms, 3)),
+    }
+
+    # ---- STAGE 1: SECURITY GATE (Critical/High threats detected in original code) ----
+    if blocked:
+        sec_solution = build_security_solution(code, language=lang)
+        if not sec_solution.get("hardened_code") and coord_res.get("compiled_code") and coord_res["compiled_code"] != code:
+            sec_solution["hardened_code"] = coord_res["compiled_code"]
+        score_data = compute_code_score(code, lang, vulns, True, [], executable=False)
+        return {
+            "status": "blocked",
+            "language": lang,
+            "original_code": code,
+            "raw_text": "[STAGE 1 SECURITY GATE] Execution & Error Diagnosis BLOCKED. Critical/High findings:\n  " + "\n  ".join(sec_log),
+            "metrics": "Stopped at Stage 1 Security Gate.",
+            "metrics_data": build_metrics_data(scan_ms),
+            "blocked": True,
+            "security": sec_struct,
+            "security_solution": sec_solution,
+            "score_data": score_data,
+            "issues": [],
+            "by_line": {},
+            "agent_trace": agent_trace,
+            "iteration_history": iteration_history,
+            "agentic": agentic_meta,
+            "summary": {
+                "total": 0,
+                "fixed": 0,
+                "unfixed": 0,
+                "by_type": {},
+                "by_stage": {},
+                "verdict": "BLOCKED",
+                "detail": f"Stage 1 Security Gate intercepted {len(sec_struct)} critical/high security threat(s). Error diagnosis halted until resolved.",
+            },
+        }
+
+    repair_history = coord_res.get("repair_history") or []
+    fixed_code = coord_res.get("compiled_code", code)
+    first_ir = coord_res.get("first_ir")
+    final_ir = coord_res.get("final_ir")
+
+    # ---- STAGE 2A: C++ RESULT (from AgenticCompilerCoordinator) ----
+    if lang == "cpp":
+        errors_remain = bool((final_ir or {}).get("error_type"))
+        clean_check = coord_res.get("converged", False) or any(e.get("result") == "clean" for e in repair_history)
+        if clean_check and not errors_remain:
+            verdict = {
+                "verdict": "VERIFIED" if fixed_code != code else "CLEAN",
+                "detail": ("Patched C++ code passes compiler syntax & warning checks (-fsyntax-only)."
+                           if fixed_code != code else "C++ compile check passed with no errors."),
+            }
+        elif fixed_code != code:
+            rem_count = len((final_ir or {}).get("all_errors") or ([final_ir] if final_ir else []))
+            verdict = {
+                "verdict": "PARTIAL",
+                "detail": f"Some errors were fixed, but {rem_count} compiler error(s) remain.",
+            }
+        else:
+            verdict = {
+                "verdict": "NO FIX GENERATED",
+                "detail": "No safe automatic correction was available; see explanations to fix manually.",
+            }
+        issues = build_cpp_issues(code, repair_history)
+        compiler = (final_ir or {}).get("compiler") or (first_ir or {}).get("compiler")
+        warnings = (final_ir or {}).get("warnings") or []
+        summary = build_summary(issues, verdict)
+        mdata = build_metrics_data(scan_ms, final_ir)
+        score_data = compute_code_score(
+            code, "cpp", sec_struct, False, issues,
+            executable=(len(issues) == 0 and not errors_remain),
+            run_ms=mdata.get("run_ms", 0.0),
+            fixed_code=fixed_code,
+        )
+        raw_lines = [
+            f"[5-AGENT COMPILER · C++] {compiler or 'g++/clang++'} (-fsyntax-only -Wall -Wextra -std=c++17)",
+            f"[VERDICT] {verdict['verdict']}: {verdict['detail']}",
+        ]
+        for iss in issues:
+            raw_lines.append(f"  Line {iss['line']}: {iss['type']} [{iss['status']}] - {iss['mistake']}")
+        return {
+            "status": "success" if not issues and not errors_remain else "error_intercepted",
+            "language": "cpp",
+            "compiler": compiler,
+            "analysis_note": f"Compile-checked using {compiler or 'C++ compiler'}. Press Run to compile and execute.",
+            "warnings": [f"line {w.get('line', '?')}: {w.get('message', '')}" for w in warnings],
+            "original_code": code,
+            "fixed_code": fixed_code,
+            "raw_text": "\n".join(raw_lines),
+            "message": "C++ compile check passed cleanly. Press Run to compile and execute.",
+            "issues": issues,
+            "by_line": by_line(issues),
+            "diagnostics": [e["ir"] for e in repair_history if e.get("error")],
+            "verdict": verdict,
+            "summary": summary,
+            "score_data": score_data,
+            "metrics": build_metrics(final_ir),
+            "metrics_data": mdata,
+            "blocked": False,
+            "security": sec_struct,
+            "security_alerts": sec_log,
+            "agent_trace": agent_trace,
+            "iteration_history": iteration_history,
+            "agentic": agentic_meta,
+            "notes": [h["result"] for h in repair_history if not h.get("error") and h["result"] != "clean"],
+        }
+
+    # ---- STAGE 2B: PYTHON RESULT (from AgenticCompilerCoordinator) ----
+    if not fix_is_safe(code, fixed_code):
+        fixed_code = code
+        repair_history.append({"step": "final", "result": "rejected by patch safety check"})
+
+    error_entries = [h for h in repair_history if h.get("error")]
+    if error_entries or (first_ir and first_ir.get("error_type")):
+        if coord_res.get("converged") and fixed_code != code:
+            verdict = {
+                "verdict": "VERIFIED",
+                "detail": "Patched code re-analyzed and executed cleanly in sandbox (Pass@{}).".format(
+                    coord_res.get("pass_at_k") or 1
+                ),
+            }
+        else:
+            verdict = verify_fix(code, fixed_code)
+
+        issues = build_issues(code, repair_history)
+        mdata = build_metrics_data(scan_ms, first_ir or final_ir)
+        score_data = compute_code_score(
+            code, "python", vulns, False, issues,
+            executable=False,
+            run_ms=mdata.get("run_ms", 0.0),
+            fixed_code=fixed_code,
+        )
+
+        log_text = format_pipeline(sec_log, first_ir, repair_history, verdict)
+        log_text += "\n" + format_diagnosis(repair_history)
+        total_explain = sum(h.get("explain_ms", 0) for h in repair_history)
+        log_text += f"\n[PERFORMANCE] Explanation time: {total_explain:.3f} ms total\n"
+        log_text += "\n[FIX VERIFICATION] (5-Agent Coordinator + Isolated Sandbox)\n"
+        log_text += f"Verdict : {verdict['verdict']}\n"
+        log_text += f"Detail  : {verdict['detail']}\n"
+
+        return {
+            "status": "error_intercepted",
+            "language": "python",
+            "original_code": code,
+            "raw_text": log_text,
+            "diagnostics": [h["ir"] for h in repair_history if h.get("error")],
+            "fixed_code": fixed_code,
+            "metrics": build_metrics(first_ir or final_ir),
+            "metrics_data": mdata,
+            "score_data": score_data,
+            "blocked": False,
+            "security": sec_struct,
+            "issues": issues,
+            "by_line": by_line(issues),
+            "verdict": verdict,
+            "summary": build_summary(issues, verdict),
+            "agent_trace": agent_trace,
+            "iteration_history": iteration_history,
+            "agentic": agentic_meta,
+            "notes": [h["result"] for h in repair_history if not h.get("error") and h["result"] != "clean"],
+        }
+
+    # No error found — code executed cleanly!
+    mdata = build_metrics_data(scan_ms, final_ir or first_ir)
+    score_data = compute_code_score(
+        code, "python", vulns, False, [],
+        executable=True,
+        run_ms=mdata.get("run_ms", 0.0),
+        fixed_code=fixed_code,
+    )
+    out_msg = "Execution completed normally. No compilation or runtime errors intercepted."
+    captured = coord_res.get("execution_output") or ((final_ir or {}).get("stdout") or "")
+    if captured and captured.strip():
+        out_msg += f"\n\n[STDOUT OUTPUT]:\n{captured.strip()}"
+    return {
+        "status": "success",
+        "language": "python",
+        "original_code": code,
+        "message": out_msg,
+        "fixed_code": fixed_code,
+        "security_alerts": sec_log,
+        "metrics": build_metrics(final_ir or first_ir),
+        "metrics_data": mdata,
+        "score_data": score_data,
+        "blocked": False,
+        "security": sec_struct,
+        "issues": [],
+        "by_line": {},
+        "agent_trace": agent_trace,
+        "iteration_history": iteration_history,
+        "agentic": agentic_meta,
+        "summary": {
+            "total": 0,
+            "fixed": 0,
+            "unfixed": 0,
+            "by_type": {},
+            "by_stage": {},
+            "verdict": "CLEAN",
+            "detail": "No errors found. Code executed cleanly in sandbox.",
+        },
+    }
+
+
+def _parse_analyze_request():
+    """Validate and extract common inputs for /api/analyze and /api/analyze/stream."""
     data = request.json or {}
     filename = safe_name(data.get('filename'))
     posted = data.get('code')
     explicit_lang = data.get('language')
-    # The UI can now send the (possibly edited) code directly. It goes through exactly the same
-    # security scan + sandbox as /api/execute, so this opens nothing new.
     if isinstance(posted, str):
         code = posted
     elif filename:
         code = read_source(filename)
     else:
-        return jsonify({"error": "File not found"}), 404
+        return None, (jsonify({"error": "File not found"}), 404)
     if len(code.encode("utf-8", "ignore")) > MAX_CODE_BYTES:
-        return jsonify({"error": "Input too large"}), 413
+        return None, (jsonify({"error": "Input too large"}), 413)
 
     lang = detect_language(filename=filename or data.get('filename'), code=code, explicit=explicit_lang)
+    max_iters = min(max(int(data.get('max_iterations', 15)), 1), 30)
+    use_llm = bool(data.get('use_llm', False))
+    want_stream = bool(data.get('stream')) or ('text/event-stream' in (request.headers.get('Accept') or ''))
+    return {
+        "code": code,
+        "filename": filename or data.get('filename'),
+        "lang": lang,
+        "max_iters": max_iters,
+        "use_llm": use_llm,
+        "want_stream": want_stream,
+    }, None
 
-    # ---- STAGE 1: SECURITY GATE. Runs FIRST before any static, runtime, or logical analysis. ----
-    # If any CRITICAL or HIGH threat is found, STOP HERE! Do NOT look for static/runtime errors until
-    # the security problem is either sanitized or the user chooses to stop diagnosis.
+
+def _stream_agentic_analyze(req_info):
+    """Run AgenticCompilerCoordinator.compile_and_harden() in a worker thread and stream SSE events."""
+    t_req = time.perf_counter()
+    code = req_info["code"]
+    lang = req_info["lang"]
+    max_iters = req_info["max_iters"]
+    use_llm = req_info["use_llm"]
+    ev_queue = queue.Queue()
+
+    def on_event(ev):
+        ev_queue.put(ev)
+
+    def worker():
+        try:
+            vulns, sec_log, blocked = scan(code, language=lang)
+            sec_struct = [
+                {
+                    "line": v["line"],
+                    "severity": v["severity"],
+                    "type": v["type"],
+                    "metric_id": v.get("metric_id", ""),
+                    "cwe": v.get("cwe", ""),
+                    "message": v["message"],
+                }
+                for v in vulns
+            ]
+            coordinator = AgenticCompilerCoordinator(max_iterations=max_iters, use_llm=use_llm)
+            coord_res = coordinator.compile_and_harden(
+                code,
+                language=lang,
+                execute_sandbox=not blocked,
+                on_event=on_event,
+            )
+            payload = _build_agentic_analyze_payload(
+                code, lang, coord_res, vulns, sec_struct, sec_log, blocked, t_req
+            )
+            ev_queue.put({"type": "result", "data": payload})
+        except CompilerNotFound as exc:
+            ev_queue.put({"type": "error", "data": {"status": "error", "error": str(exc)}})
+        except Exception as exc:
+            ev_queue.put({"type": "error", "data": {"status": "error", "error": f"Agentic compiler error: {exc}"}})
+        finally:
+            ev_queue.put(None)
+
+    threading.Thread(target=worker, daemon=True).start()
+
+    def generate():
+        yield _format_sse("start", {
+            "language": lang,
+            "loc": len(code.splitlines()),
+            "filename": req_info["filename"] or "",
+            "max_iterations": max_iters,
+        })
+        while True:
+            item = ev_queue.get()
+            if item is None:
+                break
+            yield _format_sse(item["type"], item["data"])
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@app.route('/api/analyze', methods=['POST'])
+def analyze_code():
+    req_info, err_resp = _parse_analyze_request()
+    if err_resp is not None:
+        return err_resp
+
+    if req_info["want_stream"]:
+        return _stream_agentic_analyze(req_info)
+
+    t_req = time.perf_counter()
+    code = req_info["code"]
+    lang = req_info["lang"]
     vulns, sec_log, blocked = scan(code, language=lang)
     sec_struct = [
         {
@@ -1071,125 +1388,32 @@ def analyze_code():
         }
         for v in vulns
     ]
-    if blocked:
-        sec_solution = build_security_solution(code, language=lang)
-        score_data = compute_code_score(code, lang, vulns, True, [], executable=False)
-        return jsonify({
-            "status": "blocked",
-            "language": lang,
-            "original_code": code,
-            "raw_text": "[STAGE 1 SECURITY GATE] Execution & Error Diagnosis BLOCKED. Critical/High findings:\n  " + "\n  ".join(sec_log),
-            "metrics": "Stopped at Stage 1 Security Gate.",
-            "metrics_data": build_metrics_data((time.perf_counter() - t_req) * 1000),
-            "blocked": True,
-            "security": sec_struct,
-            "security_solution": sec_solution,
-            "score_data": score_data,
-            "issues": [],
-            "by_line": {},
-            "summary": {
-                "total": 0,
-                "fixed": 0,
-                "unfixed": 0,
-                "by_type": {},
-                "by_stage": {},
-                "verdict": "BLOCKED",
-                "detail": f"Stage 1 Security Gate intercepted {len(sec_struct)} critical/high security threat(s). Error diagnosis halted until resolved.",
-            },
-        })
-
-    # ---- STAGE 2A: C++ PIPELINE (Only reached when Stage 1 Security Gate passes) ----
-    if lang == "cpp":
-        try:
-            first_ir = extract_cpp_error(code)
-            result = analyze_cpp(code, sec_struct=sec_struct, sec_log=sec_log,
-                                 first_ir=first_ir, scan_start=t_req)
-        except CompilerNotFound as e:
-            return jsonify({"status": "error", "error": str(e)}), 503
-        return jsonify(result)
-
-    # ---- STAGE 2B: PYTHON PIPELINE (Static, Logical & Sandboxed Runtime Error Discovery) ----
     try:
-        ir_dict = extract_error(code)
-    except RuntimeError as e:          # sandbox child died unexpectedly
+        coordinator = AgenticCompilerCoordinator(
+            max_iterations=req_info["max_iters"],
+            use_llm=req_info["use_llm"],
+        )
+        coord_res = coordinator.compile_and_harden(
+            code, language=lang, execute_sandbox=not blocked
+        )
+    except CompilerNotFound as e:
+        return jsonify({"status": "error", "error": str(e)}), 503
+    except RuntimeError as e:
         return jsonify({"status": "error", "error": f"Sandbox failure: {e}"}), 500
 
-    if ir_dict and ir_dict.get("error_type"):
-        error_type = ir_dict["error_type"]
-        tb = ir_dict.get("traceback") or ""
-        category = "static" if tb.startswith("(static") else "runtime"
-
-        fixed_code, repair_history = repair_loop(code, first_ir=ir_dict)   # agent: explain + patch each issue
-        if not fix_is_safe(code, fixed_code):
-            fixed_code = code
-            repair_history.append({"step": "final", "result": "rejected by patch safety check"})
-
-        verdict = verify_fix(code, fixed_code)
-        issues = build_issues(code, repair_history)
-        scan_ms = (time.perf_counter() - t_req) * 1000
-        mdata = build_metrics_data(scan_ms, ir_dict)
-        score_data = compute_code_score(
-            code, "python", vulns, False, issues,
-            executable=False,
-            run_ms=mdata.get("run_ms", 0.0),
-            fixed_code=fixed_code,
-        )
-
-        log_text = format_pipeline(sec_log, ir_dict, repair_history, verdict)
-        log_text += "\n" + format_diagnosis(repair_history)
-        total_explain = sum(h.get("explain_ms", 0) for h in repair_history)
-        log_text += f"\n[PERFORMANCE] Explanation time: {total_explain:.3f} ms total\n"
-        log_text += "\n[FIX VERIFICATION] (patch re-analyzed and re-executed in sandbox)\n"
-        log_text += f"Verdict : {verdict['verdict']}\n"
-        log_text += f"Detail  : {verdict['detail']}\n"
-
-        return jsonify({
-            "status": "error_intercepted",
-            "language": "python",
-            "original_code": code,
-            "raw_text": log_text,
-            "diagnostics": [h["ir"] for h in repair_history if h.get("error")],   # full IR JSON, one per issue
-            "fixed_code": fixed_code,
-            "metrics": build_metrics(ir_dict),
-            "metrics_data": mdata,
-            "score_data": score_data,
-            # ---- structured data for the UI ----
-            "blocked": False,
-            "security": sec_struct,
-            "issues": issues,
-            "by_line": by_line(issues),
-            "verdict": verdict,
-            "summary": build_summary(issues, verdict),
-            "notes": [h["result"] for h in repair_history if not h.get("error") and h["result"] != "clean"],
-        })
-
-    # No error found — code executed cleanly!
-    scan_ms = (time.perf_counter() - t_req) * 1000
-    mdata = build_metrics_data(scan_ms, ir_dict)
-    score_data = compute_code_score(
-        code, "python", vulns, False, [],
-        executable=True,
-        run_ms=mdata.get("run_ms", 0.0),
-        fixed_code=code,
+    payload = _build_agentic_analyze_payload(
+        code, lang, coord_res, vulns, sec_struct, sec_log, blocked, t_req
     )
-    out_msg = "Execution completed normally. No compilation or runtime errors intercepted."
-    captured = (ir_dict or {}).get("stdout", "")
-    if captured and captured.strip():
-        out_msg += f"\n\n[STDOUT OUTPUT]:\n{captured.strip()}"
-    return jsonify({
-        "status": "success",
-        "language": "python",
-        "original_code": code,
-        "message": out_msg,
-        "fixed_code": code,
-        "security_alerts": sec_log,
-        "metrics": build_metrics(ir_dict),
-        "metrics_data": mdata,
-        "score_data": score_data,
-        "blocked": False, "security": sec_struct, "issues": [], "by_line": {},
-        "summary": {"total": 0, "fixed": 0, "unfixed": 0, "by_type": {}, "by_stage": {},
-                    "verdict": "CLEAN", "detail": "No errors found. Code executed cleanly in sandbox."},
-    })
+    return jsonify(payload)
+
+
+@app.route('/api/analyze/stream', methods=['POST'])
+def analyze_code_stream():
+    """Dedicated Server-Sent Events (SSE) endpoint streaming real-time 5-agent messages."""
+    req_info, err_resp = _parse_analyze_request()
+    if err_resp is not None:
+        return err_resp
+    return _stream_agentic_analyze(req_info)
 
 
 @app.route('/api/execute', methods=['POST'])
@@ -1408,6 +1632,12 @@ def api_agentic_compile():
     return jsonify(result)
 
 
+@app.route('/api/sandbox/status', methods=['GET'])
+def sandbox_status():
+    """Inspect the active sandbox engine, isolation boundaries, and capabilities."""
+    return jsonify(get_sandbox_status())
+
+
 if __name__ == '__main__':
     import socket
 
@@ -1432,4 +1662,4 @@ if __name__ == '__main__':
     print("="*60 + "\n")
 
     # debug=False: Flask's debugger lets anyone who reaches the page run code on your machine.
-    app.run(host='127.0.0.1', debug=False, port=port, use_reloader=False)
+    app.run(host='127.0.0.1', debug=False, port=port, use_reloader=False, threaded=True)

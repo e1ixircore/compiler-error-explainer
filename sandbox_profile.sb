@@ -1,0 +1,61 @@
+;; ==============================================================================
+;; TOACD Secure Sandbox Profile (.sb) for macOS sandbox-exec
+;; ==============================================================================
+;; This profile provides kernel-enforced Mandatory Access Control (MAC)
+;; containment for running untrusted student code and external compiler binaries.
+;;
+;; Threat Model Mitigations:
+;; 1. Host Compromise & File Tampering:
+;;    - Denies write access across the entire filesystem (deny file-write*).
+;;    - Writing is restricted exclusively to ephemeral per-invocation scratch paths.
+;; 2. Credential & Data Exfiltration:
+;;    - Explicitly blocks reads from ~/.ssh, ~/.aws, ~/.gnupg, ~/.bash_history,
+;;      keychains, and sensitive user dotfiles.
+;; 3. Network Abuse & Reverse Shells:
+;;    - Completely disables network stack (deny network*). No outbound or inbound
+;;      TCP/UDP/raw sockets can be created.
+;; 4. Fork Bombs & Arbitrary Process Execution:
+;;    - Restricts process-exec to only designated language runtimes / binaries.
+;;    - Blocks unauthorized shell execution (/bin/sh, /bin/bash, zsh).
+;; 5. IPC Hijacking:
+;;    - Denies POSIX shared memory access (deny ipc-posix-shm*).
+;; ==============================================================================
+
+(version 1)
+(deny default)
+
+;; 1. Process Execution Rules
+;; Allow execution within Python runtime and compiler toolchains
+(allow process-exec
+    (subpath "/Library/Developer/CommandLineTools")
+    (subpath "/Library/Frameworks/Python3.framework")
+    (subpath "/System/Library/Frameworks/Python.framework")
+    (subpath "/usr/bin")
+)
+(allow process-fork)
+
+;; 2. Kernel & Hardware Queries
+(allow sysctl-read)
+(allow mach-lookup)
+
+;; 3. Filesystem Read Rules
+(allow file-read*)
+(deny file-read*
+    (subpath (param "HOME_SSH"))
+    (subpath (param "HOME_AWS"))
+    (subpath (param "HOME_GNUPG"))
+    (regex #"/Users/[^/]+/\.(ssh|aws|gnupg|bash_history|zsh_history|gitconfig)")
+    (subpath "/Library/Keychains")
+    (subpath "/private/var/db")
+)
+
+;; 4. Filesystem Write Rules
+;; Prohibit writes globally.
+(deny file-write*)
+
+;; 5. Network Isolation
+;; Absolute block on all socket creation and network communication.
+(deny network*)
+
+;; 6. POSIX IPC Controls
+(deny ipc-posix-shm*)

@@ -580,6 +580,180 @@
     .ag-step .who { font: 700 12px var(--head); }
     .ag-step .desc { font-size: 12px; color: #44403c; margin-top: 1px; }
 
+    /* Live 5-Agent SSE Trace */
+    .trace-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .trace-head-left { display: flex; align-items: center; gap: 8px; }
+    .trace-head h4 { margin: 0; font: 700 13.5px var(--head); }
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font: 700 10.5px/1 var(--head);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #166534;
+    }
+    .live-pill.streaming::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #16a34a;
+      animation: pulseDot 1s ease-in-out infinite;
+    }
+    .live-pill.blocked { background: #fee2e2; color: #991b1b; }
+    .live-pill.done { background: var(--accent-soft); color: var(--accent); }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.75); }
+    }
+    .agent-flow-bar {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    .agent-node {
+      border: 1px solid var(--line);
+      background: #faf9f6;
+      border-radius: 7px;
+      padding: 6px 5px;
+      text-align: center;
+      font: 600 10.5px/1.2 var(--head);
+      color: var(--mute);
+      transition: all .2s ease;
+    }
+    .agent-node .a-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .agent-node.active {
+      background: #ffffff;
+      color: var(--ink);
+      border-color: var(--a-col, var(--accent));
+      box-shadow: 0 0 0 2px rgba(27, 67, 50, 0.12);
+      transform: translateY(-1px);
+    }
+    .agent-node.seen {
+      color: var(--ink);
+      border-color: #d6d1c7;
+    }
+    .iter-strip {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .iter-pill {
+      font: 600 11px var(--mono);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #faf9f6;
+      color: #44403c;
+    }
+    .iter-pill.pass { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+    .iter-pill.fail { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .trace-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 460px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .trace-msg {
+      border: 1px solid #ebe7de;
+      border-left: 3px solid var(--m-col, var(--accent));
+      border-radius: 7px;
+      background: #fcfbf9;
+      padding: 8px 10px;
+      animation: traceIn .18s ease-out;
+    }
+    @keyframes traceIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .trace-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .trace-route {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font: 700 11.5px var(--head);
+      color: var(--ink);
+    }
+    .trace-iter {
+      font: 700 10px var(--mono);
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--panel2);
+      color: var(--mute);
+    }
+    .trace-arrow { color: var(--mute); font-weight: 400; }
+    .intent-chip {
+      font: 700 10px var(--mono);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #fff;
+      background: var(--accent);
+    }
+    .trace-ts {
+      font: 500 10.5px var(--mono);
+      color: var(--mute);
+    }
+    .trace-summary {
+      font-size: 12px;
+      color: #292524;
+      line-height: 1.45;
+    }
+    .trace-payload {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 5px;
+    }
+    .trace-tag {
+      font: 500 10.5px var(--mono);
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #f3f0ea;
+      color: #44403c;
+    }
+    .trace-done-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 9px 11px;
+      border-radius: 7px;
+      background: var(--accent-soft);
+      border: 1px solid #b7e4c7;
+      font-size: 12px;
+      color: var(--accent);
+    }
+
     /* Output Terminal */
     #outPane.on { display: flex; flex-direction: column; padding: 0; }
     .bar {
@@ -695,7 +869,7 @@
       <div id="tabs">
         <div class="tab-group">
           <button class="tab on" data-t="diag">Diagnostics <span id="nDiag"></span></button>
-          <button class="tab" data-t="pipeline">Pipeline</button>
+          <button class="tab" data-t="pipeline">Pipeline <span id="nPipe"></span></button>
           <button class="tab" data-t="out">Output <span class="pip" id="outPip" hidden></span></button>
         </div>
         <div id="projHint"></div>
@@ -896,6 +1070,7 @@
       $('#pEffVal').textContent = '—/15'; $('#pEffBar').style.width = '0%'; $('#pEffDesc').textContent = 'Runtime';
       $('#projHint').textContent = '';
       $('#nDiag').textContent = '';
+      $('#nPipe').textContent = '';
     }
 
     /* ---------- Code Panel with Inline Edit & Insert-Line-Above Anywhere ---------- */
@@ -1099,39 +1274,296 @@
       if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    /* ---------- Analyze Pipeline ---------- */
+    /* ---------- Live 5-Agent SSE Trace Helpers ---------- */
+    const AGENT_META = {
+      PerceptionAndIRAgent:       { short: 'Perception',  color: '#2563eb' },
+      SecurityAuditorAgent:       { short: 'Auditor',     color: '#991b1b' },
+      IntelligentSynthesizerAgent:{ short: 'Synthesizer', color: '#6d28d9' },
+      SandboxVerifierAgent:       { short: 'Verifier',    color: '#15803d' },
+      AgenticCompilerCoordinator: { short: 'Coordinator', color: '#b45309' },
+    };
+    const INTENT_COL = {
+      PERCEIVE_IR:       '#2563eb',
+      BASELINE_AUDIT:    '#991b1b',
+      PROPOSE_HARDENING: '#7c3aed',
+      PATCH_ACCEPTED:    '#15803d',
+      PATCH_REJECTED:    '#b91c1c',
+      VERIFY_RESULT:     '#0369a1',
+      REFLECT_FEEDBACK:  '#d97706',
+      REFLECTION_PATCH:  '#6d28d9',
+      MANUAL_REQUIRED:   '#b45309',
+      CONVERGED:         '#15803d',
+    };
+
+    function shortAgent(name) {
+      return (AGENT_META[name] && AGENT_META[name].short) || name || 'Agent';
+    }
+
+    function initLiveAgentTrace(langLabel, locCount) {
+      const box = $('#pipelineBody');
+      box.innerHTML = '';
+
+      const card = el('div', 'ag-card');
+      card.id = 'liveTraceCard';
+
+      const head = el('div', 'trace-head');
+      const hLeft = el('div', 'trace-head-left');
+      hLeft.append(
+        el('h4', '', '5-Agent Coordinator Trace'),
+        el('span', 'live-pill streaming', 'Live SSE'),
+      );
+      hLeft.lastChild.id = 'traceLivePill';
+
+      const hRight = el('span', 'trace-ts', `${langLabel || 'auto'} · ${locCount || 0} LOC`);
+      hRight.id = 'traceMetaRight';
+      head.append(hLeft, hRight);
+      card.append(head);
+
+      const flow = el('div', 'agent-flow-bar');
+      flow.id = 'agentFlowBar';
+      Object.entries(AGENT_META).forEach(([full, info]) => {
+        const node = el('div', 'agent-node');
+        node.dataset.agent = full;
+        node.style.setProperty('--a-col', info.color);
+        const dot = el('i', 'a-dot');
+        dot.style.background = info.color;
+        node.append(dot, document.createTextNode(info.short));
+        flow.append(node);
+      });
+      card.append(flow);
+
+      const iterStrip = el('div', 'iter-strip');
+      iterStrip.id = 'iterStrip';
+      card.append(iterStrip);
+
+      const feed = el('div', 'trace-feed');
+      feed.id = 'traceFeed';
+      card.append(feed);
+
+      const doneSlot = el('div');
+      doneSlot.id = 'traceDoneSlot';
+      card.append(doneSlot);
+
+      box.append(card);
+
+      const scoreSlot = el('div');
+      scoreSlot.id = 'pipelineScoreSlot';
+      box.append(scoreSlot);
+
+      $('#nPipe').textContent = '(0)';
+    }
+
+    function appendTraceMessage(msg) {
+      const feed = $('#traceFeed');
+      if (!feed) return;
+
+      const senderInfo = AGENT_META[msg.sender] || { short: msg.sender, color: 'var(--accent)' };
+      const intentCol = INTENT_COL[msg.intent] || senderInfo.color;
+
+      // Highlight active agent node in flow bar
+      document.querySelectorAll('#agentFlowBar .agent-node').forEach(n => {
+        const isMe = n.dataset.agent === msg.sender;
+        n.classList.toggle('active', isMe);
+        if (isMe) n.classList.add('seen');
+      });
+
+      const row = el('div', 'trace-msg');
+      row.style.setProperty('--m-col', senderInfo.color);
+
+      const meta = el('div', 'trace-meta');
+      const route = el('div', 'trace-route');
+      route.append(
+        el('span', 'trace-iter', `Iter ${msg.iteration ?? 0}`),
+        el('span', '', shortAgent(msg.sender)),
+        el('span', 'trace-arrow', '→'),
+        el('span', '', shortAgent(msg.recipient)),
+      );
+
+      const rightMeta = el('div');
+      rightMeta.style.display = 'flex';
+      rightMeta.style.alignItems = 'center';
+      rightMeta.style.gap = '6px';
+      const chip = el('span', 'intent-chip', msg.intent || 'EVENT');
+      chip.style.background = intentCol;
+      const ts = el('span', 'trace-ts', `+${Number(msg.timestamp_ms || 0).toFixed(1)}ms`);
+      rightMeta.append(chip, ts);
+
+      meta.append(route, rightMeta);
+      row.append(meta);
+      row.append(el('div', 'trace-summary', msg.summary || ''));
+
+      const p = msg.payload || {};
+      const tags = [];
+      if (p.line) {
+        const lnBtn = el('button', 'line-jump-pill', `L${p.line}`);
+        lnBtn.onclick = () => jumpToLine(p.line);
+        tags.push(lnBtn);
+      }
+      if (p.risk_delta != null && p.risk_delta !== 0) {
+        tags.push(el('span', 'trace-tag', `Risk Δ ${p.risk_delta > 0 ? '+' : ''}${p.risk_delta}`));
+      }
+      if (Array.isArray(p.actions) && p.actions.length) {
+        tags.push(el('span', 'trace-tag', `${p.actions.length} patch action${p.actions.length === 1 ? '' : 's'}`));
+      }
+      if (tags.length) {
+        const pRow = el('div', 'trace-payload');
+        tags.forEach(t => pRow.append(t));
+        row.append(pRow);
+      }
+
+      feed.append(row);
+      feed.scrollTop = feed.scrollHeight;
+      $('#nPipe').textContent = `(${feed.children.length})`;
+    }
+
+    function appendIterationPill(iterData) {
+      const strip = $('#iterStrip');
+      if (!strip) return;
+      const ok = Boolean(iterData.sandbox_passed);
+      const pill = el(
+        'span',
+        'iter-pill ' + (ok ? 'pass' : 'fail'),
+        `Iter ${iterData.iteration}: Health ${iterData.health_score} · ${iterData.findings} sec · ${ok ? 'Pass ✓' : 'Retry ↻'}`
+      );
+      strip.append(pill);
+    }
+
+    function finalizeLiveTrace(res) {
+      const pill = $('#traceLivePill');
+      if (pill) {
+        pill.classList.remove('streaming');
+        if (res.blocked) {
+          pill.classList.add('blocked');
+          pill.textContent = 'Blocked';
+        } else if (res.agentic && res.agentic.converged) {
+          pill.classList.add('done');
+          pill.textContent = `Converged · Pass@${res.agentic.pass_at_k || 1}`;
+        } else {
+          pill.classList.add('done');
+          pill.textContent = (res.summary && res.summary.verdict) || 'Done';
+        }
+      }
+      document.querySelectorAll('#agentFlowBar .agent-node.active').forEach(n => n.classList.remove('active'));
+
+      const doneSlot = $('#traceDoneSlot');
+      if (doneSlot) {
+        doneSlot.innerHTML = '';
+        const ag = res.agentic || {};
+        const nIss = (res.issues || []).length;
+        const msg = res.blocked
+          ? `Security Gate halted execution (${(res.security || []).length} threat(s)).`
+          : (nIss > 0
+              ? `Found ${nIss} issue${nIss === 1 ? '' : 's'} in ${Number(ag.total_time_ms || 0).toFixed(1)} ms (${ag.iterations_used || 1} iter).`
+              : `Clean — verified in ${Number(ag.total_time_ms || 0).toFixed(1)} ms.`);
+        const bar = el('div', 'trace-done-bar');
+        bar.append(el('span', '', msg));
+        const goBtn = el('button', '', res.blocked ? 'Review Security Gate →' : (nIss ? `View ${nIss} Diagnostic${nIss === 1 ? '' : 's'} →` : 'View Summary →'));
+        goBtn.onclick = () => showTab('diag');
+        bar.append(goBtn);
+        doneSlot.append(bar);
+      }
+
+      renderPipelineScoreCard(res);
+    }
+
+    /* ---------- Analyze Pipeline (Real-Time SSE Streaming) ---------- */
     async function runCompilerPipeline() {
       if (!S.code || !S.code.trim()) return;
       const btn = $('#scanBtn');
       btn.disabled = true;
-      btn.textContent = 'Analyzing...';
+      btn.textContent = 'Streaming...';
+
+      initLiveAgentTrace(activeLang() || S.lang, S.code.split('\n').length);
+      showTab('pipeline');
 
       try {
-        const res = await post('/analyze', { filename: S.file, code: S.code, language: activeLang() });
-        if (res.language && S.lang === 'auto') {
-          S.lang = res.language;
-          $('#langSel').value = res.language;
+        const response = await fetch(A + '/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+          body: JSON.stringify({ filename: S.file, code: S.code, language: activeLang(), stream: true }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${response.status}`);
         }
-        S.blocked = Boolean(res.blocked);
-        S.sec = res.security || [];
-        S.secSolution = res.security_solution || null;
-        S.issues = res.issues || [];
-        S.scoreData = res.score_data || null;
-        S.fixed = (!S.blocked && res.fixed_code && res.fixed_code !== S.code) ? res.fixed_code : '';
+
+        const ctype = response.headers.get('content-type') || '';
+        let finalRes = null;
+
+        if (ctype.includes('text/event-stream') && response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let buffer = '';
+
+          const dispatchFrame = rawFrame => {
+            let evType = 'message';
+            const dataLines = [];
+            for (const line of rawFrame.split('\n')) {
+              if (line.startsWith('event:')) evType = line.slice(6).trim();
+              else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
+            }
+            if (!dataLines.length) return;
+            const payload = JSON.parse(dataLines.join('\n'));
+            if (evType === 'start') {
+              const mr = $('#traceMetaRight');
+              if (mr) mr.textContent = `${payload.language || 'python'} · ${payload.loc || 0} LOC`;
+            } else if (evType === 'agent_message') {
+              appendTraceMessage(payload);
+            } else if (evType === 'iteration') {
+              appendIterationPill(payload);
+            } else if (evType === 'result') {
+              finalRes = payload;
+            } else if (evType === 'error') {
+              throw new Error(payload.error || 'Agentic pipeline error');
+            }
+          };
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+            let sepIdx;
+            while ((sepIdx = buffer.indexOf('\n\n')) !== -1) {
+              const frame = buffer.slice(0, sepIdx).trim();
+              buffer = buffer.slice(sepIdx + 2);
+              if (frame) dispatchFrame(frame);
+            }
+          }
+          if (buffer.trim()) dispatchFrame(buffer.trim());
+        } else {
+          finalRes = await response.json();
+          (finalRes.agent_trace || []).forEach(appendTraceMessage);
+          (finalRes.iteration_history || []).forEach(appendIterationPill);
+        }
+
+        if (!finalRes) throw new Error('Stream ended without final analysis result.');
+
+        if (finalRes.language && S.lang === 'auto') {
+          S.lang = finalRes.language;
+          $('#langSel').value = finalRes.language;
+        }
+        S.blocked = Boolean(finalRes.blocked);
+        S.sec = finalRes.security || [];
+        S.secSolution = finalRes.security_solution || null;
+        S.issues = finalRes.issues || [];
+        S.scoreData = finalRes.score_data || null;
+        S.fixed = (!S.blocked && finalRes.fixed_code && finalRes.fixed_code !== S.code) ? finalRes.fixed_code : '';
 
         renderScoreHeader(S.scoreData);
-        renderDiagnosticsPane(res);
-        renderPipelinePane(res);
+        renderDiagnosticsPane(finalRes);
+        finalizeLiveTrace(finalRes);
         paintCode();
 
-        if (res.status === 'success' && res.message) {
-          setOutput('Output', res.message, false);
+        if (finalRes.status === 'success' && finalRes.message) {
+          setOutput('Output', finalRes.message, false);
         }
 
-        showTab('diag');
         btn.textContent = 'Re-analyze';
       } catch (e) {
         $('#diagList').innerHTML = `<div class="empty-state" style="color:var(--runtime)">${e.message}</div>`;
+        const pill = $('#traceLivePill');
+        if (pill) { pill.classList.remove('streaming'); pill.classList.add('blocked'); pill.textContent = 'Error'; }
         btn.textContent = 'Analyze';
       } finally {
         btn.disabled = false;
@@ -1437,17 +1869,24 @@
       await runCompilerPipeline();
     }
 
-    /* ---------- Pipeline Pane ---------- */
-    function renderPipelinePane(res) {
-      const box = $('#pipelineBody');
-      box.innerHTML = '';
+    /* ---------- Pipeline Score & Telemetry Card ---------- */
+    function renderPipelineScoreCard(res) {
+      const slot = $('#pipelineScoreSlot');
+      if (!slot) return;
+      slot.innerHTML = '';
       const sc = res.score_data || {};
+      const ag = res.agentic || {};
       const c1 = el('div', 'ag-card');
       c1.append(el('h4', '', `Score Breakdown (${sc.grade_label || '—'})`));
       [
         ['Security', `${sc.security?.score ?? 0}/40`, sc.security?.status || ''],
         ['Errors', `${sc.errors?.score ?? 0}/45`, sc.errors?.status || ''],
         ['Efficiency', `${sc.efficiency?.score ?? 0}/15`, sc.efficiency?.status || ''],
+        [
+          'Agentic Telemetry',
+          ag.converged ? `Pass@${ag.pass_at_k || 1}` : `${ag.iterations_used || 1} iter`,
+          `Risk Δ -${ag.risk_reduction_pct ?? 0}% · Health +${ag.health_improvement ?? 0} · Rejected patches: ${ag.rejected_patches ?? 0} · Prompt injections blocked: ${ag.prompt_injections_detected ?? 0}`,
+        ],
       ].forEach(([t, v, d], i) => {
         const st = el('div', 'ag-step');
         st.append(el('div', 'num', String(i + 1)));
@@ -1456,25 +1895,7 @@
         st.append(b);
         c1.append(st);
       });
-      box.append(c1);
-
-      const c2 = el('div', 'ag-card');
-      c2.append(el('h4', '', '5-Agent Pipeline'));
-      [
-        ['Perception & IR', `Parsed ${S.code.split('\n').length} lines (${res.language || 'python'}).`],
-        ['Security Auditor', S.blocked ? `Blocked: ${S.sec.length} threat(s).` : `Passed (${S.sec.length} note(s)).`],
-        ['Static & Runtime Analyzer', S.blocked ? 'Skipped at Stage 1.' : `Found ${S.issues.length} error(s).`],
-        ['AI Synthesizer', S.blocked ? 'Generated security patch.' : `${S.issues.filter(i => i.patched).length} auto-fix, ${S.issues.filter(i => !i.patched).length} manual.`],
-        ['Verifier', (res.summary || {}).verdict || 'DONE'],
-      ].forEach(([w, d], i) => {
-        const st = el('div', 'ag-step');
-        st.append(el('div', 'num', String(i + 1)));
-        const b = el('div');
-        b.append(el('div', 'who', w), el('div', 'desc', d));
-        st.append(b);
-        c2.append(st);
-      });
-      box.append(c2);
+      slot.append(c1);
     }
 
     /* ---------- Run / Save / Menu / Upload ---------- */

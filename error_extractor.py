@@ -3,6 +3,7 @@ import subprocess
 import sys
 from static_analyzer import static_check
 import os
+from sandbox import run_sandboxed_python, SANDBOX_PYTHON_RUNNER
 
 try:
     from codecarbon import EmissionsTracker
@@ -11,43 +12,7 @@ except ImportError:
     CODECARBON_AVAILABLE = False
 
 
-_EXECUTION_RUNNER = """
-import contextlib
-import io
-import json
-import sys
-import time
-import traceback
-
-code = sys.stdin.read()
-captured = io.StringIO()
-result = {
-    "error_type": None,
-    "error_message": None,
-    "line_number": None,
-    "traceback": None,
-    "stdout": "",
-}
-start = time.perf_counter()
-try:
-    compiled = compile(code, "<string>", "exec")
-    with contextlib.redirect_stdout(captured):
-        exec(compiled, {"__name__": "__main__"})
-except BaseException as error:
-    result["error_type"] = type(error).__name__
-    result["error_message"] = str(error)
-    result["traceback"] = traceback.format_exc()
-    if isinstance(error, SyntaxError):
-        result["line_number"] = error.lineno
-    else:
-        for frame in reversed(traceback.extract_tb(sys.exc_info()[2])):
-            if frame.filename == "<string>":
-                result["line_number"] = frame.lineno
-                break
-result["stdout"] = captured.getvalue()
-result["execution_time_sec"] = time.perf_counter() - start
-sys.stdout.write(json.dumps(result))
-"""
+_EXECUTION_RUNNER = SANDBOX_PYTHON_RUNNER
 
 
 def classify_stage(ir):
@@ -65,35 +30,8 @@ def classify_stage(ir):
 
 
 def run_code(code, timeout=5):
-    """Run code in a child process with a hard time limit."""
-    try:
-        completed = subprocess.run(
-            [sys.executable, "-c", _EXECUTION_RUNNER],
-            input=code,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            start_new_session=True,
-        )
-    except subprocess.TimeoutExpired as error:
-        partial_output = error.stdout or ""
-        if isinstance(partial_output, bytes):
-            partial_output = partial_output.decode("utf-8", errors="replace")
-        return {
-            "error_type": "TimeoutError",
-            "error_message": f"Execution exceeded the {timeout}-second time limit.",
-            "line_number": None,
-            "traceback": "",
-            "stdout": partial_output,
-            "execution_time_sec": timeout,
-        }
-
-    if completed.returncode != 0:
-        raise RuntimeError(
-            f"Code execution process exited unexpectedly "
-            f"(exit status {completed.returncode}): {completed.stderr.strip()}"
-        )
-    return json.loads(completed.stdout)
+    """Run code in a secure sandbox (macOS Seatbelt / Docker / AuditHook) with a hard time limit."""
+    return run_sandboxed_python(code, timeout=timeout)
 
 
 def extract_error(code):

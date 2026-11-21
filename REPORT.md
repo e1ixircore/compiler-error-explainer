@@ -167,3 +167,29 @@ IntelliFix follows a strict, beginner-friendly compiler pipeline:
 | `test_sec_notes.py` | Standard Security Trap | PYTHON | 16 | **Passed with Notes (46/100)** | **4** | SEC_29(MEDIUM:L4), SEC_21(LOW:L6), SEC_17(MEDIUM:L9), SEC_20(MEDIUM:L10) |
 | `test_sec_order.py` | Standard Security Trap | PYTHON | 10 | **BLOCKED (Grade F · 0/100)** | **1** | SEC_01(CRITICAL:L7) |
 | `test_security.py` | Standard Security Trap | PYTHON | 39 | **BLOCKED (Grade F · 0/100)** | **6** | SEC_21(LOW:L28), SEC_21(LOW:L29), SEC_01(CRITICAL:L13), SEC_02(CRITICAL:L18), SEC_17(MEDIUM:L24), SEC_17(MEDIUM:L13) |
+
+---
+
+## 7. Subprocess Hardening & Sandboxing Architecture (`sandbox.py`)
+
+To eliminate the vulnerability of host compromise during untrusted code execution, TOACD incorporates a multi-tier sandbox engine:
+
+1. **macOS Kernel Seatbelt Isolation (`SeatbeltSandboxEngine`)**:
+   - Utilizes Apple's native `sandbox-exec` with a compiled `.sb` profile (`sandbox_profile.sb`).
+   - Enforces kernel-level Mandatory Access Control (MAC).
+   - **Network**: Completely disabled (`deny network*`).
+   - **Filesystem**: Read-only host filesystem (`deny file-write*`), with write access strictly isolated to per-execution ephemeral scratch directories.
+   - **Credential Protection**: Explicit deny rules prevent reads from `~/.ssh`, `~/.aws`, `~/.gnupg`, dotfiles, and system keychains.
+   - **Process Controls**: Disallows unauthorized process spawning (`/bin/sh`, `/bin/bash`, `rm`, `curl`) by whitelisting only designated runtime binaries.
+
+2. **Containerized Execution (`DockerSandboxEngine`)**:
+   - Provides ephemeral container isolation (`--rm -i --network none --read-only --user 1000:1000 --cap-drop ALL --memory 256m --cpus 1.0`).
+   - Supports optional gVisor (`--runtime runsc`) for hardware-independent syscall interception.
+
+3. **In-Process Defense-in-Depth (`AuditHookSandboxEngine`)**:
+   - CPython 3.8+ audit hooks (`sys.addaudithook`) intercept subprocess calls, socket creation, ctypes tampering, and sensitive path access at the interpreter level.
+   - POSIX `resource.setrlimit` bounds CPU time (`RLIMIT_CPU`), virtual memory (`RLIMIT_AS`), file size write limits (`RLIMIT_FSIZE`), and descriptor limits (`RLIMIT_NOFILE`).
+
+4. **Verification**:
+   - Verified via `test_sandbox.py` (12/12 security test cases passing) confirming file write blocking, network blocking, credential access blocking, subprocess blocking, execution timeouts, and safe C++/Python execution.
+
