@@ -19,6 +19,7 @@ from security_analyzer import SecurityAnalyzer
 from security_metrics_engine import SecurityMetricsEngine, METRICS_REGISTRY
 from agentic_compiler import AgenticCompilerCoordinator, CompilerErrorObj
 from static_analyzer import static_check
+from cst_patcher import apply_single_issue_patch_cst
 from cpp_explainer import (
     apply_fix as apply_cpp_fix,
     explain as explain_cpp_error,
@@ -132,8 +133,8 @@ def read_source(filename):
 
 _security_engine = SecurityMetricsEngine()
 
-def scan(code, language="python"):
-    """Returns (vulns, formatted log lines, is_blocked) using the 52-metric Security Engine."""
+def _scan_with_report(code, language="python"):
+    """Returns (vulns, formatted log lines, is_blocked, raw_report) using the 52-metric Security Engine."""
     rep = _security_engine.analyze(code, language=language)
     findings = rep.get("findings", [])
     vulns = [
@@ -149,20 +150,17 @@ def scan(code, language="python"):
     ]
     log = [f"[{v['severity']}] Line {v['line']} ({v['metric_id']}): {v['message']}" for v in vulns]
     blocked = rep.get("summary", {}).get("blocked", False) or any(v["severity"] in BLOCKING for v in vulns)
+    return vulns, log, blocked, rep
+
+
+def scan(code, language="python"):
+    """Returns (vulns, formatted log lines, is_blocked) using the 52-metric Security Engine."""
+    vulns, log, blocked, _ = _scan_with_report(code, language=language)
     return vulns, log, blocked
 
 
-def build_security_solution(code, language="python"):
-    """When Stage 1 Security Gate blocks execution, synthesize a hardened version of the code
-    so the user can either apply the security solution or stop diagnosis."""
-    audit_rep = _security_engine.analyze(code, language=language)
-    synth = AgenticCompilerCoordinator().synthesizer
-    if language == "cpp":
-        hardened, actions = synth.harden_cpp_security(code, audit_rep)
-    else:
-        hardened, actions = synth.harden_python_security(code, audit_rep)
-    after_rep = _security_engine.analyze(hardened, language=language)
-    still_blocked = after_rep.get("summary", {}).get("blocked", False)
+def _compute_line_fixes(code, hardened):
+    """Map 1-based original line numbers to their hardened line text, even when imports are inserted."""
     orig_lines = code.splitlines()
     hard_lines = hardened.splitlines()
     line_fixes = {}
@@ -170,6 +168,36 @@ def build_security_solution(code, language="python"):
         for idx, (o_ln, h_ln) in enumerate(zip(orig_lines, hard_lines), start=1):
             if o_ln != h_ln:
                 line_fixes[idx] = h_ln.strip()
+        return line_fixes
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, orig_lines, hard_lines, autojunk=False).get_opcodes():
+        if tag == "replace":
+            old_len = i2 - i1
+            new_len = j2 - j1
+            # If extra lines (e.g. inserted imports) precede the replaced lines at the start, align from the tail
+            offset = (new_len - old_len) if (i1 == 0 and new_len > old_len) else 0
+            for k in range(old_len):
+                j = j1 + offset + k
+                if j1 <= j < j2:
+                    line_fixes[i1 + k + 1] = hard_lines[j].strip()
+    return line_fixes
+
+
+def build_security_solution(code, language="python", hardened=None, actions=None, after_rep=None, audit_rep=None):
+    """When Stage 1 Security Gate blocks execution, synthesize a hardened version of the code
+    so the user can either apply the security solution or stop diagnosis."""
+    if hardened is None:
+        if audit_rep is None:
+            audit_rep = _security_engine.analyze(code, language=language)
+        synth = AgenticCompilerCoordinator().synthesizer
+        if language == "cpp":
+            hardened, actions = synth.harden_cpp_security(code, audit_rep)
+        else:
+            hardened, actions = synth.harden_python_security(code, audit_rep)
+    actions = actions or []
+    if after_rep is None:
+        after_rep = _security_engine.analyze(hardened, language=language)
+    still_blocked = after_rep.get("summary", {}).get("blocked", False)
+    line_fixes = _compute_line_fixes(code, hardened) if hardened != code else {}
     return {
         "can_sanitize": (hardened != code) and not still_blocked,
         "has_partial_fix": (hardened != code),
@@ -888,6 +916,8 @@ def build_issues(original_code, history):
             "reason": parts.get("Reason", ""),
             "how_to_fix": parts.get("Fix", ""),
             "suggestion": ir.get("suggestion"),                   # "did you mean ...?"
+            "error_message": ir.get("error_message", ""),
+            "error_variable": ir.get("error_variable"),
             "patched": patched,
             "is_ambiguous": not patched,
             "ai_fix_line": plus_lines[-1] if plus_lines else "",
@@ -1067,9 +1097,19 @@ def _build_agentic_analyze_payload(code, lang, coord_res, vulns, sec_struct, sec
 
     # ---- STAGE 1: SECURITY GATE (Critical/High threats detected in original code) ----
     if blocked:
-        sec_solution = build_security_solution(code, language=lang)
-        if not sec_solution.get("hardened_code") and coord_res.get("compiled_code") and coord_res["compiled_code"] != code:
-            sec_solution["hardened_code"] = coord_res["compiled_code"]
+        compiled = coord_res.get("compiled_code")
+        if compiled is not None and coord_res.get("final_audit") is not None:
+            sec_solution = build_security_solution(
+                code,
+                language=lang,
+                hardened=compiled,
+                actions=coord_res.get("actions_applied", []),
+                after_rep=coord_res.get("final_audit"),
+            )
+        else:
+            sec_solution = build_security_solution(code, language=lang)
+        if not sec_solution.get("hardened_code") and compiled and compiled != code:
+            sec_solution["hardened_code"] = compiled
         score_data = compute_code_score(code, lang, vulns, True, [], executable=False)
         return {
             "status": "blocked",
@@ -1169,7 +1209,10 @@ def _build_agentic_analyze_payload(code, lang, coord_res, vulns, sec_struct, sec
         }
 
     # ---- STAGE 2B: PYTHON RESULT (from AgenticCompilerCoordinator) ----
-    if not fix_is_safe(code, fixed_code):
+    patch_safe = coord_res.get("patch_safe")
+    if patch_safe is None:
+        patch_safe = fix_is_safe(code, fixed_code)
+    if not patch_safe:
         fixed_code = code
         repair_history.append({"step": "final", "result": "rejected by patch safety check"})
 
@@ -1308,7 +1351,7 @@ def _stream_agentic_analyze(req_info):
 
     def worker():
         try:
-            vulns, sec_log, blocked = scan(code, language=lang)
+            vulns, sec_log, blocked, audit_rep = _scan_with_report(code, language=lang)
             sec_struct = [
                 {
                     "line": v["line"],
@@ -1320,12 +1363,16 @@ def _stream_agentic_analyze(req_info):
                 }
                 for v in vulns
             ]
-            coordinator = AgenticCompilerCoordinator(max_iterations=max_iters, use_llm=use_llm)
+            coordinator = AgenticCompilerCoordinator(
+                max_iterations=1 if blocked else max_iters,
+                use_llm=use_llm,
+            )
             coord_res = coordinator.compile_and_harden(
                 code,
                 language=lang,
                 execute_sandbox=not blocked,
                 on_event=on_event,
+                initial_audit=audit_rep,
             )
             payload = _build_agentic_analyze_payload(
                 code, lang, coord_res, vulns, sec_struct, sec_log, blocked, t_req
@@ -1376,7 +1423,7 @@ def analyze_code():
     t_req = time.perf_counter()
     code = req_info["code"]
     lang = req_info["lang"]
-    vulns, sec_log, blocked = scan(code, language=lang)
+    vulns, sec_log, blocked, audit_rep = _scan_with_report(code, language=lang)
     sec_struct = [
         {
             "line": v["line"],
@@ -1390,11 +1437,11 @@ def analyze_code():
     ]
     try:
         coordinator = AgenticCompilerCoordinator(
-            max_iterations=req_info["max_iters"],
+            max_iterations=1 if blocked else req_info["max_iters"],
             use_llm=req_info["use_llm"],
         )
         coord_res = coordinator.compile_and_harden(
-            code, language=lang, execute_sandbox=not blocked
+            code, language=lang, execute_sandbox=not blocked, initial_audit=audit_rep
         )
     except CompilerNotFound as e:
         return jsonify({"status": "error", "error": str(e)}), 503
@@ -1630,6 +1677,29 @@ def api_agentic_compile():
     coordinator = AgenticCompilerCoordinator(max_iterations=max_iters, use_llm=use_llm)
     result = coordinator.compile_and_harden(code, language=language, execute_sandbox=execute_sandbox)
     return jsonify(result)
+
+
+@app.route('/api/apply-patch', methods=['POST'])
+def api_apply_patch():
+    """Apply a single diagnostic issue patch using LibCST (Concrete Syntax Tree)
+    instead of fragile string slicing or indentation guessing."""
+    data = request.json or {}
+    code = data.get('code')
+    issue = data.get('issue')
+    if not isinstance(code, str):
+        return jsonify({"error": "Code must be text"}), 400
+    if not isinstance(issue, dict):
+        return jsonify({"error": "Missing issue payload"}), 400
+    if len(code.encode("utf-8", "ignore")) > MAX_CODE_BYTES:
+        return jsonify({"error": "Input too large"}), 413
+
+    lang = detect_language(
+        filename=data.get('filename'),
+        code=code,
+        explicit=data.get('language'),
+    )
+    res = apply_single_issue_patch_cst(code, issue, language=lang)
+    return jsonify(res)
 
 
 @app.route('/api/sandbox/status', methods=['GET'])

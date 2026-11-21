@@ -1,47 +1,68 @@
 # ir_generator.py
 import ast
+from functools import lru_cache
 import json
+
+
+@lru_cache(maxsize=16)
+def cached_ast_parse(code):
+    """Cached ast.parse(code) returning an ast.Module or None on syntax error.
+    Do NOT mutate returned AST nodes (e.g. do not attach .parent attributes)."""
+    try:
+        return ast.parse(code)
+    except Exception:
+        return None
+
+
+def _find_enclosing_top_stmt(tree, line_number):
+    if tree is None or not line_number:
+        return None
+    for stmt in tree.body:
+        start = getattr(stmt, "lineno", 0)
+        decs = getattr(stmt, "decorator_list", None)
+        if decs:
+            start = min(start, *(getattr(d, "lineno", start) for d in decs))
+        end = getattr(stmt, "end_lineno", None) or start
+        if start <= line_number <= end:
+            return stmt
+    return None
+
 
 class IRGenerator:
 
     def __init__(self, code, error_obj):
         self.code = code
         self.error = error_obj
-
-    def attach_parents(self, tree):
-        for parent in ast.walk(tree):
-            for child in ast.iter_child_nodes(parent):
-                child.parent = parent
+        self._tree = cached_ast_parse(code)
 
     def get_ast_info(self):
-        try:
-            tree = ast.parse(self.code)
-            self.attach_parents(tree)
+        tree = self._tree
+        if tree is None:
+            return None, None
+        target_ln = self.error.line_number
+        top_stmt = _find_enclosing_top_stmt(tree, target_ln)
+        root = top_stmt if top_stmt is not None else tree
+        root_parent = tree if top_stmt is not None else None
 
-            for node in ast.walk(tree):
-                if hasattr(node, "lineno") and node.lineno == self.error.line_number:
-                    node_name = type(node).__name__
-                    parent_name = type(node.parent).__name__ if hasattr(node, "parent") else None
-                    return node_name, parent_name
-        except:
-            pass
-
+        # BFS over ONLY the enclosing top-level statement (orders of magnitude faster on 2,000+ LOC files)
+        stack = [(root, root_parent)]
+        while stack:
+            node, parent = stack.pop(0)
+            if getattr(node, "lineno", None) == target_ln:
+                node_name = type(node).__name__
+                parent_name = type(parent).__name__ if parent is not None else None
+                return node_name, parent_name
+            for child in ast.iter_child_nodes(node):
+                stack.append((child, node))
         return None, None
 
     def get_variables(self):
-        variables = set()
-
-        try:
-            tree = ast.parse(self.code)
-
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Name):
-                    variables.add(node.id)
-
-        except:
-            pass
-
-        return list(variables)
+        tree = self._tree
+        if tree is None:
+            return []
+        top_stmt = _find_enclosing_top_stmt(tree, self.error.line_number)
+        root = top_stmt if (top_stmt is not None and len(tree.body) > 20) else tree
+        return list({node.id for node in ast.walk(root) if isinstance(node, ast.Name)})
 
     def extract_error_variable(self):
         msg = self.error.message

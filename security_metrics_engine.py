@@ -1020,14 +1020,11 @@ class SecurityMetricsEngine:
     # -----------------------------------------------------------------------
     # Agentic Self-Verification Diff Gate
     # -----------------------------------------------------------------------
-    def compare(self, before_code: str, after_code: str, language: str = "python") -> Dict[str, Any]:
+    def compare_reports(self, before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Compare security posture before and after an Agentic Compiler patch.
+        Compare two precomputed security audit reports without re-scanning source code.
         Used by the Verification Agent to reject patches that introduce regressions.
         """
-        before = self.analyze(before_code, language=language)
-        after = self.analyze(after_code, language=language)
-
         before_set = set(before["triggered_metrics"])
         after_set = set(after["triggered_metrics"])
 
@@ -1058,6 +1055,22 @@ class SecurityMetricsEngine:
             "before_summary": before["summary"],
             "after_summary": after["summary"],
         }
+
+    def compare(
+        self,
+        before_code: str,
+        after_code: str,
+        language: str = "python",
+        before_report: Optional[Dict[str, Any]] = None,
+        after_report: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Compare security posture before and after an Agentic Compiler patch.
+        Used by the Verification Agent to reject patches that introduce regressions.
+        """
+        before = before_report if before_report is not None else self.analyze(before_code, language=language)
+        after = after_report if after_report is not None else self.analyze(after_code, language=language)
+        return self.compare_reports(before, after)
 
     # -----------------------------------------------------------------------
     # Programmatic Documentation Exporters (Tables for Report)

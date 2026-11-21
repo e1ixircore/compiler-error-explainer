@@ -36,6 +36,7 @@ import sys
 
 from static_analyzer import bound_names
 from word2number import w2n
+from cst_patcher import apply_functional_cst_fix
 
 OPEN, CLOSE = "([{", ")]}"
 PAIR = dict(zip(OPEN, CLOSE))
@@ -135,16 +136,23 @@ def _brackets(code):
     return stack, None
 
 
+from ir_generator import cached_ast_parse
+
+
 def _parse(lines):
-    try:
-        return ast.parse("\n".join(lines))
-    except (SyntaxError, ValueError, RecursionError, MemoryError):
-        return None
+    return cached_ast_parse("\n".join(lines))
 
 
 def _on_line(tree, ln):
     """AST nodes that start AND end on source line `ln` (single-line nodes are safe to rewrite)."""
-    return [n for n in ast.walk(tree)
+    root = tree
+    for stmt in getattr(tree, "body", ()):
+        start = getattr(stmt, "lineno", 0)
+        end = getattr(stmt, "end_lineno", start)
+        if start <= ln <= end:
+            root = stmt
+            break
+    return [n for n in ast.walk(root)
             if getattr(n, "lineno", None) == ln and getattr(n, "end_lineno", None) == ln]
 
 
@@ -708,6 +716,11 @@ class NLPExplainer:
     # ------------------------------------------------------------------
     # 2. AUTO-FIX (IR + source -> patched source)
     # ------------------------------------------------------------------
+    _CST_AUTO_FIX_TYPES = {
+        "NameError", "TypeError", "AttributeError", "KeyError",
+        "ModuleNotFoundError", "ValueError", "LogicalError",
+    }
+
     def generate_fixed_code(self, ir, code):
         etype = ir.get("error_type")
         line_no = ir.get("line_number")
@@ -720,23 +733,64 @@ class NLPExplainer:
         if patcher is None:
             return code                      # no rule for this error: change nothing
 
-        patched = list(lines)
-        try:
-            patcher(ir, patched, line_no - 1)
-        except Exception:                    # a buggy rule must never take the server down
-            return code
-        new_code = "\n".join(patched)
+        # Primary engine: direct Concrete Syntax Tree (LibCST) mutation for parseable code.
+        # Preserves comments, multi-line expressions, and mixed whitespace without string slicing.
+        new_code = code
+        if etype in self._CST_AUTO_FIX_TYPES:
+            msg = ir.get("error_message") or ""
+            suggestion = ir.get("suggestion")
+            fn_ret = None
+            tree = _parse(lines)
+            if etype == "NameError" and not suggestion and tree is not None and 1 <= line_no <= len(lines):
+                bad = ir.get("error_variable") or self._quoted(msg)
+                if bad:
+                    code_part, _ = _split_comment(lines[line_no - 1])
+                    suggestion = _closest(bad, tree, line_no, code_part)
+            elif etype == "TypeError" and "incompatible type in assignment" in msg and tree is not None:
+                rm = re.search(r"assignment to '([^']+)'", msg)
+                if rm:
+                    var_name = rm.group(1)
+                    fn = _enclosing_func(tree, line_no)
+                    if fn is not None and any(
+                        isinstance(r, ast.Return) and isinstance(r.value, ast.Name) and r.value.id == var_name
+                        for r in ast.walk(fn)
+                    ):
+                        fn_ret = _ann_base_name(fn.returns)
+            cst_fixed, _, _ = apply_functional_cst_fix(
+                code,
+                error_type=etype,
+                error_message=msg,
+                line_no=line_no,
+                suggestion=suggestion,
+                error_variable=ir.get("error_variable"),
+                fn_return_type=fn_ret,
+                contextual=False,
+            )
+            if cst_fixed != code:
+                new_code = cst_fixed
+
+        # Fallback to rule-based patchers (required for SyntaxError/IndentationError where no CST exists yet)
+        if new_code == code:
+            patched = list(lines)
+            try:
+                patcher(ir, patched, line_no - 1)
+            except Exception:                    # a buggy rule must never take the server down
+                return code
+            new_code = "\n".join(patched)
+
         if new_code == code:
             return code
 
         # SAFETY GATE (mini patch validator): a patch must still parse.
+        if not syntax:
+            return new_code if cached_ast_parse(new_code) is not None else code
         try:
             ast.parse(new_code)
         except SyntaxError as e:
             # Python reports ONE syntax error at a time. A patch to a syntax error may leave the file
             # unparsable as long as the first error did not move BACKWARDS (= no regression).
             # app.py's seen_states / repeat counter / pass cap guarantee the loop still terminates.
-            if syntax and e.lineno and e.lineno >= line_no:
+            if e.lineno and e.lineno >= line_no:
                 return new_code
             return code
         except (RecursionError, ValueError, MemoryError):

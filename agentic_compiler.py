@@ -36,10 +36,11 @@ except ImportError:
 from security_metrics_engine import SecurityMetricsEngine, METRICS_REGISTRY
 from static_analyzer import static_check
 from error_extractor import extract_error, run_code
-from ir_generator import IRGenerator
+from ir_generator import IRGenerator, cached_ast_parse
 from nlp_explainer import NLPExplainer
 from cpp_extractor import extract_cpp_error, run_cpp_code, is_cpp_name
 from cpp_explainer import apply_fix as apply_cpp_fix, explain as explain_cpp_error, meaning as cpp_meaning
+from cst_patcher import apply_functional_cst_fix, harden_python_security_cst
 
 
 # ---------------------------------------------------------------------------
@@ -98,9 +99,8 @@ class ASTProgramSlicer:
             line_no = max(1, min(line_no, total_lines))
 
         ps = ProgramSlice(error_line=line_no)
-        try:
-            tree = ast.parse(code)
-        except Exception:
+        tree = cached_ast_parse(code)
+        if tree is None:
             # Fallback to lexical window if syntax is broken
             start = max(1, line_no - window)
             end = min(total_lines, line_no + window)
@@ -108,11 +108,20 @@ class ASTProgramSlicer:
             ps.relevant_context = "\n".join(f"{i:4d} | {lines[i-1]}" for i in range(start, end + 1))
             return ps
 
+        # Locate enclosing top-level statement first to avoid walking the entire 2,000+ LOC AST
+        search_root: ast.AST = tree
+        for stmt in tree.body:
+            s_start = getattr(stmt, "lineno", 0)
+            s_end = getattr(stmt, "end_lineno", s_start)
+            if s_start <= line_no <= s_end:
+                search_root = stmt
+                break
+
         # Locate enclosing class and function
         enclosing_class_node: Optional[ast.ClassDef] = None
         enclosing_func_node: Optional[ast.FunctionDef] = None
 
-        for node in ast.walk(tree):
+        for node in ast.walk(search_root):
             if isinstance(node, ast.ClassDef):
                 c_start = getattr(node, "lineno", 0)
                 c_end = getattr(node, "end_lineno", c_start + 50)
@@ -271,10 +280,36 @@ class SecurityAuditorAgent:
     def audit(self, code: str, language: str = "python") -> Dict[str, Any]:
         return self.engine.analyze(code, language=language)
 
-    def verify_patch_security(
-        self, before_code: str, after_code: str, language: str = "python"
+    def compare_reports(
+        self, before_report: Dict[str, Any], after_report: Dict[str, Any]
     ) -> Dict[str, Any]:
-        return self.engine.compare(before_code, after_code, language=language)
+        return self.engine.compare_reports(before_report, after_report)
+
+    def verify_patch_security(
+        self,
+        before_code: str,
+        after_code: str,
+        language: str = "python",
+        before_report: Optional[Dict[str, Any]] = None,
+        after_report: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        return self.engine.compare(
+            before_code,
+            after_code,
+            language=language,
+            before_report=before_report,
+            after_report=after_report,
+        )
+
+    def verify_patch_with_audit(
+        self,
+        before_report: Dict[str, Any],
+        after_code: str,
+        language: str = "python",
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Analyze `after_code` once, compare against cached `before_report`, and return (diff, after_report)."""
+        after_report = self.audit(after_code, language=language)
+        return self.compare_reports(before_report, after_report), after_report
 
 
 # ---------------------------------------------------------------------------
@@ -302,10 +337,28 @@ class AgenticContextualFixer:
         if not (1 <= ln <= len(lines)):
             return code, "", ""
 
-        idx = ln - 1
-        orig_line = lines[idx]
         etype = error_obj.error_type
         emsg = error_obj.message or ""
+
+        # Primary engine: perform contextual mutation directly on the LibCST tree
+        # (preserves comments, multi-line expressions, and mixed whitespace).
+        if etype not in ("SyntaxError", "IndentationError"):
+            cst_code, cst_action, cst_expl = apply_functional_cst_fix(
+                code,
+                error_type=etype,
+                error_message=emsg,
+                line_no=ln,
+                suggestion=error_obj.suggestion,
+                enclosing_class=slice_info.enclosing_class,
+                class_attributes=slice_info.class_attributes,
+                local_symbols=slice_info.local_symbols,
+                contextual=True,
+            )
+            if cst_code != code:
+                return cst_code, cst_action, cst_expl
+
+        idx = ln - 1
+        orig_line = lines[idx]
         new_line = orig_line
         action = ""
         explanation = ""
@@ -511,8 +564,14 @@ class IntelligentSynthesizerAgent:
         """
         Apply targeted, semantics-preserving security hardening transforms for
         vulnerabilities flagged by the 52-metric SecurityAuditorAgent.
+        Uses LibCST for direct CST mutations when the source is parseable,
+        falling back to line-based sanitization only for syntactically broken code.
         Returns (hardened_code, list_of_applied_transformations).
         """
+        cst_result = harden_python_security_cst(code, audit_report)
+        if cst_result is not None:
+            return cst_result
+
         lines = code.splitlines()
         triggered = set(audit_report.get("triggered_metrics", []))
         actions: List[str] = []
@@ -851,16 +910,24 @@ class IntelligentSynthesizerAgent:
 
 def _changed_lines(before: str, after: str) -> List[Tuple[str, str]]:
     """Minimal line diff: only '-' and '+' lines (trimmed) for UI patch rendering."""
-    out: List[Tuple[str, str]] = []
-    for line in difflib.ndiff(before.split("\n"), after.split("\n")):
-        if line[:2] in ("- ", "+ "):
-            out.append((line[0], line[2:].strip()))
-    return out
+    a, b = before.split("\n"), after.split("\n")
+    if len(a) == len(b):
+        diffs = [(x, y) for x, y in zip(a, b) if x != y]
+        if len(diffs) <= 6:
+            out: List[Tuple[str, str]] = []
+            for x, y in diffs:
+                out.append(("-", x.strip()))
+                out.append(("+", y.strip()))
+            return out
+    diff = list(difflib.unified_diff(a, b, lineterm="", n=0))
+    return [(l[0], l[1:].strip()) for l in diff[2:] if not l.startswith("@@")]
 
 
 def _remap_origin(origin: List[Optional[int]], before: str, after: str) -> List[Optional[int]]:
     """Carry each line's original line number across a patch."""
     a, b = before.split("\n"), after.split("\n")
+    if len(a) == len(b):
+        return origin
     new: List[Optional[int]] = [None] * len(b)
     for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
         if tag == "equal":
@@ -966,15 +1033,24 @@ class SandboxVerifierAgent:
             err_type = res["error_type"]
             err_msg = res.get("error_message") or ""
             err_line = res.get("line_number") or 1
+            tb = res.get("traceback") or ""
+            if err_type in ("SyntaxError", "IndentationError") or tb.startswith("(parser"):
+                cat, label = "Syntax", "Syntax failure"
+            elif tb.startswith("(static"):
+                cat, label = "Static", "Static analysis failure"
+            else:
+                cat, label = "Runtime", "Runtime failure"
             return {
-                "executed": True, "passed": False, "blocked_by_security": False,
+                "executed": (cat == "Runtime"),
+                "passed": False,
+                "blocked_by_security": False,
                 "output": res.get("stdout", ""),
                 "error": CompilerErrorObj(
-                    err_type, err_msg, err_line, "Runtime", res.get("traceback", ""),
+                    err_type, err_msg, err_line, cat, tb,
                     suggestion=res.get("suggestion"),
                 ),
                 "raw": res,
-                "reflection": f"Runtime failure: {err_type} at line {err_line}: {err_msg}",
+                "reflection": f"{label}: {err_type} at line {err_line}: {err_msg}",
             }
         return {
             "executed": True, "passed": True, "blocked_by_security": False,
@@ -1008,6 +1084,7 @@ class AgenticCompilerCoordinator:
         language: str = "python",
         execute_sandbox: bool = True,
         on_event: Optional[Callable[[Dict[str, Any]], None]] = None,
+        initial_audit: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         code = code.replace("\r\n", "\n").replace("\r", "\n")
         t_start = time.perf_counter()
@@ -1056,7 +1133,10 @@ class AgenticCompilerCoordinator:
 
         # Step 0: Initial Perception & Baseline 52-Metric Audit
         ir_initial = self.perception.perceive(code, language=language)
-        initial_audit = self.auditor.audit(code, language=language)
+        if initial_audit is None:
+            initial_audit = self.auditor.audit(code, language=language)
+        cached_ir = ir_initial
+        cached_ir_code = code
         log_msg(
             0, self.perception.NAME, self.NAME, "PERCEIVE_IR",
             f"Parsed {ir_initial['loc']} LOC ({ir_initial['functions']} funcs, {ir_initial['classes']} classes); "
@@ -1110,13 +1190,15 @@ class AgenticCompilerCoordinator:
                         f"Proposed {len(sec_actions)} security hardening transform(s) for audit.",
                         {"actions": sec_actions[:8]},
                     )
-                    diff_check = self.auditor.verify_patch_security(current_code, sec_candidate, language=language)
+                    diff_check, next_audit = self.auditor.verify_patch_with_audit(
+                        current_audit, sec_candidate, language=language
+                    )
                     if diff_check["patch_safe"]:
                         origin = _remap_origin(origin, current_code, sec_candidate)
                         current_code = sec_candidate
                         candidate_code = sec_candidate
                         seen_states.add(current_code)
-                        current_audit = self.auditor.audit(current_code, language=language)
+                        current_audit = next_audit
                         iter_actions.extend(sec_actions)
                         all_actions.extend(sec_actions)
                         made_progress = True
@@ -1133,19 +1215,35 @@ class AgenticCompilerCoordinator:
                             f"Zero-Regression Gate rejected hardening patch (introduced: {diff_check['introduced_severe_metrics']}).",
                         )
 
-            # 2) Static / Syntax Bug Repair Pass (Python)
+            # 2) Static / Syntax Bug Repair Pass (Python — batched over static issues)
             if language == "python":
-                ir_now = self.perception.perceive(current_code, language=language)
-                all_static = ir_now.get("all_static_issues") or []
-                picked = None
-                for cand in all_static:
-                    c_orig = _orig_line(origin, cand.get("line"))
-                    ckey = (cand["error_type"], cand.get("message"), c_orig)
-                    if ckey not in (skipped_keys | handled_keys):
-                        picked = (cand, c_orig, ckey)
+                pre_batch_code = current_code
+                pre_batch_origin = list(origin)
+                pre_batch_audit = current_audit
+                batch_patched_any = False
+                batch_used_fast_gate = False
+                cached_static_list: Optional[List[Dict[str, Any]]] = None
+
+                for _batch_step in range(50):
+                    if cached_static_list is None:
+                        if current_code != cached_ir_code:
+                            cached_ir = self.perception.perceive(current_code, language=language)
+                            cached_ir_code = current_code
+                        all_static = cached_ir.get("all_static_issues") or []
+                    else:
+                        all_static = cached_static_list
+
+                    picked = None
+                    for cand in all_static:
+                        c_orig = _orig_line(origin, cand.get("line"))
+                        ckey = (cand["error_type"], cand.get("message"), c_orig)
+                        if ckey not in (skipped_keys | handled_keys):
+                            picked = (cand, c_orig, ckey)
+                            break
+
+                    if picked is None:
                         break
 
-                if picked is not None:
                     si, orig_ln, ckey = picked
                     stage = "parser" if si["error_type"] in ("SyntaxError", "IndentationError") else "static"
                     err_obj = CompilerErrorObj(
@@ -1210,13 +1308,36 @@ class AgenticCompilerCoordinator:
                     }
 
                     if repaired and repaired != current_code and repaired not in seen_states:
-                        diff_check = self.auditor.verify_patch_security(current_code, repaired, language=language)
-                        if diff_check["patch_safe"]:
-                            diff_lines = _changed_lines(current_code, repaired)
+                        diff_lines = _changed_lines(current_code, repaired)
+                        if current_audit["summary"]["total_findings"] == 0 and stage == "static":
+                            added_snip = "\n".join(t for s_, t in diff_lines if s_ == "+")
+                            snip_audit = self.auditor.audit(added_snip, language=language) if added_snip.strip() else None
+                            patch_safe = (
+                                snip_audit is None
+                                or not snip_audit["summary"]["blocked"]
+                            )
+                            risk_delta = 0.0
+                            introduced_severe = (
+                                [m for m in snip_audit["triggered_metrics"]
+                                 if self.auditor.engine.registry[m].severity in ("CRITICAL", "HIGH")]
+                                if snip_audit else []
+                            )
+                            next_audit = current_audit
+                            batch_used_fast_gate = True
+                        else:
+                            diff_check, next_audit = self.auditor.verify_patch_with_audit(
+                                current_audit, repaired, language=language
+                            )
+                            patch_safe = diff_check["patch_safe"]
+                            risk_delta = diff_check["risk_delta"]
+                            introduced_severe = diff_check["introduced_severe_metrics"]
+
+                        if patch_safe:
+                            same_line_count = (repaired.count("\n") == current_code.count("\n"))
                             origin = _remap_origin(origin, current_code, repaired)
                             current_code = repaired
                             seen_states.add(current_code)
-                            current_audit = self.auditor.audit(current_code, language=language)
+                            current_audit = next_audit
                             note = act_note or f"L{si['line']} [BUG_REPAIR]: Repaired {si['error_type']} ({si['message'][:60]})"
                             iter_actions.append(note)
                             all_actions.append(note)
@@ -1225,12 +1346,20 @@ class AgenticCompilerCoordinator:
                             repair_history.append(entry)
                             handled_keys.add(ckey)
                             made_progress = True
+                            batch_patched_any = True
                             log_msg(
                                 it, self.synthesizer.NAME, self.auditor.NAME, "PATCH_ACCEPTED",
-                                f"Patched {si['error_type']} at L{orig_ln}; Risk delta={diff_check['risk_delta']}, "
+                                f"Patched {si['error_type']} at L{orig_ln}; Risk delta={risk_delta}, "
                                 f"Health={current_audit['summary']['security_health_score']}/100.",
-                                {"actions": [note], "risk_delta": diff_check["risk_delta"], "line": orig_ln},
+                                {"actions": [note], "risk_delta": risk_delta, "line": orig_ln},
                             )
+                            if stage == "static" and same_line_count and len(all_static) > 1:
+                                cached_static_list = all_static
+                            else:
+                                cached_static_list = None
+                                if stage == "parser":
+                                    # Syntax error fixed; re-perceive in next batch step
+                                    continue
                         else:
                             rejected_patches += 1
                             entry["result"] = "explanation only (manual fix needed)"
@@ -1239,8 +1368,9 @@ class AgenticCompilerCoordinator:
                             log_msg(
                                 it, self.auditor.NAME, self.synthesizer.NAME, "PATCH_REJECTED",
                                 f"Zero-Regression Gate rejected {si['error_type']} patch at L{orig_ln} "
-                                f"(introduced: {diff_check['introduced_severe_metrics']}).",
+                                f"(introduced: {introduced_severe}).",
                             )
+                            cached_static_list = all_static if stage == "static" else None
                     else:
                         entry["result"] = "explanation only (manual fix needed)"
                         repair_history.append(entry)
@@ -1250,15 +1380,23 @@ class AgenticCompilerCoordinator:
                             f"No safe auto-patch for {si['error_type']} at L{orig_ln} ({si['message'][:70]}); recorded guidance.",
                             {"line": orig_ln, "error_type": si["error_type"]},
                         )
-                        # Continue checking any remaining static issues in this file
-                        has_more_static = any(
-                            (e["error_type"], e.get("message"), _orig_line(origin, e.get("line")))
-                            not in (skipped_keys | handled_keys)
-                            for e in all_static
-                        )
-                        if has_more_static:
-                            made_progress = True
-                            continue
+                        if stage == "static":
+                            cached_static_list = all_static
+                        else:
+                            break
+
+                # Single full-file Zero-Regression audit after a fast-gated static batch
+                if batch_patched_any and batch_used_fast_gate:
+                    batch_diff, post_batch_audit = self.auditor.verify_patch_with_audit(
+                        pre_batch_audit, current_code, language=language
+                    )
+                    if batch_diff["patch_safe"]:
+                        current_audit = post_batch_audit
+                    else:
+                        current_code = pre_batch_code
+                        origin = pre_batch_origin
+                        current_audit = pre_batch_audit
+                        rejected_patches += 1
 
             # 3) Sandbox Verification & Reflection Pass
             skip_static_in_sandbox = (language == "python" and bool(skipped_keys))
@@ -1360,13 +1498,15 @@ class AgenticCompilerCoordinator:
                         "orig_line": orig_ln,
                     }
                     if repaired and repaired != current_code and repaired not in seen_states:
-                        diff_check = self.auditor.verify_patch_security(current_code, repaired, language=language)
+                        diff_check, next_audit = self.auditor.verify_patch_with_audit(
+                            current_audit, repaired, language=language
+                        )
                         if diff_check["patch_safe"]:
                             diff_lines = _changed_lines(current_code, repaired)
                             origin = _remap_origin(origin, current_code, repaired)
                             current_code = repaired
                             seen_states.add(current_code)
-                            current_audit = self.auditor.audit(current_code, language=language)
+                            current_audit = next_audit
                             action_note = f"L{orig_ln} [C++_REFLECTION_FIX]: Repaired {diag['error_type']}"
                             all_actions.append(action_note)
                             entry["patch"] = diff_lines
@@ -1449,13 +1589,15 @@ class AgenticCompilerCoordinator:
                         "orig_line": orig_ln,
                     }
                     if repaired and repaired != current_code and repaired not in seen_states:
-                        diff_check = self.auditor.verify_patch_security(current_code, repaired, language=language)
+                        diff_check, next_audit = self.auditor.verify_patch_with_audit(
+                            current_audit, repaired, language=language
+                        )
                         if diff_check["patch_safe"]:
                             diff_lines = _changed_lines(current_code, repaired)
                             origin = _remap_origin(origin, current_code, repaired)
                             current_code = repaired
                             seen_states.add(current_code)
-                            current_audit = self.auditor.audit(current_code, language=language)
+                            current_audit = next_audit
                             action_note = act_note or f"L{orig_ln} [REFLECTION_FIX]: Repaired runtime {err_obj.error_type}"
                             all_actions.append(action_note)
                             entry["patch"] = diff_lines
@@ -1488,12 +1630,14 @@ class AgenticCompilerCoordinator:
                     sanitized, ver["reflection"], current_audit["findings"]
                 )
                 if llm_candidate and llm_candidate != current_code and llm_candidate not in seen_states:
-                    diff_check = self.auditor.verify_patch_security(current_code, llm_candidate, language=language)
+                    diff_check, next_audit = self.auditor.verify_patch_with_audit(
+                        current_audit, llm_candidate, language=language
+                    )
                     if diff_check["patch_safe"]:
                         origin = _remap_origin(origin, current_code, llm_candidate)
                         current_code = llm_candidate
                         seen_states.add(current_code)
-                        current_audit = self.auditor.audit(current_code, language=language)
+                        current_audit = next_audit
                         all_actions.append("LLM_SYNTHESIS: Applied security-verified LLM patch")
                         log_msg(it, self.synthesizer.NAME, self.auditor.NAME, "PATCH_ACCEPTED",
                                 "Applied security-verified LLM synthesis patch.")
@@ -1503,8 +1647,8 @@ class AgenticCompilerCoordinator:
             if not made_progress and not iter_actions:
                 break
 
-        # Final comparison telemetry
-        comparison = self.auditor.verify_patch_security(code, current_code, language=language)
+        # Final comparison telemetry (reuse cached initial_audit & current_audit — zero redundant scans)
+        comparison = self.auditor.compare_reports(initial_audit, current_audit)
         init_risk = initial_audit["summary"]["raw_risk_score"]
         final_risk = current_audit["summary"]["raw_risk_score"]
         risk_reduction_pct = (
@@ -1527,9 +1671,11 @@ class AgenticCompilerCoordinator:
             "health_improvement": comparison["health_delta"],
             "resolved_metrics": comparison["resolved_metrics"],
             "security_regressions": comparison["introduced_severe_metrics"],
+            "patch_safe": comparison["patch_safe"],
             "findings": initial_audit.get("findings", []),
             "initial_summary": initial_audit["summary"],
             "final_summary": current_audit["summary"],
+            "final_audit": current_audit,
             "initial_metrics": initial_audit["metrics"],
             "final_metrics": current_audit["metrics"],
             "iteration_history": iteration_history,

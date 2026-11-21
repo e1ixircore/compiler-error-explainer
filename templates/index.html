@@ -1776,14 +1776,18 @@
       if (iss.patched && aiText) {
         const aiBtn = el('button', '', iss._applied ? 'Applied' : 'Apply AI Fix');
         aiBtn.disabled = Boolean(iss._applied);
-        aiBtn.onclick = ev => {
+        aiBtn.onclick = async ev => {
           ev.stopPropagation();
-          applySingleIssuePatch(iss);
-          aiBtn.textContent = 'Applied';
           aiBtn.disabled = true;
-          statusPill.textContent = 'Patched';
-          statusPill.className = 'fix-pill applied';
-          card.classList.add('is-patched');
+          const ok = await applySingleIssuePatch(iss);
+          if (ok) {
+            aiBtn.textContent = 'Applied';
+            statusPill.textContent = 'Patched';
+            statusPill.className = 'fix-pill applied';
+            card.classList.add('is-patched');
+          } else {
+            aiBtn.disabled = false;
+          }
         };
         const editTog = el('button', 'ghost', 'Edit');
         editTog.onclick = ev => {
@@ -1829,35 +1833,38 @@
       jumpToLine(lineNo);
     }
 
-    function applySingleIssuePatch(iss) {
-      if (iss._applied) return;
-      const plusPatches = (iss.patch || []).filter(p => p.sign === '+');
-      const hasMinus = (iss.patch || []).some(p => p.sign === '-');
-      if (!plusPatches.length) return;
-      pushUndo();
-
-      const lines = S.code.split('\n');
-      let targetLine = iss.line || 1;
-      if (hasMinus) {
-        const idx = targetLine - 1;
-        if (idx < 0 || idx >= lines.length) return;
-        const indent = (lines[idx].match(/^\s*/) || [''])[0];
-        const rep = plusPatches.map(p => indent + p.text.trim());
-        lines.splice(idx, 1, ...rep);
-      } else {
-        const pText = plusPatches[0].text.trim();
-        const insertIdx = /^(#include\b|import\s+|from\s+)/.test(pText) ? 0 : Math.max(0, targetLine - 1);
-        const refIndent = insertIdx > 0 ? ((lines[insertIdx].match(/^\s*/) || [''])[0]) : '';
-        lines.splice(insertIdx, 0, refIndent + pText);
-        targetLine = insertIdx + 1;
-        S.issues.forEach(o => { if (o !== iss && o.line && o.line >= targetLine) o.line += 1; });
+    async function applySingleIssuePatch(iss) {
+      if (iss._applied) return true;
+      try {
+        const res = await post('/apply-patch', {
+          code: S.code,
+          issue: iss,
+          filename: S.file,
+          language: activeLang(),
+        });
+        if (!res || !res.changed || typeof res.code !== 'string') return false;
+        pushUndo();
+        S.code = res.code;
+        iss._applied = true;
+        const targetLine = res.target_line || iss.line || 1;
+        const delta = Number(res.line_delta || 0);
+        if (delta !== 0) {
+          S.issues.forEach(o => {
+            if (o !== iss && o.line && o.line >= targetLine) o.line += delta;
+          });
+        }
+        const patchedLines = Array.isArray(res.patched_lines) && res.patched_lines.length
+          ? res.patched_lines
+          : [targetLine];
+        patchedLines.forEach(ln => S.patchedLines.add(ln));
+        $('#scanBtn').textContent = 'Re-analyze';
+        paintCode();
+        jumpToLine(targetLine);
+        return true;
+      } catch (err) {
+        console.error('CST patch application failed:', err);
+        return false;
       }
-      S.code = lines.join('\n');
-      iss._applied = true;
-      S.patchedLines.add(targetLine);
-      $('#scanBtn').textContent = 'Re-analyze';
-      paintCode();
-      jumpToLine(targetLine);
     }
 
     async function applyAllAiFixes() {
